@@ -1,24 +1,51 @@
 package com.example.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class JoinDTO {
-    private String loginid;         // 로그인 아이디 (소셜일 경우 null 허용)
-    private String password;        // 비밀번호 (소셜일 경우 null 허용)
-    private Boolean isSocial;       // 소셜 로그인 여부 (true: 소셜, false: 일반)
-    private String socialType;      // 소셜 타입 (KAKAO, NAVER, GOOGLE)
-    private String socialId;        // 소셜 플랫폼 사용자 고유 ID
 
-    private String name;            // 이름
-    private String nickname;        // 닉네임 (중복 불가)
-    private String roles;           // 권한 (MENTEE, MENTOR, ADMIN)
+    @JsonProperty("login_id")
+    private String loginid;
 
-    private String nationalid;      // 주민등록번호
-    private String phonenumber;     // 전화번호
-    private String email;           // 이메일
+    @JsonProperty("password")
+    private String password;
 
-    private String university;      // 대학교명 (선택)
-    private String major;           // 전공명 (선택)
-    private String graduationFile;  // 졸업증명서 파일 경로 (선택)
+    @JsonProperty("is_social")
+    private Boolean isSocial;
+
+    @JsonProperty("social_type")
+    private String socialType;
+
+    @JsonProperty("social_id")
+    private String socialId;
+
+    @JsonProperty("name")
+    private String name;
+
+    @JsonProperty("nickname")
+    private String nickname;
+
+    @JsonProperty("roles")
+    private String roles;
+
+    @JsonProperty("national_id")
+    private String nationalid;
+
+    @JsonProperty("phone_number")
+    private String phonenumber;
+
+    @JsonProperty("email")
+    private String email;
+
+    @JsonProperty("university")
+    private String university;
+
+    @JsonProperty("major")
+    private String major;
+
+    // 이건 파일이라 JSON에는 없지만, Multipart로 따로 보내므로 그대로 둠
+    private MultipartFile graduationFile;
 }

@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
+import axios from "axios";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -41,12 +42,32 @@ const AuthPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, files } = e.target as HTMLInputElement;
+    let newValue = value;
+
+    // 주민번호 자동 하이픈 삽입
+	if (name === "national_id") {
+	  const onlyNums = value.replace(/\D/g, "").slice(0, 13);
+	  newValue = onlyNums.length > 6
+	    ? onlyNums.slice(0, 6) + "-" + onlyNums.slice(6)
+	    : onlyNums;
+	} else if (name === "phone_number") {
+	  const onlyNums = value.replace(/\D/g, "").slice(0, 11);
+	  if (onlyNums.length >= 11) {
+	    newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
+	  } else if (onlyNums.length >= 7) {
+	    newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
+	  } else if (onlyNums.length >= 4) {
+	    newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3)}`;
+	  } else {
+	    newValue = onlyNums;
+	  }
+	}
+
     setFormData({
       ...formData,
-      [name]: files ? files[0] : value
+      [name]: files ? files[0] : newValue
     });
   };
-
 
 
   const checkDuplicate = (type: 'login_id' | 'email') => {
@@ -54,23 +75,60 @@ const AuthPage = () => {
     alert(`${type} 중복 검사 기능 호출됨: ${value}`);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!isLogin && !validatePassword(formData.password)) {
       alert("비밀번호는 10자 이상이며 특수문자를 하나 이상 포함해야 합니다.");
       return;
     }
+	
+	if (!isLogin && formData.password !== formData.confirmPassword) {
+	  alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+	  return;
+	}
+
     if (!isLogin && !validateNationalId(formData.national_id)) {
       alert("주민등록번호는 앞자리 6자리-뒷자리 7자리 형식으로 입력해야 합니다.");
       return;
     }
+
     if (!isLogin && !validateEmail(formData.email)) {
       alert("올바른 이메일 형식을 입력하세요.");
       return;
     }
+
+    if (!isLogin) {
+      // 회원가입 로직
+      try {
+        const { confirmPassword, graduation_file, ...pureJoinData } = formData;
+        const jsonBlob = new Blob([JSON.stringify(pureJoinData)], {
+          type: "application/json",
+        });
+        const form = new FormData();
+        form.append("joinDTO", jsonBlob);
+        if (graduation_file) {
+          form.append("graduation_file", graduation_file);
+        }
+
+        const response = await axios.post("/join", form, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        alert("회원가입 성공!");
+      } catch (err) {
+        console.error("회원가입 실패", err);
+        alert("회원가입 실패");
+      }
+    } else {
+      // 로그인 로직 자리
+      alert("로그인 로직 아직 구현 안 됨");
+    }
+
     console.log(isLogin ? "로그인 시도:" : "회원가입 시도:", formData);
   };
-
   return (
     <>
       <Navigation />
