@@ -5,17 +5,20 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 // 주민등록번호 암호화 
+@Component
 public class Aes256Util {
 
     private final String secretKey;
     private final String iv;
 
-    public Aes256Util(String key) {
+    public Aes256Util(@Value("${security.aes.key}") String key) {
         this.secretKey = key;
         this.iv = key.substring(0, 16); // AES-128 IV 16자
     }
-
     public String encrypt(String plaintext) {
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
