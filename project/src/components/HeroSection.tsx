@@ -23,11 +23,11 @@ const HeroSection = () => {
     const fullText = `${base} ${fileText}`.trim();
     if (!fullText) return;
 
-    try {
+   /* try {
       await axios.get(`/api/keywords/autocomplete?q=${encodeURIComponent(base)}`);
     } catch (e) {
       console.error("검색어 로그 전송 실패", e);
-    }
+    }*/
 
     navigate(`/search?query=${encodeURIComponent(fullText)}`);
     setSuggestions([]);

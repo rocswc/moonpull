@@ -111,7 +111,7 @@ const AuthPage = () => {
           form.append("graduation_file", graduation_file);
         }
 
-        const response = await axios.post("/join", form, {
+        const response = await axios.post("/api/join", form, {
           headers: {
             "Content-Type": "multipart/form-data",
           },

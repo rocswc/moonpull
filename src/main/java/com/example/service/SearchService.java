@@ -68,7 +68,7 @@ public class SearchService {
         List<String> results = new ArrayList<>();
         try {
         	QueryBuilder query = QueryBuilders
-        			   .matchPhrasePrefixQuery("search_keyword", prefix);
+        		       .matchQuery("search_keyword", prefix);
 
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
                     .query(query)
