@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-  <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-    <destination>34.64.215.144:9900</destination>
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+  <!-- 콘솔에도 로그 출력 -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeCallerData>true</includeCallerData>
+    </encoder>
   </appender>
 
+  <!-- Logstash 전송용 -->
+  <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+    <destination>34.64.215.144:9900</destination>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeCallerData>true</includeCallerData>
+    </encoder>
+  </appender>
+
+  <!-- com.example 패키지는 INFO 이상만 -->
   <logger name="com.example" level="INFO" additivity="false">
     <appender-ref ref="LOGSTASH"/>
+    <appender-ref ref="CONSOLE"/>
   </logger>
 
+  <!-- 전체 로그 레벨 및 Appender 설정 -->
   <root level="INFO">
     <appender-ref ref="LOGSTASH"/>
+    <appender-ref ref="CONSOLE"/>
   </root>
 
 </configuration>
