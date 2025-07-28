@@ -19,8 +19,10 @@ const HeroSection = () => {
   }, [fetchTrending]);
 
   const handleSearch = async (customKeyword?: string) => {
+		/*만약 customKeyword이게 null이면 디폴트로 keyword사용*/
     const base = customKeyword ?? keyword;
     const fullText = `${base} ${fileText}`.trim();
+	
     if (!fullText) return;
 
    /* try {

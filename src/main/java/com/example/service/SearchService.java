@@ -43,18 +43,22 @@ public class SearchService {
     public List<String> getPopularKeywords() {
         List<String> results = new ArrayList<>();
         try {
+        	//엘라스틱에서 검색요청에 필요한 객체모음
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
-                    .aggregation(
+                    .aggregation(//집계할때 쓰는 서치소스빌더 하위 함수로
+                    		//필드이름이 search_keyword.keyword중 상위10개를 popular_keywords로 지정해서 
                             AggregationBuilders.terms("popular_keywords")
                                     .field("search_keyword.keyword")
                                     .size(10)
                     )
-                    .size(0);
-
+                    .size(0); //문서는 필요없고 집계결과만 가져온다
+            //위에 실은내용으로 search-autocomplete라는 인덱스로 보내고
             SearchRequest searchRequest = new SearchRequest("search-autocomplete").source(sourceBuilder);
+            //응답은 위에 요청이랑 디폴트 값으로 해서 받겠다
             SearchResponse response = client.search(searchRequest, RequestOptions.DEFAULT);
+            //Terms 엘라스틱에서 집계결과를 자바에서 쓰기위한 객체 popular_keywords의 집계결과를 응답받음
             Terms terms = response.getAggregations().get("popular_keywords");
-
+            	//같은 값을 모아서 반복문을 돌려서 결과를 문자열로 받음
             for (Terms.Bucket bucket : terms.getBuckets()) {
                 results.add(bucket.getKeyAsString());
             }
@@ -66,10 +70,10 @@ public class SearchService {
 
     public List<String> getAutocomplete(String prefix) {
         List<String> results = new ArrayList<>();
-        try {
+        try {	//실제 es 인덱스랑 로그스태치에 있는 것을 비교해서 
         	QueryBuilder query = QueryBuilders
         		       .matchQuery("search_keyword", prefix);
-
+        		//es결과를 생성하고 위에 fetchSource를 통해 search_keyword 결과 중 최대 10개만 추출
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
                     .query(query)
                     .fetchSource("search_keyword", null)
@@ -77,10 +81,13 @@ public class SearchService {
 
             SearchRequest searchRequest = new SearchRequest("search-autocomplete").source(sourceBuilder);
             SearchResponse response = client.search(searchRequest, RequestOptions.DEFAULT);
-
+            		//배열을 stream통해 변환해서 응답을 받는데 첫번째는 전체검색결과 2번째가 그안에 있는 값이기 때문에 2번씀
             Arrays.stream(response.getHits().getHits())
+            		//맵함수 활용해서 search_keyword만 추출
                     .map(hit -> hit.getSourceAsMap().get("search_keyword"))
+                    //널 아닌값만 필터
                     .filter(Objects::nonNull)
+                    //오브젝트 타입을 문자열 하고 중복제거
                     .map(Object::toString)
                     .distinct()
                     .forEach(results::add);
