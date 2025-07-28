@@ -82,14 +82,14 @@ public class SecurityConfig {
 
             // 인가 설정
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/", "/join").permitAll() // 로그인, 회원가입 누구나 접근(suhan)
-                .requestMatchers("/api/**").permitAll() // /api/로 시작하는 건 누구나 접근 가능(suhan)
-                .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN") // 멘토 신청은 멘티/관리자만(suhan)
-                .requestMatchers("/admin/**").hasRole("ADMIN") // 관리자만 접근(suhan)
-                .requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN") // 멘토 페이지 접근(suhan)
-                .requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN") // 멘티 페이지 접근(suhan)
-                .anyRequest().authenticated() // 그 외는 인증 필요(suhan)
-            )
+            	    .requestMatchers("/login", "/", "/api/join").permitAll() // ✅ "/api/join" 명시적으로 추가
+            	    .requestMatchers("/api/**").permitAll()
+            	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")
+            	    .requestMatchers("/admin/**").hasRole("ADMIN")
+            	    .requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
+            	    .requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
+            	    .anyRequest().authenticated()
+            	)
 
             // 접근 거부 처리
             .exceptionHandling(ex ->
