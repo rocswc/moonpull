@@ -10,5 +10,6 @@ public class MentorVO {
     private Integer experienceYear;   // 경력 (년수)
     private String specialite;        // 전문분야
     private String introduction;      // 소개글
-    private String status;            // PENDING / APPROVED / DENIED
+    private String status;   // PENDING / APPROVED / DENIED
+    
 }
