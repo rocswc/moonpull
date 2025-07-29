@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+	
+
+<mapper namespace="com.example.DAO.MentorRepository">
+	
+	
+<insert id="insertMentorApplication" parameterType="MentorVO">
+  INSERT INTO mentor (
+    user_id,
+    student_course,
+    experience_year,
+    specialite,
+    introduction,
+    status
+  )
+  VALUES (
+    #{userId},
+    #{studentCourse},
+    #{experienceYear},
+    #{specialite},
+    #{introduction},
+    #{status}
+  )
+</insert>
+	
+	
+  <!-- ✅ 전체 사용자 조회 -->
+  <select id="getAllUsers" resultType="MemberVO">
+    SELECT * FROM member
+  </select>
+
+  <!-- ✅ 사용자 검색 (이름 또는 이메일) -->
+  <select id="searchUsers" parameterType="String" resultType="MemberVO">
+    SELECT * FROM member
+    WHERE name LIKE CONCAT('%', #{keyword}, '%')
+       OR login_id LIKE CONCAT('%', #{login_id}, '%')
+  </select>
+
+ <!-- ✅ 멘토 인증 요청 목록 -->
+ <select id="getAllMentorApplications" resultType="MentorVO">
+    SELECT * FROM mentor WHERE status = 'PENDING'
+  </select>
+
+
+<!-- ✅ 멘토 승인 -->
+  <update id="approveMentor" parameterType="int">
+    UPDATE member SET roles = 'ROLE_MENTOR' WHERE user_id = #{userId};
+    UPDATE mentor SET status = 'APPROVED' WHERE user_id = #{userId};
+  </update>
+
+  <!-- ✅ 멘토 권한 철회 -->
+  <update id="revokeMentor" parameterType="int">
+    UPDATE member SET roles = 'ROLE_MENTEE' WHERE user_id = #{userId};
+    UPDATE mentor SET status = 'REVOKED' WHERE user_id = #{userId};
+  </update>
+
+	
+	
+  <!-- ✅ 블랙리스트 사용자 조회 -->
+  <select id="getBlacklistedUsers" resultType="MemberVO">
+    SELECT * FROM member WHERE is_banned = true
+  </select>	
+	
+
+  <!-- ✅ 블랙리스트 등록 -->
+  <update id="banUser" parameterType="int">
+    UPDATE member SET is_banned = true WHERE user_id = #{userId};
+  </update>
+
+  <!-- ✅ 블랙리스트 해제 -->
+  <update id="unbanUser" parameterType="int">
+    UPDATE member SET is_banned = false WHERE user_id = #{userId};
+  </update>
+
+
+</mapper>
