@@ -12,8 +12,8 @@
   INSERT INTO mentor (
     user_id,
     student_course,
-    experience_year,
-    specialite,
+    experience_years,
+    specialties,
     introduction,
     status
   )
