@@ -17,6 +17,29 @@ const MentorReview = () => {
     averageRating: 4.9,
   };
 
+  // ✅ 샘플로 내가 남긴 리뷰 목록 (실제 DB 연결 시 fetch로 대체 가능)
+  const myReviews = [
+    {
+      name: "김역사",
+      subject: "한국사",
+      rating: 5,
+      feedback: "설명이 귀에 쏙쏙 들어왔어요!",
+    },
+    {
+      name: "이수학",
+      subject: "수학",
+      rating: 4,
+      feedback: "개념 위주로 잘 정리해주셨어요.",
+    },
+  ];
+  
+  
+  
+  
+  
+  
+  
+  
   const submitReview = () => {
     alert(`별점: ${rating}\n피드백: ${feedback}`);
     setRating(0);
