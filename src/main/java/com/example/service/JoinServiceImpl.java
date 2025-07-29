@@ -1,5 +1,9 @@
 package com.example.service;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -10,19 +14,35 @@ import com.example.VO.MemberVO;
 import com.example.dto.JoinDTO;
 import com.example.util.Aes256Util;
 
-import java.io.File;
-import java.io.IOException;
-
 @Service
 public class JoinServiceImpl implements JoinService {
+	
+	@Override
+	public void saveFile(MultipartFile file) {
+	    // 예: D:/졸업증명서 에 저장하는 로직 구현
+	    String uploadDir = "D:/졸업증명서";
 
-    // 의존성 주입: 사용자 정보 저장용 JPA Repository
+	    File dir = new File(uploadDir);
+	    if (!dir.exists()) {
+	        dir.mkdirs();
+	    }
+
+	    String originalFilename = file.getOriginalFilename();
+	    String safeFilename = UUID.randomUUID().toString() + "_" +
+	            originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+
+	    File targetFile = new File(dir, safeFilename);
+
+	    try {
+	        file.transferTo(targetFile);
+	    } catch (IOException e) {
+	        throw new RuntimeException("파일 저장 실패", e);
+	    }
+	}
+
+
     private final UserRepository userRepository;
-
-    // 비밀번호 암호화용 객체 (Spring Security 제공)
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
-
-    // 주민등록번호 암호화 유틸
     private final Aes256Util aes256Util;
 
     @Autowired
@@ -36,62 +56,87 @@ public class JoinServiceImpl implements JoinService {
 
     @Override
     public void joinProcess(JoinDTO joinDTO) {
-        // 1. MemberVO 객체 생성 (DB 저장용)
+        // 1. DB 저장용 회원 객체 생성
         MemberVO user = new MemberVO();
 
-        // 2. 소셜 로그인 여부 설정
+        // 2. 소셜 로그인 여부 세팅
         user.setIsSocial(joinDTO.getIsSocial() != null && joinDTO.getIsSocial());
 
-        // 3. 로그인 방식에 따라 정보 설정
+        // 3. 로그인 방식에 따른 처리
         if (user.getIsSocial()) {
-            // 소셜 로그인인 경우: loginId, password 불필요
+            // 소셜 로그인인 경우 아이디, 비밀번호 null 처리
             user.setSocialType(joinDTO.getSocialType());
             user.setSocialId(joinDTO.getSocialId());
             user.setLoginid(null);
             user.setPasswordhash(null);
         } else {
-            // 일반 로그인인 경우: loginId와 암호화된 password 저장
-            user.setLoginid(joinDTO.getLoginid());
+            // 일반 로그인: 아이디 및 비밀번호 암호화 후 저장
+            user.setLoginid(joinDTO.getLoginId());
             user.setPasswordhash(bCryptPasswordEncoder.encode(joinDTO.getPassword()));
         }
 
-        // 4. 공통 사용자 정보 설정
+        // 4. 공통 사용자 정보 세팅
         user.setName(joinDTO.getName());
         user.setNickname(joinDTO.getNickname());
         user.setRoles("ROLE_" + joinDTO.getRoles()); // 예: ROLE_MENTEE
-        user.setPhonenumber(joinDTO.getPhonenumber());
+        user.setPhonenumber(joinDTO.getPhoneNumber());
         user.setEmail(joinDTO.getEmail());
+        user.setIsBanned(false); // 가입 시 기본 차단 해제
         user.setUniversity(joinDTO.getUniversity());
         user.setMajor(joinDTO.getMajor());
 
-        // 5. 졸업증명서 파일 업로드 처리
+     // 5. 졸업증명서 파일 업로드 처리 (절대경로)
         MultipartFile graduationFile = joinDTO.getGraduationFile();
         if (graduationFile != null && !graduationFile.isEmpty()) {
-            String uploadDir = "uploads/graduation"; // 상대 경로
-            String originalFilename = graduationFile.getOriginalFilename(); // 원본 파일명
-            String saveFilename = System.currentTimeMillis() + "_" + originalFilename; // 고유 파일명
+            // 절대경로 지정 (윈도우 환경)
+            String uploadDir = "D:/졸업증명서 파일저장";
 
-            File targetFile = new File(uploadDir, saveFilename); // 저장할 파일 객체 생성
-            targetFile.getParentFile().mkdirs(); // 디렉토리 없으면 생성
+            // 경로가 없으면 생성
+            File dir = new File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            // 안전한 파일명 생성 (UUID + 원본파일명 특수문자 _ 변환)
+            String originalFilename = graduationFile.getOriginalFilename();
+            String safeFilename = UUID.randomUUID().toString() + "_"
+                + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+
+            // 저장할 파일 객체 생성
+            File targetFile = new File(dir, safeFilename);
 
             try {
-                graduationFile.transferTo(targetFile); // 실제 파일 저장
-                user.setGraduationFile(uploadDir + "/" + saveFilename); // 저장된 경로를 DB에 기록
+                graduationFile.transferTo(targetFile);
+                // DB에 저장될 경로 (절대경로 또는 상대경로 선택)
+                user.setGraduationFile(uploadDir + "/" + safeFilename);
             } catch (IOException e) {
                 throw new RuntimeException("졸업증명서 파일 저장 실패", e);
             }
         } else {
-            user.setGraduationFile(null); // 파일이 없으면 null 저장
+            user.setGraduationFile(null);
         }
 
-        // 6. 주민등록번호 암호화
-        String encryptedNationalId = aes256Util.encrypt(joinDTO.getNationalid());
+        // 6. 주민등록번호 AES256 암호화 후 저장
+        String encryptedNationalId = aes256Util.encrypt(joinDTO.getNationalId());
         if (encryptedNationalId == null) {
             throw new IllegalStateException("주민등록번호 암호화에 실패했습니다.");
         }
         user.setNationalid(encryptedNationalId);
 
-        // 7. 최종적으로 DB에 사용자 정보 저장
+        // 7. DB에 회원 정보 저장
         userRepository.save(user);
+    
+    // 8. 멘토일 경우 mentor 테이블에 추가
+    if ("MENTOR".equalsIgnoreCase(joinDTO.getRoles())) {
+        MentorVO mentor = new MentorVO();
+        mentor.setUserId(user.getUserId());
+        mentor.setStudentCourse(joinDTO.getUniversity());
+        mentor.setSpecialite(joinDTO.getMajor());
+        mentor.setIntroduction("관리자 승인 대기 중");
+        mentor.setExperienceYear(0);
+        mentor.setStatus("PENDING");
+
+        mentorRepository.insertMentorApplication(mentor);
     }
+}
 }

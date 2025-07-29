@@ -1,14 +1,16 @@
 package com.example.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import lombok.Data;
 
 @Data
 public class JoinDTO {
 
     @JsonProperty("login_id")
-    private String loginid;
+    private String loginId;
 
     @JsonProperty("password")
     private String password;
@@ -32,10 +34,10 @@ public class JoinDTO {
     private String roles;
 
     @JsonProperty("national_id")
-    private String nationalid;
+    private String nationalId;
 
     @JsonProperty("phone_number")
-    private String phonenumber;
+    private String phoneNumber;
 
     @JsonProperty("email")
     private String email;
@@ -46,6 +48,5 @@ public class JoinDTO {
     @JsonProperty("major")
     private String major;
 
-    // 이건 파일이라 JSON에는 없지만, Multipart로 따로 보내므로 그대로 둠
     private MultipartFile graduationFile;
 }

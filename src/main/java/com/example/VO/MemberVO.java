@@ -14,8 +14,8 @@ public class MemberVO {
 
     @Id // 기본 키(primary key)로 설정
     @GeneratedValue(strategy = GenerationType.IDENTITY) // auto_increment 전략
-    @Column(name = "member_id") // DB 컬럼명과 매핑
-    private Integer memberId; // 회원 고유 번호 (PK)
+    @Column(name = "user_id") // DB 컬럼명과 매핑
+    private Integer userId; // 회원 고유 번호 (PK)
 
     @Column(name = "login_id", nullable = false, unique = true, length = 50)
     private String loginid; // 로그인용 아이디 (필수, 중복 불가)
@@ -29,7 +29,7 @@ public class MemberVO {
     @Column(name = "social_id", unique = true, length = 100)
     private String socialId; // 소셜 플랫폼 사용자 고유 ID
 
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 36)
     private String name; // 이름 (필수)
 
     @Column(name = "password_hash", length = 255)
@@ -38,17 +38,21 @@ public class MemberVO {
     @Column(nullable = false, unique = true, length = 10)
     private String nickname; // 닉네임 (필수, 중복 불가, 최대 10자)
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 30)
     private String roles; // 권한 정보 (예: MENTEE, MENTOR, ADMIN)
 
-    @Column(name = "national_id", nullable = false, unique = true, length = 14)
-    private String nationalid; // 주민등록번호 해시값 (필수, 중복 불가)
+    @Column(name = "national_id", nullable = false, unique = true, length = 255)
+    private String nationalid;
 
     @Column(name = "phone_number", nullable = false, unique = true, length = 20)
     private String phonenumber; // 전화번호 (필수, 중복 불가)
 
     @Column(nullable = false, unique = true, length = 100)
     private String email; // 이메일 주소 (필수, 중복 불가)
+    
+    @Builder.Default  //임시
+    @Column(name = "is_banned", nullable = false)
+    private Boolean isBanned = false;
 
     @Column(length = 100)
     private String university; // 대학교명 (선택)
