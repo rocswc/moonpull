@@ -14,6 +14,9 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     login_id: "",
+	is_social: false,
+	social_type: "",
+	social_id: "",
     nickname: "",
     name: "",
     national_id: "",
@@ -41,36 +44,46 @@ const AuthPage = () => {
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, files } = e.target as HTMLInputElement;
-    let newValue = value;
+    if (e.target instanceof HTMLInputElement) {
+      const { name, value, type, files } = e.target;
 
-    // 주민번호 자동 하이픈 삽입
-	if (name === "national_id") {
-	  const onlyNums = value.replace(/\D/g, "").slice(0, 13);
-	  newValue = onlyNums.length > 6
-	    ? onlyNums.slice(0, 6) + "-" + onlyNums.slice(6)
-	    : onlyNums;
-	} else if (name === "phone_number") {
-	  const onlyNums = value.replace(/\D/g, "").slice(0, 11);
-	  if (onlyNums.length >= 11) {
-	    newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
-	  } else if (onlyNums.length >= 7) {
-	    newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
-	  } else if (onlyNums.length >= 4) {
-	    newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3)}`;
-	  } else {
-	    newValue = onlyNums;
-	  }
-	}
+      if (type === "file") {
+        setFormData({
+          ...formData,
+          [name]: files && files.length > 0 ? files[0] : null,
+        });
+        return;
+      }
 
-    setFormData({
-      ...formData,
-      [name]: files ? files[0] : newValue
-    });
+      let newValue = value;
+
+      if (name === "national_id") {
+        const onlyNums = value.replace(/\D/g, "").slice(0, 13);
+        newValue = onlyNums.length > 6
+          ? onlyNums.slice(0, 6) + "-" + onlyNums.slice(6)
+          : onlyNums;
+      } else if (name === "phone_number") {
+        const onlyNums = value.replace(/\D/g, "").slice(0, 11);
+        if (onlyNums.length >= 11) {
+          newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
+        } else if (onlyNums.length >= 7) {
+          newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
+        } else if (onlyNums.length >= 4) {
+          newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3)}`;
+        } else {
+          newValue = onlyNums;
+        }
+      }
+
+      setFormData({
+        ...formData,
+        [name]: newValue,
+      });
+    }
   };
 
 
-  const checkDuplicate = (type: 'login_id' | 'email') => {
+  const checkDuplicate = (type: 'login_id' | 'email' | 'nickname') => {
     const value = formData[type];
     alert(`${type} 중복 검사 기능 호출됨: ${value}`);
   };
@@ -101,20 +114,21 @@ const AuthPage = () => {
     if (!isLogin) {
       // 회원가입 로직
       try {
-        const { confirmPassword, graduation_file, ...pureJoinData } = formData;
-        const jsonBlob = new Blob([JSON.stringify(pureJoinData)], {
-          type: "application/json",
-        });
-        const form = new FormData();
-        form.append("joinDTO", jsonBlob);
-        if (graduation_file) {
-          form.append("graduation_file", graduation_file);
-        }
+		const { confirmPassword, graduation_file, ...pureJoinData } = formData;
+		const jsonBlob = new Blob([JSON.stringify(pureJoinData)], {
+		  type: "application/json",
+		});
+		const form = new FormData();
+		form.append("joinDTO", jsonBlob);  // 문자열 대신 Blob으로 감싸서 append
+		if (graduation_file) {
+		  form.append("graduation_file", graduation_file);
+		}
 
         const response = await axios.post("/api/join", form, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+		  withCredentials: true,
         });
 
         alert("회원가입 성공!");
@@ -184,7 +198,23 @@ const AuthPage = () => {
                       <Input name="login_id" placeholder="아이디" value={formData.login_id} onChange={handleInputChange} required />
                       <Button type="button" onClick={() => checkDuplicate('login_id')}>중복확인</Button>
                     </div>
-                    <Input name="nickname" placeholder="닉네임" value={formData.nickname} onChange={handleInputChange} required />
+					<div className="flex gap-2">
+					  <Input
+					    name="nickname"
+					    placeholder="닉네임"
+					    value={formData.nickname}
+					    onChange={handleInputChange}
+					    required
+					    className="w-full"
+					  />
+					  <Button
+					    type="button"
+					    onClick={() => checkDuplicate('nickname')}
+					    className="whitespace-nowrap">중복확인</Button>
+					</div>
+					
+				
+
 
 <div className="space-y-2">
   <Label htmlFor="email" className="text-foreground">이메일</Label>

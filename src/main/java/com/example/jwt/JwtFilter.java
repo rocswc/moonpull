@@ -31,6 +31,22 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+    	
+    	  // 0. OPTIONS 요청은 인증없이 허용
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            return;
+        }
+
+        // 1. 인증 예외 경로
+        String path = request.getRequestURI();
+        if (path.equals("/") || 
+            path.equals("/login") || 
+            path.equals("/api/join") || 
+            path.startsWith("/api/join")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // 1. 쿠키에서 JWT 추출
         String token = null;

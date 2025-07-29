@@ -30,6 +30,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        
+        setFilterProcessesUrl("/login");
     }
 
     // 로그인 시도 처리
@@ -41,7 +43,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             ObjectMapper objectMapper = new ObjectMapper();
             JoinDTO loginRequest = objectMapper.readValue(request.getInputStream(), JoinDTO.class);
 
-            String loginid = loginRequest.getLoginid();
+            String loginid = loginRequest.getLoginId(); 
             String password = loginRequest.getPassword();
 
             UsernamePasswordAuthenticationToken authToken =

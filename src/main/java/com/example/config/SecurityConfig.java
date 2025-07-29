@@ -82,6 +82,7 @@ public class SecurityConfig {
 
             // 인가 설정
             .authorizeHttpRequests(auth -> auth
+            		 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight 허용
             	    .requestMatchers("/login", "/", "/api/join").permitAll() // ✅ "/api/join" 명시적으로 추가
             	    .requestMatchers("/api/**").permitAll()
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")
