@@ -9,8 +9,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.DAO.MentorRepository;
 import com.example.DAO.UserRepository;
 import com.example.VO.MemberVO;
+import com.example.VO.MentorVO;
 import com.example.dto.JoinDTO;
 import com.example.util.Aes256Util;
 
@@ -40,15 +42,17 @@ public class JoinServiceImpl implements JoinService {
 	    }
 	}
 
-
+	private final MentorRepository mentorRepository;
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final Aes256Util aes256Util;
 
     @Autowired
-    public JoinServiceImpl(UserRepository userRepository,
+    public JoinServiceImpl(MentorRepository mentorRepository,
+    						UserRepository userRepository,
                            BCryptPasswordEncoder bCryptPasswordEncoder,
                            Aes256Util aes256Util) {
+    	this.mentorRepository =mentorRepository;
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.aes256Util = aes256Util;
@@ -123,7 +127,7 @@ public class JoinServiceImpl implements JoinService {
         }
         user.setNationalid(encryptedNationalId);
 
-        // 7. DB에 회원 정보 저장
+        // 7. DB에 회원 정보 저장  
         userRepository.save(user);
     
     // 8. 멘토일 경우 mentor 테이블에 추가
