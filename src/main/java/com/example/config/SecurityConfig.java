@@ -54,7 +54,7 @@ public class SecurityConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8888", "http://192.168.56.1:8888"));
+        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8888", "http://192.168.56.1:8888", "http://192.168.0.27:8888"   ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -82,14 +82,13 @@ public class SecurityConfig {
 
             // 인가 설정
             .authorizeHttpRequests(auth -> auth
-            		 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight 허용
-            	    .requestMatchers("/login", "/", "/api/join").permitAll() // ✅ "/api/join" 명시적으로 추가
-            	    .requestMatchers("/api/**").permitAll()
+            	    .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+            	    .requestMatchers("/", "/api/login", "/api/join").permitAll()   // 로그인/회원가입만 공개
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")
             	    .requestMatchers("/admin/**").hasRole("ADMIN")
             	    .requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
             	    .requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
-            	    .anyRequest().authenticated()
+            	    .anyRequest().authenticated()                                  // 그 외에는 인증 필요
             	)
 
             // 접근 거부 처리

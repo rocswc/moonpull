@@ -95,11 +95,11 @@ const AuthPage = () => {
       alert("비밀번호는 10자 이상이며 특수문자를 하나 이상 포함해야 합니다.");
       return;
     }
-	
-	if (!isLogin && formData.password !== formData.confirmPassword) {
-	  alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
-	  return;
-	}
+    
+    if (!isLogin && formData.password !== formData.confirmPassword) {
+      alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
 
     if (!isLogin && !validateNationalId(formData.national_id)) {
       alert("주민등록번호는 앞자리 6자리-뒷자리 7자리 형식으로 입력해야 합니다.");
@@ -113,36 +113,61 @@ const AuthPage = () => {
 
     if (!isLogin) {
       // 회원가입 로직
-      try {
-		const { confirmPassword, graduation_file, ...pureJoinData } = formData;
-		const jsonBlob = new Blob([JSON.stringify(pureJoinData)], {
-		  type: "application/json",
-		});
-		const form = new FormData();
-		form.append("joinDTO", jsonBlob);  // 문자열 대신 Blob으로 감싸서 append
-		if (graduation_file) {
-		  form.append("graduation_file", graduation_file);
-		}
+	  try {
+	      const { confirmPassword, graduation_file, ...pureJoinData } = formData;
 
-        const response = await axios.post("/api/join", form, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-		  withCredentials: true,
-        });
+	      const jsonBlob = new Blob([JSON.stringify(pureJoinData)], {
+	        type: "application/json",
+	      });
 
-        alert("회원가입 성공!");
-      } catch (err) {
-        console.error("회원가입 실패", err);
-        alert("회원가입 실패");
-      }
-    } else {
-      // 로그인 로직 자리
-      alert("로그인 로직 아직 구현 안 됨");
-    }
+	      const form = new FormData();
+	      form.append("joinDTO", jsonBlob);
+	      if (graduation_file) {
+	        form.append("graduation_file", graduation_file);
+	      }
+
+		  await axios.post(
+		    "/api/login",
+		    { login_id: formData.login_id, password: formData.password },
+		    { withCredentials: true, headers: { "Content-Type": "application/json" } }
+		  );
+
+	      alert("회원가입 성공!");
+	    } catch (err) {
+	      console.error("회원가입 실패", err);
+	      alert("회원가입 실패");
+	    }
+	  } else {
+	    // 로그인 로직
+	    try {
+	      await axios.post(
+	        "/api/login",
+	        {
+	          login_id: formData.login_id, //  서버 DTO의 loginId 필드명과 일치시킴
+	          password: formData.password,
+	        },
+	        { withCredentials: true }
+	      );
+
+	      alert("로그인 성공!");
+	      window.location.href = "/";
+	    } catch (error) {
+	      if (axios.isAxiosError(error)) {
+	        alert(
+	          `로그인 실패: ${
+	            error.response?.data?.message ||
+	            "아이디 또는 비밀번호를 확인하세요."
+	          }`
+	        );
+	      } else {
+	        alert("알 수 없는 오류가 발생했습니다.");
+	      }
+	    }
+	  }
 
     console.log(isLogin ? "로그인 시도:" : "회원가입 시도:", formData);
   };
+
   return (
     <>
       <Navigation />

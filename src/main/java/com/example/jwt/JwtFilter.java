@@ -32,21 +32,23 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
     	
+    	 System.out.println("[JwtFilter] 요청 URI: " + request.getRequestURI());
+    	 System.out.println("[JwtFilter] 요청 Method: " + request.getMethod());
+    	
     	  // 0. OPTIONS 요청은 인증없이 허용
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            response.setStatus(HttpServletResponse.SC_OK);
-            return;
-        }
+    	if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+    	    filterChain.doFilter(request, response); // ✅ 프리플라이트를 그대로 통과
+    	    return;
+    	}
 
-        // 1. 인증 예외 경로
+     // 1. 인증 예외 경로
         String path = request.getRequestURI();
-        if (path.equals("/") || 
-            path.equals("/login") || 
-            path.equals("/api/join") || 
-            path.startsWith("/api/join")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if (path.equals("/") ||
+        	    path.equals("/api/login") ||     
+        	    path.equals("/api/join")) {
+        	    filterChain.doFilter(request, response);
+        	    return;
+        	}
 
         // 1. 쿠키에서 JWT 추출
         String token = null;
@@ -89,11 +91,12 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // 4. 권한 설정
         List<SimpleGrantedAuthority> authorities = Arrays.stream(rolesString.split(","))
-                .map(String::trim)
-                .filter(role -> !role.isEmpty())
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
-
+        		.map(String::trim)
+        	    .filter(role -> !role.isEmpty())
+        	    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role) // ✅ 보정
+        	    .map(SimpleGrantedAuthority::new)
+        	    .toList();
+        
         MemberVO userEntity = new MemberVO();
         userEntity.setLoginid(username);
         userEntity.setPasswordhash("temppassword");
