@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChatProvider, useChat } from "@/contexts/ChatContext";
+
 import AdminDashboard from "./pages/AdminDashboard";
 import UserListDrawer from "@/components/UserListDrawer";
 import ChatRequestNotifications from "@/components/ChatRequestNotification";
@@ -25,6 +26,7 @@ import MentorReview from "./pages/MentorReview";
 import SearchResultPage from "@/pages/SearchResultPage"
 import MentorPage from "./pages/MentorPage";
 import MenteePage from "./pages/MenteePage";
+import MyChatBot from "./components/MyChatBot";
 const queryClient = new QueryClient();
 
 const ChatComponents = () => {
@@ -68,6 +70,7 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/mentor" element={<MentorPage />} />
           <Route path="/mentte" element={<MenteePage />} />
+          <Route path="/chatbot" element={<MyChatBot />} />
           </Routes>
           <ChatComponents />
         </BrowserRouter>

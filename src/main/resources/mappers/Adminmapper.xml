@@ -29,9 +29,30 @@
 	
 	
   <!-- ✅ 전체 사용자 조회 -->
-  <select id="getAllUsers" resultType="MemberVO">
-    SELECT * FROM member
-  </select>
+<select id="getAllUsers" resultType="MemberVO">
+  SELECT DISTINCT
+    m.user_id AS userId,
+    m.login_id AS loginid,
+    m.is_social AS isSocial,
+    m.social_type AS socialType,
+    m.social_id AS socialId,
+    m.name,
+    m.password_hash AS passwordhash,
+    m.nickname,
+    m.roles,
+    m.national_id AS nationalid,
+    m.phone_number AS phonenumber,
+    m.email,
+    m.is_banned AS isBanned,
+    m.university,
+    m.major,
+    m.graduation_file AS graduationFile,
+    m.created_at AS createdat
+  FROM member m
+  LEFT JOIN mentor mt ON m.user_id = mt.user_id
+  WHERE m.roles != 'ROLE_MENTOR' OR (mt.status = 'APPROVED')
+</select>
+
 
   <!-- ✅ 사용자 검색 (이름 또는 이메일) -->
   <select id="searchUsers" parameterType="String" resultType="MemberVO">
@@ -42,21 +63,41 @@
 
  <!-- ✅ 멘토 인증 요청 목록 -->
  <select id="getAllMentorApplications" resultType="MentorVO">
-    SELECT * FROM mentor WHERE status = 'PENDING'
-  </select>
+  SELECT
+    m.user_id AS userId,
+    m.name AS name,
+    m.email AS email,
+    m.graduation_file AS graduationFile,
+    mt.specialties AS specialite,
+    mt.experience_years AS experienceYear,
+    mt.introduction AS introduction,
+    mt.status AS status,
+    mt.student_course AS studentCourse
+  FROM mentor mt
+  JOIN member m ON mt.user_id = m.user_id
+  WHERE mt.status = 'PENDING'
+</select>
+
 
 
 <!-- ✅ 멘토 승인 -->
-  <update id="approveMentor" parameterType="int">
-    UPDATE member SET roles = 'ROLE_MENTOR' WHERE user_id = #{userId};
-    UPDATE mentor SET status = 'APPROVED' WHERE user_id = #{userId};
-  </update>
+<update id="approveMentor" parameterType="int">
+  UPDATE mentor SET status = 'APPROVED' WHERE user_id = #{userId};
+</update>
 
-  <!-- ✅ 멘토 권한 철회 -->
-  <update id="revokeMentor" parameterType="int">
-    UPDATE member SET roles = 'ROLE_MENTEE' WHERE user_id = #{userId};
-    UPDATE mentor SET status = 'REVOKED' WHERE user_id = #{userId};
-  </update>
+<!-- ✅ 멘토 권한 철회 -->
+<update id="revokeMentor" parameterType="int">
+  UPDATE member m
+  JOIN mentor mt ON m.user_id = mt.user_id
+  SET m.roles = 'ROLE_MENTEE',
+      mt.status = 'REVOKED'
+  WHERE m.user_id = #{userId}
+</update>
+
+<!-- ✅ 멘토 거절 -->
+<update id="denyMentor" parameterType="int">
+  UPDATE mentor SET status = 'DENIED' WHERE user_id = #{userId};
+</update>
 
 	
 	
@@ -76,5 +117,15 @@
     UPDATE member SET is_banned = false WHERE user_id = #{userId};
   </update>
 
+
+	<select id="getUserCount" resultType="int">
+ 		 SELECT COUNT(*) FROM member
+	</select>
+	
+	
+	<select id="getInactiveUserCount" resultType="int">
+  SELECT COUNT(*) FROM member
+  WHERE last_login IS NULL OR last_login &lt; NOW() - INTERVAL 2 DAY
+</select>
 
 </mapper>

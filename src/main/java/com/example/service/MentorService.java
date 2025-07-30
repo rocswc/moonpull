@@ -1,6 +1,8 @@
 package com.example.service;
 import java.util.List;
 
+
+
 import com.example.VO.MemberVO;
 import com.example.VO.MentorVO;
 public interface MentorService {
@@ -22,4 +24,6 @@ public interface MentorService {
 
 	    List<MemberVO> getBlacklistedUsers();
 	    void insertMentorApplication(MentorVO mentorVO);
+	    
+	    void denyMentor(int userId);
 }

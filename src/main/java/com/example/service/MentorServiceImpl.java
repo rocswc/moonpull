@@ -2,6 +2,7 @@ package com.example.service;
 
 import java.util.List;
 
+import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -60,4 +61,11 @@ public class MentorServiceImpl implements MentorService {
     public void insertMentorApplication(MentorVO mentorVO) {
         mentorRepository.insertMentorApplication(mentorVO);
     }
+    
+    
+   public void denyMentor(int userId) {
+	   mentorRepository.denyMentor(userId);
+	   
+	   
+   }
 }
