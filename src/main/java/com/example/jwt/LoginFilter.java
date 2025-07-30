@@ -12,6 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.example.dto.JoinDTO;
+import com.example.dto.LoginDTO;
 import com.example.security.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -28,10 +29,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final JwtUtil jwtUtil;
 
     public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
-        this.authenticationManager = authenticationManager;
+    	this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
-        
-        setFilterProcessesUrl("/login");
+        setFilterProcessesUrl("/api/login"); 
     }
 
     // 로그인 시도 처리
@@ -41,17 +41,20 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            JoinDTO loginRequest = objectMapper.readValue(request.getInputStream(), JoinDTO.class);
+            LoginDTO loginRequest = objectMapper.readValue(request.getInputStream(), LoginDTO.class);
 
-            String loginid = loginRequest.getLoginId(); 
+            String loginid = loginRequest.getLoginId();
             String password = loginRequest.getPassword();
 
+            System.out.println("[LoginFilter] 입력 loginId=" + loginid);
+
             UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(loginid, password, null);
+                new UsernamePasswordAuthenticationToken(loginid, password);
 
             return authenticationManager.authenticate(authToken);
 
         } catch (IOException e) {
+            e.printStackTrace();
             throw new RuntimeException("로그인 요청 JSON 파싱 실패", e);
         }
     }
@@ -76,7 +79,14 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // JWT를 HttpOnly 쿠키로 전송
         Cookie cookie = new Cookie("jwt", token);
         cookie.setHttpOnly(true);
-        cookie.setSecure(true); // HTTPS 환경에서만 사용 (개발 환경이면 false 가능)
+        
+        String host = request.getServerName();
+        if (host.equals("localhost") || host.equals("127.0.0.1")) {
+            cookie.setSecure(false);
+        } else {
+            cookie.setSecure(true);
+        }
+
         cookie.setPath("/");
         cookie.setMaxAge(60 * 60); // 1시간
         System.out.println("[LoginFilter] 발급된 JWT 토큰: " + token);
