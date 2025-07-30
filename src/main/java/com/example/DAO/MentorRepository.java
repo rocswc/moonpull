@@ -21,9 +21,12 @@ public interface MentorRepository {
 
 	    // ✅ 멘토 승인
 	    void approveMentor(@Param("userId") int userId);
-
+	    //✅ 멘토 거절 
+	    void denyMentor(@Param("userId") int userId);
+	 
 	    // ✅ 멘토 권한 철회
 	    void revokeMentor(@Param("userId") int userId);
+	    
 
 	    // 🚫 블랙리스트 등록
 	    void banUser(@Param("userId") int userId);
@@ -33,6 +36,8 @@ public interface MentorRepository {
 
 	    // 🔎 블랙리스트 전체 조회
 	    List<MemberVO> getBlacklistedUsers();
+	    
 	    void insertMentorApplication(MentorVO mentorVO);
-	
+	    int getUserCount();
+	    int getInactiveUserCount();
 }

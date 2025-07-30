@@ -46,6 +46,9 @@ const Navigation = () => {
           <Link to="/mentte" className="text-foreground hover:text-primary transition-colors font-medium">
             멘티페이지
           </Link>
+          <Link to="/chatbot" className="text-foreground hover:text-primary transition-colors font-medium">
+            챗봇
+          </Link>
         </div>
 
         {/* Right Side */}

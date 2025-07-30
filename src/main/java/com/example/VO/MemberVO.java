@@ -66,4 +66,6 @@ public class MemberVO {
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdat; // 가입 일시 (자동 생성)
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
 }
