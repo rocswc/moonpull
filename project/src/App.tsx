@@ -30,6 +30,7 @@ import MyChatBot from "./components/MyChatBot";
 import Checkout from "./pages/Checkout"; 
 import Success from "./pages/Success"; 
 import Fail from "./pages/Fail"; 
+
 const queryClient = new QueryClient();
 
 const ChatComponents = () => {
@@ -38,6 +39,7 @@ const ChatComponents = () => {
   return (
     <>
       <UserListDrawer />
+	 
       <ChatRequestNotifications />
       {chatRooms.map((room) => (
         <ChatWindow key={room.id} room={room} />
