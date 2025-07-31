@@ -11,10 +11,10 @@
     </select>
 
     <!-- 리뷰 등록 -->
-    <insert id="insertReview" parameterType="com.example.VO.MentorReviewVO">
-        INSERT INTO mentor_review (rating, mentee_id, mentor_id)
-        VALUES (#{rating}, #{menteeId}, #{mentorId})
-    </insert>
+	<insert id="insertReview" parameterType="com.example.VO.MentorReviewVO">
+    	INSERT INTO mentor_review (rating, mentee_id, mentor_id, feedback)
+    	VALUES (#{rating}, #{menteeId}, #{mentorId}, #{feedback})
+	</insert>
 
     <!-- 평균 평점 업데이트 -->
     <update id="updateMentorAverageScore">
