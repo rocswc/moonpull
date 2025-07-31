@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 import Navigation from "@/components/Navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,24 +25,59 @@ const MentorPage = () => {
       recentSubject: "수학",
     },
   ]);
-
+  interface Mentee {
+    id: number;
+    name: string;
+    age: number;
+    accuracy?: number;
+    wrongRate?: number;
+    questionsAsked?: number;
+    feedbacksGiven?: number;
+    recentSubject?: string;
+  }
   const handleAccept = (id: number) => {
     const accepted = requests.find((r) => r.id === id);
     if (accepted) {
-      setMentees((prev) => [...prev, {
-        ...accepted,
-        accuracy: 80,
-        wrongRate: 20,
-        questionsAsked: 30,
-        feedbacksGiven: 10,
-        recentSubject: "국어"
-      }]);
+      setMentees((prev) => [
+        ...prev,
+        {
+          ...accepted,
+          accuracy: 80,
+          wrongRate: 20,
+          questionsAsked: 30,
+          feedbacksGiven: 10,
+          recentSubject: "국어",
+        },
+      ]);
       setRequests((prev) => prev.filter((r) => r.id !== id));
     }
   };
 
   const handleReject = (id: number) => {
     setRequests((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleReport = async (mentee: Mentee ) => {
+    const reason = window.prompt(`"${mentee.name}" 멘티를 신고하는 이유를 입력하세요:`);
+
+    if (!reason || reason.trim() === "") {
+      alert("신고 사유를 입력해야 합니다.");
+      return;
+    }
+
+    try {
+      await axios.post("/api/admin/report", {
+        reporterId: 2, // 실제 로그인한 멘토 ID로 대체 필요
+        targetUserId: mentee.id,
+        targetMentorId: null,
+        reason: reason,
+      }
+	  );
+      alert("신고가 정상적으로 접수되었습니다.");
+    } catch (err) {
+      console.error("신고 실패", err);
+      alert("신고 처리 중 오류가 발생했습니다.");
+    }
   };
 
   return (
@@ -58,7 +94,10 @@ const MentorPage = () => {
               <p className="text-muted-foreground">들어온 요청이 없습니다.</p>
             ) : (
               requests.map((req) => (
-                <div key={req.id} className="flex justify-between items-center border border-border p-4 rounded-lg bg-background/50">
+                <div
+                  key={req.id}
+                  className="flex justify-between items-center border border-border p-4 rounded-lg bg-background/50"
+                >
                   <div>
                     <p className="font-semibold">{req.name}</p>
                     <p className="text-sm text-muted-foreground">나이: {req.age}세</p>
@@ -84,17 +123,27 @@ const MentorPage = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {mentees.map((mentee) => (
-              <div key={mentee.id} className="border border-border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm">
-                <h3 className="text-lg font-semibold mb-1">{mentee.name} ({mentee.age}세)</h3>
+              <div
+                key={mentee.id}
+                className="border border-border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm"
+              >
+                <h3 className="text-lg font-semibold mb-1">
+                  {mentee.name} ({mentee.age}세)
+                </h3>
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>정답률: <span className="font-bold text-foreground">{mentee.accuracy}%</span></p>
+                  <p>
+                    정답률: <span className="font-bold text-foreground">{mentee.accuracy}%</span>
+                  </p>
                   <p>오답률: {mentee.wrongRate}%</p>
                   <p>질문 횟수: {mentee.questionsAsked}회</p>
                   <p>피드백 제공: {mentee.feedbacksGiven}회</p>
                   <p>최근 학습 과목: {mentee.recentSubject}</p>
                 </div>
-                <div className="mt-2">
+                <div className="mt-2 flex items-center gap-2">
                   <Badge variant="secondary">멘토링 진행중</Badge>
+                  <Button size="sm" variant="destructive" onClick={() => handleReport(mentee)}>
+                    신고하기
+                  </Button>
                 </div>
               </div>
             ))}

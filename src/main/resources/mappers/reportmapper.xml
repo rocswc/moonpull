@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+	
+
+<mapper namespace="com.example.DAO.ReportRepository">
+
+  <select id="getAllReports" resultType="com.example.VO.ReportVO">
+    SELECT
+      r.report_id AS reportId,
+      r.reporter_id AS reporterId,
+      r.target_user_id AS targetUserId,
+      r.target_mentor_id AS targetMentorId,
+      r.reason,
+      r.status,
+      r.created_at AS createdAt,
+
+      rep.nickname AS reporterNickname,
+      tgt.nickname AS targetNickname,
+      tgt.is_banned AS targetBanned,
+
+      (
+        SELECT COUNT(*)
+        FROM report
+        WHERE target_user_id = r.target_user_id
+      ) AS reportCount
+
+    FROM report r
+    JOIN member rep ON r.reporter_id = rep.user_id
+    JOIN member tgt ON r.target_user_id = tgt.user_id
+    ORDER BY r.created_at DESC
+  </select>
+
+  <insert id="insertReport" parameterType="com.example.VO.ReportVO">
+    INSERT INTO report (
+      reporter_id,
+      target_user_id,
+      target_mentor_id,
+      reason
+    )
+    VALUES (
+      #{reporterId},
+      #{targetUserId},
+      #{targetMentorId},
+      #{reason}
+    )
+  </insert>
+
+
+	<select id="getTopReportedUsers" resultType="ReportVO">
+  SELECT
+    r.target_user_id,
+    tgt.nickname AS targetNickname,
+    COUNT(*) AS reportCount,
+    tgt.is_banned AS targetBanned
+  FROM report r
+  JOIN member tgt ON r.target_user_id = tgt.user_id
+  GROUP BY r.target_user_id, tgt.nickname, tgt.is_banned
+  ORDER BY reportCount DESC
+  LIMIT 3
+</select>
+
+</mapper>
