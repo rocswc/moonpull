@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const PricingSection = () => {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const navigate = useNavigate();
   const plans = [
     {
       name: "무료",
@@ -33,11 +37,11 @@ const PricingSection = () => {
         "1:1 멘토님 선생님 질문",
         "선생님에게 질문할 수 있는 10,000코인을 드려요",
         "무제한 무료 노트 필기 검화",
-        "자유롭게 필기 및 공재 틀이 적혀을 무료롬 사용할 수 있어요"
+        "자유롭게 필기 및 공재 틀이 적혀을 무료로 사용할 수 있어요!"
       ],
       buttonText: "프리미엄 시작하기",
       buttonVariant: "hero" as const,
-      popular: true
+      popular: false
     },
     {
       name: "연간 프리미엄",
@@ -64,6 +68,15 @@ const PricingSection = () => {
     }
   ];
 
+  const handleButtonClick = (plan) => {
+    if (plan.name === "무료") {
+      alert("안녕");
+    } else {
+      const amount = plan.name === "월간 프리미엄" ? 12500 : 130000;
+      navigate("/payment/checkout", { state: { amount, planName: plan.name } });
+    }
+  };
+
   return (
     <section className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 flex items-center justify-center px-6 py-12">
       <div className="max-w-6xl mx-auto">
@@ -82,8 +95,10 @@ const PricingSection = () => {
           {plans.map((plan, index) => (
             <div
               key={index}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
               className={`relative flex flex-col justify-between h-full p-6 rounded-3xl transition-all duration-300 hover:shadow-xl ${
-                plan.popular
+                plan.popular || hoveredIndex === index
                   ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-2xl transform hover:scale-105'
                   : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
               }`}
@@ -124,7 +139,7 @@ const PricingSection = () => {
                         {isTitle ? (
                           <div className="flex items-center space-x-2 font-semibold">
                             <span className={`inline-block w-6 h-6 flex items-center justify-center text-sm rounded-full ${
-                              plan.popular ? 'bg-white/20' : 'bg-orange-100 dark:bg-orange-900'
+                              plan.popular || hoveredIndex === index ? 'bg-white/20' : 'bg-orange-100 dark:bg-orange-900'
                             }`}>
                               {i === 0 && "🔄"}
                               {i === 2 && "❓"}
@@ -135,7 +150,7 @@ const PricingSection = () => {
                             <span>{feature}</span>
                           </div>
                         ) : (
-                          <p className={`ml-8 ${plan.popular ? 'text-white/90' : 'text-muted-foreground'}`}>
+                          <p className={`ml-8 ${plan.popular || hoveredIndex === index ? 'text-white/90' : 'text-muted-foreground'}`}>
                             {feature}
                           </p>
                         )}
@@ -148,9 +163,10 @@ const PricingSection = () => {
               {/* Button */}
               <div className="mt-8">
                 <Button
+                  onClick={() => handleButtonClick(plan)}
                   variant="hero"
                   className={`w-full py-3 text-base rounded-xl font-semibold ${
-                    plan.popular
+                    plan.popular || hoveredIndex === index
                       ? 'bg-white text-orange-500 hover:bg-gray-100'
                       : 'bg-orange-500 text-white hover:bg-orange-600'
                   }`}

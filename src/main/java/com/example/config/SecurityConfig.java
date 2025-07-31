@@ -88,6 +88,7 @@ public class SecurityConfig {
             	    .requestMatchers("/admin/**").hasRole("ADMIN")
             	    .requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
             	    .requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
+            	    .requestMatchers("/payments/**").permitAll()
             	    .anyRequest().authenticated()                                  // 그 외에는 인증 필요
             	)
 

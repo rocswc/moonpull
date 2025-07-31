@@ -27,6 +27,9 @@ import SearchResultPage from "@/pages/SearchResultPage"
 import MentorPage from "./pages/MentorPage";
 import MenteePage from "./pages/MenteePage";
 import MyChatBot from "./components/MyChatBot";
+import Checkout from "./pages/Checkout"; 
+import Success from "./pages/Success"; 
+import Fail from "./pages/Fail"; 
 const queryClient = new QueryClient();
 
 const ChatComponents = () => {
@@ -70,7 +73,10 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/mentor" element={<MentorPage />} />
           <Route path="/mentte" element={<MenteePage />} />
-          <Route path="/chatbot" element={<MyChatBot />} />
+          <Route path="/chatbot" element={<MyChatBot />} />       
+          <Route path="/payment/checkout" element={<Checkout />} /> {/* 결제화면 호출 페이지 */}
+          <Route path="/payment/success" element={<Success />} /> {/* 결제 성공 페이지 */}
+          <Route path="/payment/fail" element={<Fail />} /> {/* 결제 실패 페이지 */}
           </Routes>
           <ChatComponents />
         </BrowserRouter>
