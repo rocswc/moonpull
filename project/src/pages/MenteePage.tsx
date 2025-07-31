@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 import Navigation from "@/components/Navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,14 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-
+interface Mentor {
+  id: number;
+  name: string;
+  subject: string;
+  rating: number;
+  experience: string;
+  intro: string;
+}
 const MenteePage = () => {
   const [mentors] = useState([
     {
@@ -50,10 +58,34 @@ const MenteePage = () => {
     { day: "일", questions: 3, answers: 2 },
   ];
 
+  const handleReport = async (mentor: Mentor) => {
+    const reason = window.prompt(`"${mentor.name}" 멘토를 신고하는 이유를 입력하세요:`);
+
+    if (!reason || reason.trim() === "") {
+      alert("신고 사유를 입력해야 합니다.");
+      return;
+    }
+
+    try {
+      await axios.post("/admin/report", {
+        reporterId: 1, // TODO: 로그인 사용자 ID로 교체
+        targetUserId: mentor.id, // 멘토가 member.user_id와 동일하다고 가정
+        targetMentorId: mentor.id,
+        reason: reason
+      });
+
+      alert("신고가 정상적으로 접수되었습니다.");
+    } catch (err) {
+      console.error("신고 실패", err);
+      alert("신고 처리 중 오류가 발생했습니다.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
       <Navigation />
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
+
         {/* 나의 멘토 목록 */}
         <Card>
           <CardHeader>
@@ -68,8 +100,11 @@ const MenteePage = () => {
                   <p>경력: {mentor.experience}</p>
                   <p>{mentor.intro}</p>
                 </div>
-                <div className="mt-2">
+                <div className="mt-2 flex items-center gap-2">
                   <Badge variant="secondary">멘토 연결됨</Badge>
+                  <Button size="sm" variant="destructive" onClick={() => handleReport(mentor)}>
+                    신고하기
+                  </Button>
                 </div>
               </div>
             ))}

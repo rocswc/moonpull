@@ -6,6 +6,8 @@ import com.example.VO.MemberVO;
 import com.example.VO.MentorVO;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -67,16 +69,21 @@ public class AdminController {
         return "블랙리스트 해제 완료";
     }
     @GetMapping("/stats")
-    public Map<String, Object> getAdminStats() {
-        Map<String, Object> stats = new HashMap<>();
-        int userCount = mentorRepository.getUserCount();
-        int inactiveUserCount = mentorRepository.getInactiveUserCount(); 
+    public ResponseEntity<?> getAdminStats() {
+        try {
+            Map<String, Object> stats = new HashMap<>();
+            int userCount = mentorRepository.getUserCount();
+            int inactiveUserCount = mentorRepository.getInactiveUserCount();
 
-        stats.put("userCount", userCount);
-        stats.put("inactiveUserCount", inactiveUserCount);
-        // 필요시 다른 통계도 같이 넣기
+            stats.put("userCount", userCount);
+            stats.put("inactiveUserCount", inactiveUserCount);
 
-        return stats;
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                 .body("서버 오류: " + e.getMessage());
+        }
     }
 
 }
