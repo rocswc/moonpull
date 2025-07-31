@@ -75,13 +75,15 @@ public class JwtUtil {
     }
 
     // JWT 생성 메서드: username, roles, 만료 시간(ms 단위) 입력
-    public String createJwt(String username, String role, Long expiredMs) {
+    public String createJwt(String username, String nickname, String role, Long expiredMs) {
         return Jwts.builder()
-                .claim("username", username) // 사용자명
-                .claim("roles", role)        // 권한 목록
-                .issuedAt(new Date(System.currentTimeMillis())) // 발급 시간
-                .expiration(new Date(System.currentTimeMillis() + expiredMs)) // 만료 시간
-                .signWith(secretKey) // 서명
-                .compact(); // JWT 문자열로 압축
+                .claim("username", username)
+                .claim("nickname", nickname)
+                .claim("roles", role)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expiredMs))
+                .signWith(secretKey)
+                .compact();
     }
-}
+ }
+

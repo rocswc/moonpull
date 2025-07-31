@@ -84,11 +84,18 @@ public class SecurityConfig {
             .addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
 
             // 인가 설정
+            // 인가 설정
             .authorizeHttpRequests(auth -> auth
             	    .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-            	    .requestMatchers("/", "/api/**").permitAll()   // 로그인/회원가입만 공개
+            	    // (수정) 로그인, 회원가입 명시적으로 허용
+            	    .requestMatchers(
+            	    	    "/", 
+            	    	    "/api/login", 
+            	    	    "/api/join", 
+            	    	    "/api/check-duplicate", 
+            	    	    "/api/keywords/trending"
+            	    	).permitAll()   
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
-            	   
             	    .requestMatchers("/admin/**").permitAll()
             	  //.requestMatchers("/admin/**").hasRole("ADMIN")
             	    .requestMatchers("/mentor/**").permitAll()
@@ -96,6 +103,7 @@ public class SecurityConfig {
             	    .requestMatchers("/mentee/**").permitAll() 	    
             	    //.requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
             	    .requestMatchers("/payments/**").permitAll()
+            	    .requestMatchers("/mentorReview/**").permitAll()
             	    .anyRequest().authenticated()// 그 외에는 인증 필요
             	)
 
