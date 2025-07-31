@@ -18,32 +18,38 @@ const MentorReview = () => {
     averageRating: 4.9,
   };
 
-  // 실제 로그인된 멘티 ID로 설정
-  const menteeId = 1;
+  const menteeId = 1; // 실제 로그인된 유저 ID로 대체해야 함
 
   const submitReview = async () => {
+    console.log("mentorId:", mentorInfo.id);
+    console.log("menteeId:", menteeId);
+    console.log("rating:", rating);
+    console.log("feedback:", feedback);
+
     try {
-      const response = await fetch("http://localhost:8888/mentor-review/insert", {
+      const response = await fetch("/api/mentorReview/insert", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          rating: rating,
-          feedback: feedback,
-          menteeId: menteeId,
           mentorId: mentorInfo.id,
+          menteeId,
+          rating,
+          feedback,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("리뷰 저장 실패");
+        const errorText = await response.text();
+        throw new Error(`리뷰 저장 실패: ${response.status} - ${errorText}`);
       }
 
       alert("리뷰가 성공적으로 저장되었습니다!");
       setRating(0);
       setFeedback("");
     } catch (error) {
+      console.error("리뷰 저장 오류:", error);
       alert("리뷰 저장 중 오류 발생: " + error.message);
     }
   };
@@ -51,9 +57,7 @@ const MentorReview = () => {
   useEffect(() => {
     console.log("=== MentorReview 컴포넌트 마운트됨 ===");
     console.log("멘토 정보:", mentorInfo);
-    console.log("별점 상태:", rating);
-    console.log("피드백 내용:", feedback);
-  }, [mentorInfo, rating, feedback]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
@@ -84,7 +88,6 @@ const MentorReview = () => {
             <h1 className="text-3xl font-bold text-foreground">멘토 평가하기</h1>
             <p className="text-muted-foreground">멘토에게 별점과 피드백을 남겨주세요.</p>
 
-            {/* 멘토 정보 카드 */}
             <Card className="mb-6 border border-border/50 bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-card-foreground">
@@ -108,7 +111,6 @@ const MentorReview = () => {
               </CardContent>
             </Card>
 
-            {/* 별점 선택 */}
             <div className="flex justify-center space-x-2 mt-6">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
@@ -124,7 +126,6 @@ const MentorReview = () => {
               ))}
             </div>
 
-            {/* 피드백 작성 */}
             <Textarea
               placeholder="멘토에게 전하고 싶은 말을 입력하세요..."
               value={feedback}
@@ -132,7 +133,6 @@ const MentorReview = () => {
               className="mt-4 bg-background/50 border-border/50"
             />
 
-            {/* 제출 버튼 */}
             <Button onClick={submitReview} className="mt-6 w-full">
               평가 제출
             </Button>
