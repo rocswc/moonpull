@@ -8,6 +8,5 @@ public class MentorReviewVO {
     private int rating;
     private int menteeId;
     private int mentorId;
-    private String score;
-    // 'score'는 입력값 아님 → 제거 가능
+    private String feedback;
 }

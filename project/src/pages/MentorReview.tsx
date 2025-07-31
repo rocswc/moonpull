@@ -12,38 +12,40 @@ const MentorReview = () => {
   const [feedback, setFeedback] = useState("");
 
   const mentorInfo = {
+    id: 2, // 실제 mentor_id
     name: "김역사",
     introduction: "서울대 한국사 전공, 10년 경력의 한국사 전문가",
     averageRating: 4.9,
   };
 
-  // ✅ 샘플로 내가 남긴 리뷰 목록 (실제 DB 연결 시 fetch로 대체 가능)
-  const myReviews = [
-    {
-      name: "김역사",
-      subject: "한국사",
-      rating: 5,
-      feedback: "설명이 귀에 쏙쏙 들어왔어요!",
-    },
-    {
-      name: "이수학",
-      subject: "수학",
-      rating: 4,
-      feedback: "개념 위주로 잘 정리해주셨어요.",
-    },
-  ];
-  
-  
-  
-  
-  
-  
-  
-  
-  const submitReview = () => {
-    alert(`별점: ${rating}\n피드백: ${feedback}`);
-    setRating(0);
-    setFeedback("");
+  // 실제 로그인된 멘티 ID로 설정
+  const menteeId = 1;
+
+  const submitReview = async () => {
+    try {
+      const response = await fetch("http://localhost:8888/mentor-review/insert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rating: rating,
+          feedback: feedback,
+          menteeId: menteeId,
+          mentorId: mentorInfo.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("리뷰 저장 실패");
+      }
+
+      alert("리뷰가 성공적으로 저장되었습니다!");
+      setRating(0);
+      setFeedback("");
+    } catch (error) {
+      alert("리뷰 저장 중 오류 발생: " + error.message);
+    }
   };
 
   useEffect(() => {
@@ -57,13 +59,13 @@ const MentorReview = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
       <Navigation />
       <div className="flex max-w-7xl mx-auto px-6 py-10 gap-8 min-h-[900px]">
+        {/* 사이드바 */}
         <aside className="w-64 bg-background/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 space-y-4 min-h-full border border-border/50">
           <h2 className="text-xl font-bold mb-4 text-foreground">마이페이지</h2>
           <nav className="flex flex-col gap-3">
-             <Link to="/profileEdit">
-                          <Button variant="outline" className="justify-start w-full">정보 수정</Button>
-                        </Link>
-            
+            <Link to="/profileEdit">
+              <Button variant="outline" className="justify-start w-full">정보 수정</Button>
+            </Link>
             <Link to="/subscription">
               <Button variant="outline" className="justify-start w-full">구독 현황</Button>
             </Link>
@@ -76,6 +78,7 @@ const MentorReview = () => {
           </nav>
         </aside>
 
+        {/* 본문 */}
         <main className="flex-1 flex justify-center items-center">
           <div className="w-full max-w-2xl space-y-6 text-center bg-background/80 backdrop-blur-sm rounded-2xl shadow-lg p-10 border border-border/50">
             <h1 className="text-3xl font-bold text-foreground">멘토 평가하기</h1>
@@ -92,8 +95,8 @@ const MentorReview = () => {
               <CardContent className="text-left space-y-3">
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-semibold text-left text-red-500">
-  🧑‍🏫 이름: {mentorInfo.name}
-</p>
+                    🧑‍🏫 이름: {mentorInfo.name}
+                  </p>
                 </div>
                 <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
                   {mentorInfo.introduction}
@@ -105,6 +108,7 @@ const MentorReview = () => {
               </CardContent>
             </Card>
 
+            {/* 별점 선택 */}
             <div className="flex justify-center space-x-2 mt-6">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
@@ -120,6 +124,7 @@ const MentorReview = () => {
               ))}
             </div>
 
+            {/* 피드백 작성 */}
             <Textarea
               placeholder="멘토에게 전하고 싶은 말을 입력하세요..."
               value={feedback}
@@ -127,6 +132,7 @@ const MentorReview = () => {
               className="mt-4 bg-background/50 border-border/50"
             />
 
+            {/* 제출 버튼 */}
             <Button onClick={submitReview} className="mt-6 w-full">
               평가 제출
             </Button>
