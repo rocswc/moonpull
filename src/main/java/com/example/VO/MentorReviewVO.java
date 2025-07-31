@@ -4,9 +4,9 @@ import lombok.Data;
 
 @Data
 public class MentorReviewVO {
-    private int reviewId;
-    private int rating;
-    private int menteeId;
-    private int mentorId;
+    private Integer reviewId;
+    private Integer rating;
+    private Integer menteeId;
+    private Integer mentorId;
     private String feedback;
 }

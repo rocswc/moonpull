@@ -4,6 +4,6 @@ import java.util.List;
 import com.example.VO.MentorReviewVO;
 
 public interface MentorReviewService {
-    List<MentorReviewVO> getReviewsByMentorId(int mentor_id);
-    Integer insertReview(MentorReviewVO vo);
+    List<MentorReviewVO> getReviewsByMentorId(int mentorId);
+    int insertReview(MentorReviewVO vo);
 }
