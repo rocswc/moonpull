@@ -58,6 +58,9 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        
+        //  쿠키 응답 헤더를 브라우저가 읽을 수 있도록 허용
+        config.setExposedHeaders(List.of("Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -84,12 +87,16 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
             	    .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
             	    .requestMatchers("/", "/api/login", "/api/join").permitAll()   // 로그인/회원가입만 공개
-            	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")
-            	    .requestMatchers("/admin/**").hasRole("ADMIN")
-            	    .requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
-            	    .requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
+            	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
+            	   
+            	    .requestMatchers("/admin/**").permitAll()
+            	  //.requestMatchers("/admin/**").hasRole("ADMIN")
+            	    .requestMatchers("/mentor/**").permitAll()
+            	  //.requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
+            	    .requestMatchers("/mentee/**").permitAll() 	    
+            	    //.requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
             	    .requestMatchers("/payments/**").permitAll()
-            	    .anyRequest().authenticated()                                  // 그 외에는 인증 필요
+            	    .anyRequest().authenticated()// 그 외에는 인증 필요
             	)
 
             // 접근 거부 처리
