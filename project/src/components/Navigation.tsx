@@ -1,10 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Globe, Menu } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useChat } from "@/contexts/ChatContext";
+import { useEffect, useState } from "react";
+import Cookies from "js-cookie"; // ✅ 추가
 
 const Navigation = () => {
   const { toggleUserList } = useChat();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const jwt = Cookies.get("jwt");
+    setIsLoggedIn(!!jwt);
+  }, []);
+
+  const handleLogout = () => {
+    Cookies.remove("jwt"); // ✅ JWT 쿠키 제거
+    setIsLoggedIn(false);  // ✅ UI 업데이트
+    navigate("/");         // ✅ 홈으로 이동
+  };
 
   return (
     <nav className="w-full px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50 sticky top-0 z-50">
@@ -12,43 +27,21 @@ const Navigation = () => {
         {/* Logo + Title */}
         <div className="flex items-center space-x-2">
           <Link to="/" className="flex items-center space-x-2">
-  <img
-    src="/logo.png"
-    alt="문풀 로고"
-    className="h-10 w-auto object-contain"
-  />
-  <span className="text-xl font-bold text-primary hover:text-primary/80 transition-colors leading-none">
-    문풀
-  </span>
-</Link>
+            <img src="/logo.png" alt="문풀 로고" className="h-10 w-auto object-contain" />
+            <span className="text-xl font-bold text-primary hover:text-primary/80 transition-colors leading-none">문풀</span>
+          </Link>
         </div>
 
         {/* Navigation Menu */}
         <div className="hidden md:flex items-center space-x-8">
-          <Link to="/matching" className="text-foreground hover:text-primary transition-colors font-medium">
-            멘토·멘티 매칭
-          </Link>
-          <Link to="/pricing" className="text-foreground hover:text-primary transition-colors font-medium">
-            구독 서비스 안내
-          </Link>
-          <Link to="/wrong-note" className="text-foreground hover:text-primary transition-colors font-medium">
-            오답노트
-          </Link> 
-          <Link to="/quiz" className="text-foreground hover:text-primary transition-colors font-medium">
-            퀴즈
-          </Link>
-          <Link to="/mypage" className="text-foreground hover:text-primary transition-colors font-medium">
-            마이페이지
-          </Link>
-          <Link to="/mentor" className="text-foreground hover:text-primary transition-colors font-medium">
-            멘토페이지
-          </Link>
-          <Link to="/mentte" className="text-foreground hover:text-primary transition-colors font-medium">
-            멘티페이지
-          </Link>
-          <Link to="/chatbot" className="text-foreground hover:text-primary transition-colors font-medium">
-            챗봇
-          </Link>
+          <Link to="/matching" className="text-foreground hover:text-primary transition-colors font-medium">멘토·멘티 매칭</Link>
+          <Link to="/pricing" className="text-foreground hover:text-primary transition-colors font-medium">구독 서비스 안내</Link>
+          <Link to="/wrong-note" className="text-foreground hover:text-primary transition-colors font-medium">오답노트</Link> 
+          <Link to="/quiz" className="text-foreground hover:text-primary transition-colors font-medium">퀴즈</Link>
+          <Link to="/mypage" className="text-foreground hover:text-primary transition-colors font-medium">마이페이지</Link>
+          <Link to="/mentor" className="text-foreground hover:text-primary transition-colors font-medium">멘토페이지</Link>
+          <Link to="/mentte" className="text-foreground hover:text-primary transition-colors font-medium">멘티페이지</Link>
+          <Link to="/chatbot" className="text-foreground hover:text-primary transition-colors font-medium">챗봇</Link>
         </div>
 
         {/* Right Side */}
@@ -57,24 +50,32 @@ const Navigation = () => {
             <Globe className="w-4 h-4" />
             <span className="text-sm">한국어</span>
           </button>
-          
-          {/* Chat Menu Button */}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={toggleUserList}
-            className="gap-2"
-          >
+
+          <Button variant="ghost" size="sm" onClick={toggleUserList} className="gap-2">
             <Menu className="w-4 h-4" />
             <span className="hidden sm:inline">채팅</span>
           </Button>
-          
-          <Button variant="outline" size="default" asChild>
-            <Link to="/auth">로그인</Link>
-          </Button>
-          <Button variant="default" size="default" asChild>
-            <Link to="/auth">회원가입</Link>
-          </Button>
+
+          {/* ✅ 조건부 렌더링 */}
+          {isLoggedIn ? (
+            <>
+              <Button variant="outline" size="default" asChild>
+                <Link to="/mypage">마이페이지</Link>
+              </Button>
+              <Button variant="default" size="default" onClick={handleLogout}>
+                로그아웃
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="default" asChild>
+                <Link to="/auth">로그인</Link>
+              </Button>
+              <Button variant="default" size="default" asChild>
+                <Link to="/auth">회원가입</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </nav>
