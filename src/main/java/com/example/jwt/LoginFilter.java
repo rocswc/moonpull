@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -11,7 +13,6 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.example.dto.JoinDTO;
 import com.example.dto.LoginDTO;
 import com.example.security.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,22 +77,18 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // JWT 생성 (1시간 유효)
         String token = jwtUtil.createJwt(username, roles, 60 * 60 * 1000L);
 
-        // JWT를 HttpOnly 쿠키로 전송
-        Cookie cookie = new Cookie("jwt", token);
-        cookie.setHttpOnly(true);
+      
         
-        String host = request.getServerName();
-        if (host.equals("localhost") || host.equals("127.0.0.1")) {
-            cookie.setSecure(false);
-        } else {
-            cookie.setSecure(true);
-        }
+     // JWT를 ResponseCookie로 설정 (SameSite 지원)
+        ResponseCookie cookie = ResponseCookie.from("jwt", token)
+            .httpOnly(true)
+            .secure(!request.getServerName().equals("localhost")) // 로컬은 false
+            .sameSite("Lax") // 또는 "None" (크로스사이트 대응 필요 시)
+            .path("/")
+            .maxAge(60 * 60) // 1시간
+            .build();
 
-        cookie.setPath("/");
-        cookie.setMaxAge(60 * 60); // 1시간
-        System.out.println("[LoginFilter] 발급된 JWT 토큰: " + token);
-
-        response.addCookie(cookie);
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         System.out.println("[LoginFilter] 로그인 성공: 아이디 = " + username + ", 권한 = " + roles);
         System.out.println("[LoginFilter] JWT 쿠키 발급 완료");
