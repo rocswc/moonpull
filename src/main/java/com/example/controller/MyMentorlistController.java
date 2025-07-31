@@ -8,6 +8,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "*")
 public class MyMentorlistController {
 
     private final MyMentorlistService myMentorlistService;
@@ -17,7 +18,7 @@ public class MyMentorlistController {
     }
 
     @GetMapping("/my-mentors")
-    public List<MyMentorlistDTO> getMyMentors() {
-        return myMentorlistService.getMyMentors();
+    public List<MyMentorlistDTO> getMyMentors(@RequestParam("menteeId") Long menteeId) {
+        return myMentorlistService.getMyMentors(menteeId);
     }
 }
