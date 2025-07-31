@@ -86,7 +86,7 @@ public class SecurityConfig {
             // 인가 설정
             .authorizeHttpRequests(auth -> auth
             	    .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-            	    .requestMatchers("/", "/api/login", "/api/join").permitAll()   // 로그인/회원가입만 공개
+            	    .requestMatchers("/", "/api/**").permitAll()   // 로그인/회원가입만 공개
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
             	   
             	    .requestMatchers("/admin/**").permitAll()

@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 public class TossConfig {
     public static String SECRET_KEY;
 
-    @Value("${toss.secret-key}")
+    @Value("${toss.secret-key:default-key}")
     public void setSecretKey(String key) {
         SECRET_KEY = key;
     }
