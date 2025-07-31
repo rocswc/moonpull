@@ -87,6 +87,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
             	    .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
             	    .requestMatchers("/", "/api/**").permitAll()   // 로그인/회원가입만 공개
+            	    .requestMatchers("/mentorReview/**").permitAll()  // ✅ 요거 추가하세요
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
             	   
             	    .requestMatchers("/admin/**").permitAll()
