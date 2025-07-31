@@ -8,7 +8,12 @@ import com.example.service.PaymentService;
 
 @RestController
 @RequestMapping("/payments")
-@CrossOrigin(origins = "http://localhost:8888")
+@CrossOrigin(origins = {
+	    "http://localhost:8888",
+	    "http://127.0.0.1:8888",
+	    "http://192.168.0.184:8888",
+	    "http://192.168.56.1:8888"
+	})
 public class PaymentController {
 
 	@Autowired	
@@ -22,11 +27,11 @@ public class PaymentController {
     public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request) {
     	System.out.println(request);
     	System.out.println("김갑중1");
+    	
     	Object result = paymentService.confirmPayment(request);
     	ResponseEntity<?> response = ResponseEntity.ok(result);
-    	System.out.println(result);
     	System.out.println(response);
-    			
+    				
         return response;   
     }
     
