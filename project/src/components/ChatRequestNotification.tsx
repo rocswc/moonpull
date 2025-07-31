@@ -1,5 +1,3 @@
-// src/components/ChatRequestNotifications.tsx
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Check, X } from "lucide-react";
 import { useChat, ChatRequest } from "@/contexts/ChatContext";
-import OnlineUserListWithReport from "@/components/OnlineUserListWithReport"; // ✅ 추가
-
+ 
 interface ChatRequestNotificationProps {
   request: ChatRequest;
 }
@@ -51,11 +48,21 @@ const ChatRequestNotification: React.FC<ChatRequestNotificationProps> = ({ reque
             )}
             
             <div className="flex gap-2">
-              <Button size="sm" variant="default" onClick={handleAccept} className="flex-1 gap-1">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleAccept}
+                className="flex-1 gap-1"
+              >
                 <Check className="h-3 w-3" />
                 수락
               </Button>
-              <Button size="sm" variant="outline" onClick={handleReject} className="flex-1 gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleReject}
+                className="flex-1 gap-1"
+              >
                 <X className="h-3 w-3" />
                 거절
               </Button>
@@ -69,20 +76,20 @@ const ChatRequestNotification: React.FC<ChatRequestNotificationProps> = ({ reque
 
 const ChatRequestNotifications: React.FC = () => {
   const { chatRequests } = useChat();
+  
   const pendingRequests = chatRequests.filter(request => request.status === 'pending');
-
+  
   return (
     <>
       {pendingRequests.map((request, index) => (
-        <div key={request.id} style={{ top: `${5 + index * 6}rem` }} className="absolute">
+        <div
+          key={request.id}
+          style={{ top: `${5 + index * 6}rem` }}
+          className="absolute"
+        >
           <ChatRequestNotification request={request} />
         </div>
       ))}
-
-      {/* ✅ 온라인 유저 목록 + 신고 버튼 UI 추가 */}
-      <div className="fixed bottom-6 right-6 z-40">
-       
-      </div>
     </>
   );
 };

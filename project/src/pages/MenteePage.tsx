@@ -67,7 +67,7 @@ const MenteePage = () => {
     }
 
     try {
-      await axios.post("/api/admin/report", {
+      await axios.post("/admin/report", {
         reporterId: 1, // TODO: 로그인 사용자 ID로 교체
         targetUserId: mentor.id, // 멘토가 member.user_id와 동일하다고 가정
         targetMentorId: mentor.id,
