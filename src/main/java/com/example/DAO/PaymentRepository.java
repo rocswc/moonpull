@@ -1,14 +1,10 @@
 package com.example.DAO;
-
-import java.util.List;
-
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-
-import com.example.VO.MemberVO;
-import com.example.VO.MentorVO;
+import com.example.dto.PaymentDTO;
+import com.example.dto.SubscribeDTO;
 
 @Mapper
 public interface PaymentRepository {
-
+	Integer insertPayment(PaymentDTO vo);
+	Integer createSubscription(SubscribeDTO vo);
 }

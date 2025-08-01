@@ -4,5 +4,25 @@
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.example.DAO.PaymentRepository">
+	<insert id="insertPayment" parameterType="com.example.dto.PaymentDTO">
+    	INSERT INTO payment(member_id,order_id,order_name,name,email,payment_method,amount,payment_status,payment_key,paid_at)
+    	VALUES(#{member_id},#{order_id},#{order_name},#{name},#{email},#{payment_method},#{amount},#{payment_status},#{payment_key},NOW())
+	</insert>
 	
+	<insert id="createSubscription" parameterType="com.example.dto.SubscriptionDTO">
+    	INSERT INTO subscribe(member_id,plan_type,status,amount,started_at,expires_at)
+    	VALUES(#{member_id},#{plan_type},#{status},#{amount},NOW(),	
+		<choose>
+		    <when test="plan_type == 'PLUS'">
+		        DATE_ADD(NOW(), INTERVAL 1 MONTH)
+		    </when>
+		    <when test="plan_type == 'PREMIUM'">
+		        DATE_ADD(NOW(), INTERVAL 1 YEAR)
+		    </when>
+		    <otherwise>
+		        DATE_ADD(NOW(), INTERVAL 1 MONTH)
+		    </otherwise>
+    	</choose>
+    	)
+	</insert>
 </mapper>

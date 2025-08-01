@@ -2,43 +2,79 @@ package com.example.service;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.core5.http.ContentType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
+import com.example.DAO.PaymentRepository;
 import com.example.config.TossConfig;
 import com.example.dto.PaymentDTO;
+import com.example.dto.SubscribeDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
-
+    
+    @Autowired
+    private PaymentRepository paymentRepository;
+    
     public Map<String, Object> confirmPayment(PaymentDTO req) {
         try {
-            String credentials = Base64.getEncoder().encodeToString((TossConfig.SECRET_KEY + ":").getBytes(StandardCharsets.UTF_8));
+            // 1. 토스페이먼츠 결제 확인 API 호출
+            String credentials = Base64.getEncoder()
+                .encodeToString((TossConfig.SECRET_KEY + ":").getBytes(StandardCharsets.UTF_8));
+            
             Map<String, Object> body = new HashMap<>();
             body.put("paymentKey", req.getPayment_key());
             body.put("orderId", req.getOrder_id());
             body.put("amount", req.getAmount());
-
+            
             String jsonBody = new ObjectMapper().writeValueAsString(body);
-
+            
             String response = Request.post("https://api.tosspayments.com/v1/payments/confirm")
                 .addHeader("Authorization", "Basic " + credentials)
                 .addHeader("Content-Type", "application/json")
                 .bodyString(jsonBody, ContentType.APPLICATION_JSON)
                 .execute()
                 .returnContent()
-                .asString(Charset.forName("UTF-8")); // UTF-8 인코딩 명시적 지정
-
-            return new ObjectMapper().readValue(response, Map.class);
-        } catch (Exception e) {
-            e.printStackTrace();
+                .asString(Charset.forName("UTF-8"));
+            
+            Map<String, Object> responseMap = new ObjectMapper().readValue(response, Map.class);
+            
+            // 2. 토스페이먼츠 응답 검증
+            if (!"DONE".equals(responseMap.get("status"))) {
+                throw new RuntimeException("결제 확인 실패: " + responseMap.get("status"));
+            }
+            
+            System.out.println("결제 확인 결과");
+            System.out.println(responseMap);
+            
+            // 3. DB에 결제 정보 저장 (트랜잭션 내에서 실행)
+            PaymentDTO paymentData = new PaymentDTO();
+            paymentData.setMember_id(1);
+            paymentData.setName("김갑중");
+            paymentData.setEmail("kkjspdlqj@naver.com");
+            paymentData.setOrder_id(req.getOrder_id());
+            paymentData.setOrder_name((String)responseMap.get("orderName"));
+            paymentData.setPayment_method((String)responseMap.get("method"));
+            paymentData.setAmount(req.getAmount());
+            paymentData.setPayment_status((String)responseMap.get("status"));
+            paymentData.setPayment_key(req.getPayment_key());
+            
+      
+            paymentRepository.insertPayment(paymentData);
+            paymentRepository.createSubscription(null);
+            
+            return responseMap;
+            
+        } catch (Exception e) {     
+            // 트랜잭션 롤백이 자동으로 발생
             Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
+            error.put("error", "결제 처리 실패: " + e.getMessage());
             return error;
         }
     }
