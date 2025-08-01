@@ -6,12 +6,12 @@
 <mapper namespace="com.example.DAO.MentorReviewDAO">
 
     <!-- 멘토 ID로 리뷰 조회 -->
-    <select id="getReviewsByMentorId" resultType="com.example.VO.MentorReviewVO">
+    <select id="getReviewsByMentorId" resultType="MentorReviewVO">
         SELECT * FROM mentor_review WHERE mentor_id = #{mentor_id}
     </select>
 
     <!-- 리뷰 등록 -->
-	<insert id="insertReview" parameterType="com.example.VO.MentorReviewVO">
+	<insert id="insertReview" parameterType="MentorReviewVO">
     	INSERT INTO mentor_review (rating, mentee_id, mentor_id, feedback)
     	VALUES (#{rating}, #{menteeId}, #{mentorId}, #{feedback})
 	</insert>
