@@ -37,23 +37,24 @@ public class JwtFilter extends OncePerRequestFilter {
     	
     	  // 0. OPTIONS 요청은 인증없이 허용
     	if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-    	    filterChain.doFilter(request, response); // ✅ 프리플라이트를 그대로 통과
+    	    filterChain.doFilter(request, response); //  프리플라이트를 그대로 통과
     	    return;
     	}
 
      // 1. 인증 예외 경로
         String path = request.getRequestURI();
-        if (path.equals("/") ||
-        		path.equals("/api/login") ||
+        if (    path.equals("/api/login") ||
         	    path.equals("/api/join") ||
         	    path.equals("/api/check-duplicate") ||
         	    path.equals("/api/keywords/trending") ||
+        	    path.equals("/api/user")   ||
         	    path.startsWith("/admin/") || // 
         	    path.equals("/apply/mentor") ||
         	    path.equals("/mentorReview/insert") ||
         	    path.startsWith("/mentorReview/") ||
         	    path.startsWith("/mentee/") ||
-        	    path.startsWith("/payments/")
+        	    path.startsWith("/payments/") ||
+        	    path.startsWith("/api/mentor-review/")
         ){
         	    filterChain.doFilter(request, response);
         	    return;
@@ -75,8 +76,6 @@ public class JwtFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-
-        System.out.println("[JwtFilter] JWT Token from Cookie: " + token);
 
         // 2. 토큰 만료 확인
         if (jwtUtil.isExpired(token)) {

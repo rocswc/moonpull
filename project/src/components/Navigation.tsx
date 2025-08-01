@@ -74,9 +74,13 @@ const Navigation = () => {
               {/* ✅ 닉네임 + 역할 표시 */}
               <div className="text-sm font-medium text-foreground">
                 {user.nickname} 님 환영합니다{" "}
-                <span className="text-primary">
-                  ({user.role === "MENTOR" ? "멘토" : "멘티"})
-                </span>
+				<span className="text-primary">
+				  {user.role?.includes("ADMIN")
+				    ? "관리자"
+				    : user.role?.includes("MENTOR")
+				    ? "멘토"
+				    : "멘티"}
+				</span>
               </div>
               <Button variant="default" size="default" onClick={handleLogout}>
                 로그아웃

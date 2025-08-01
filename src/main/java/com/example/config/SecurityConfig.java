@@ -24,43 +24,45 @@ import com.example.jwt.LoginFilter;
 import com.example.security.CustomAccessDeniedHandler;
 
 @Configuration
-@EnableWebSecurity // Spring Security 설정을 활성화
-@EnableMethodSecurity(prePostEnabled = true) // @PreAuthorize, @PostAuthorize 등 메서드 보안 어노테이션을 활성화(suhan)
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-	// 인증 설정을 제공하는 객체 (인증 매니저 생성에 필요)
     private final AuthenticationConfiguration authenticationConfiguration;
- // JWT 관련 유틸리티 클래스 (토큰 생성, 검증 등에 사용)
     private final JwtUtil jwtUtil;
 
- // 생성자 주입 방식으로 필요한 객체들을 전달받음
     public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JwtUtil jwtUtil) {
         this.authenticationConfiguration = authenticationConfiguration;
-        this.jwtUtil = jwtUtil;// JWT 유틸 주입
+        this.jwtUtil = jwtUtil;
     }
 
-    // 인증 매니저 빈 등록 (LoginFilter에서 사용됨)
+    // AuthenticationManager
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
-    // 비밀번호 암호화에 사용할 BCrypt 인코더 빈 등록
+    // Password encoder
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // cors 설정
+    // CORS 설정: 네가 쓰던 CorsFilter 그대로 유지
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8888", "http://192.168.56.1:8888", "http://192.168.0.27:8888"   ));
+        config.setAllowedOrigins(List.of(
+            "http://localhost:3000",
+            "http://localhost:8888",
+            "http://192.168.56.1:8888",
+            "http://192.168.0.27:8888"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // 필요하면 명시적으로: List.of("Content-Type","X-XSRF-TOKEN","Authorization")
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-        
-        //  쿠키 응답 헤더를 브라우저가 읽을 수 있도록 허용
+        // 참고: HttpOnly 쿠키는 JS에서 읽을 수 없으므로 Set-Cookie 노출 여부는 큰 의미 없음
         config.setExposedHeaders(List.of("Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -68,43 +70,49 @@ public class SecurityConfig {
         return new CorsFilter(source);
     }
 
-    // 보안 필터 체인 설정
+    // Security Filter Chain
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {}) // (suhan) CORS 필터 적용
-            .csrf(csrf -> csrf.disable()) // (suhan) CSRF 비활성화
-            .formLogin(form -> form.disable()) // (suhan) form 로그인 비활성화
-            .httpBasic(httpBasic -> httpBasic.disable()) // (suhan) HTTP 기본 인증 비활성화
+            // 네 CorsFilter 빈이 있으니 여기서는 기본 활성화만
+            .cors(cors -> {})
+            // 지금은 프론트 수정 없이 바로 쓰게 CSRF 비활성화
+            .csrf(csrf -> csrf.disable())
+            .formLogin(form -> form.disable())
+            .httpBasic(httpBasic -> httpBasic.disable())
 
-            // JWT 로그인 필터 등록
+            // JWT 로그인/검증 필터 등록
             .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil),
                     UsernamePasswordAuthenticationFilter.class)
-
-            // JWT 검증 필터 등록
             .addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
 
-            // 인가 설정
-            // 인가 설정
+            // 인가 규칙
             .authorizeHttpRequests(auth -> auth
-            	    .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-            	    // (수정) 로그인, 회원가입 명시적으로 허용
-            	    .requestMatchers(
-            	    	    "/", 
-            	    	    "/api/login", 
-            	    	    "/api/join", 
-            	    	    "/api/check-duplicate", 
-            	    	    "/api/keywords/trending"
-            	    	).permitAll()   
+                // 프리플라이트
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // 공개 엔드포인트
+                .requestMatchers(
+                        "/",
+                        "/api/login",
+                        "/api/join",
+                        "/api/check-duplicate",
+                        "/api/keywords/trending",
+                        "/api/keywords/autocomplete"
+                ).permitAll() 
+            	    
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
             	    .requestMatchers("/admin/**").permitAll()
+            	    
             	  //.requestMatchers("/admin/**").hasRole("ADMIN")
-            	    .requestMatchers(HttpMethod.POST, "/mentorReview/insert").permitAll()
+            	    .requestMatchers("/mentor-review/**").permitAll()
             	  //.requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
             	    .requestMatchers("/mentee/**").permitAll() 	    
             	    //.requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
             	    .requestMatchers("/payments/**").permitAll()
             	    .requestMatchers("/mentorReview/**").permitAll()
+            	    .requestMatchers(HttpMethod.POST, "/api/chat/log").permitAll()
+            	    .requestMatchers(HttpMethod.GET, "/api/user").permitAll()
             	    .anyRequest().authenticated()// 그 외에는 인증 필요
             	)
 

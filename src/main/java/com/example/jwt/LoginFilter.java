@@ -63,53 +63,49 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	// 로그인 성공 시 처리 (JWT를 HttpOnly 쿠키에 저장)
 	@Override
 	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-			FilterChain chain, Authentication authentication)
-					throws IOException, ServletException {
+	        FilterChain chain, Authentication authentication)
+	        throws IOException, ServletException {
 
-		CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-		String username = customUserDetails.getUsername();
+	    CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
+	    String username = customUserDetails.getUsername();
 
-		// 🔽 여기 추가
-		String nickname = customUserDetails.getNickname();  // CustomUserDetails에서 닉네임 가져오기
+	    // 그대로 유지
+	    String nickname = customUserDetails.getNickname();
 
-		Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-		String roles = authorities.stream()
-				.map(GrantedAuthority::getAuthority)
-				.collect(Collectors.joining(","));
+	    var authorities = authentication.getAuthorities();
+	    String roles = authorities.stream()
+	            .map(GrantedAuthority::getAuthority)
+	            .collect(Collectors.joining(","));
 
-		// JWT 생성 (1시간 유효)
-		String token = jwtUtil.createJwt(
-				username,
-				nickname,   // 이제 nickname 변수가 정의됨
-				roles,
-				60 * 60 * 1000L
-				);
+	    // ✅ ① JWT 만료시간: 1시간 -> 24시간
+	    String token = jwtUtil.createJwt(
+	            username,
+	            nickname,                 // 기존 JwtUtil 시그니처 그대로 쓴다고 가정
+	            roles,
+	            24 * 60 * 60 * 1000L      // ← 하루(밀리초)
+	    );
 
+	    // ✅ ② 쿠키 maxAge: 1시간 -> 24시간
+	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
+	            .httpOnly(true)
+	            .secure(!request.getServerName().equals("localhost")) // 네가 쓰던 로직 유지
+	            .sameSite("Lax")                                      // 네가 쓰던 기본값 유지
+	            .path("/")
+	            .maxAge(24 * 60 * 60)                                 // ← 하루(초)
+	            .build();
 
+	    response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-		// JWT를 ResponseCookie로 설정 (SameSite 지원)
-		ResponseCookie cookie = ResponseCookie.from("jwt", token)
-				.httpOnly(true)
-				.secure(!request.getServerName().equals("localhost")) // 로컬은 false
-				.sameSite("Lax") // 또는 "None" (크로스사이트 대응 필요 시)
-				.path("/")
-				.maxAge(60 * 60) // 1시간
-				.build();
+	    System.out.println("[LoginFilter] 로그인 성공: 아이디 = " + username + ", 권한 = " + roles);
+	    System.out.println("[LoginFilter] JWT 쿠키 발급 완료");
 
-		response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
-		System.out.println("[LoginFilter] 로그인 성공: 아이디 = " + username + ", 권한 = " + roles);
-		System.out.println("[LoginFilter] JWT 쿠키 발급 완료");
-		// 응답 바디 (닉네임과 역할 포함)
-		response.setContentType("application/json; charset=UTF-8");
-		response.setCharacterEncoding("UTF-8");
-
-		// nickname과 role을 JSON으로 내려줌
-		String jsonResponse = String.format(
-			    "{\"message\": \"로그인 성공\", \"nickname\": \"%s\", \"roles\": \"%s\"}",
-			    nickname, roles
-			);
-		response.getWriter().write(jsonResponse);
+	    response.setContentType("application/json; charset=UTF-8");
+	    response.setCharacterEncoding("UTF-8");
+	    String jsonResponse = String.format(
+	            "{\"message\": \"로그인 성공\", \"nickname\": \"%s\", \"roles\": \"%s\"}",
+	            nickname, roles
+	    );
+	    response.getWriter().write(jsonResponse);
 	}
 
 	// 로그인 실패 시 처리
