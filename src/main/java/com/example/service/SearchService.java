@@ -72,7 +72,7 @@ public class SearchService {
         List<String> results = new ArrayList<>();
         try {	//실제 es 인덱스랑 로그스태치에 있는 것을 비교해서 
         	QueryBuilder query = QueryBuilders
-        		       .matchQuery("search_keyword", prefix);
+        			 .matchPhrasePrefixQuery("search_keyword", prefix); 
         		//es결과를 생성하고 위에 fetchSource를 통해 search_keyword 결과 중 최대 10개만 추출
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
                     .query(query)
