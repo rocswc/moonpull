@@ -44,8 +44,11 @@ public class JwtFilter extends OncePerRequestFilter {
      // 1. 인증 예외 경로
         String path = request.getRequestURI();
         if (path.equals("/") ||
-        		path.startsWith("/api/")||
-        	    path.startsWith("/admin/") || //  이거 하나면 /admin/** 전부 커버
+        		path.equals("/api/login") ||
+        	    path.equals("/api/join") ||
+        	    path.equals("/api/check-duplicate") ||
+        	    path.equals("/api/keywords/trending") ||
+        	    path.startsWith("/admin/") || // 
         	    path.equals("/apply/mentor") ||
         	    path.equals("/mentorReview/insert") ||
         	    path.startsWith("/mentorReview/") ||
