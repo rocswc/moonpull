@@ -103,7 +103,7 @@ public class SecurityConfig {
             	    
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
             	    .requestMatchers("/admin/**").permitAll()
-            	    
+            	    .requestMatchers("/api/admin/**").permitAll()
             	  //.requestMatchers("/admin/**").hasRole("ADMIN")
             	    .requestMatchers("/mentor-review/**").permitAll()
             	  //.requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
