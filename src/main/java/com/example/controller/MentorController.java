@@ -41,7 +41,12 @@ public class MentorController {
         user.setRoles("ROLE_MENTOR");
         userRepository.save(user);
 
-        String newToken = jwtUtil.createJwt(user.getLoginid(), user.getRoles(), 1000 * 60 * 60L); // 1시간
+        String newToken = jwtUtil.createJwt(
+        	    user.getLoginid(),        // username
+        	    user.getNickname(),       // nickname 추가!
+        	    user.getRoles(),          // roles
+        	    1000 * 60 * 60L           // 만료 시간 (1시간)
+        	);
 
         Cookie cookie = new Cookie("jwt", newToken);
         cookie.setHttpOnly(true);

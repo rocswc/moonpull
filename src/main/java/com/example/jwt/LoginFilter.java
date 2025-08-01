@@ -26,89 +26,102 @@ import jakarta.servlet.http.HttpServletResponse;
 // 로그인 요청 처리 필터 (POST /login 요청 시 동작)
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
-    private final AuthenticationManager authenticationManager;
-    private final JwtUtil jwtUtil;
+	private final AuthenticationManager authenticationManager;
+	private final JwtUtil jwtUtil;
 
-    public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
-    	this.authenticationManager = authenticationManager;
-        this.jwtUtil = jwtUtil;
-        setFilterProcessesUrl("/api/login"); 
-    }
+	public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
+		this.authenticationManager = authenticationManager;
+		this.jwtUtil = jwtUtil;
+		setFilterProcessesUrl("/api/login"); 
+	}
 
-    // 로그인 시도 처리
-    @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
-            throws AuthenticationException {
+	// 로그인 시도 처리
+	@Override
+	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+			throws AuthenticationException {
 
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            LoginDTO loginRequest = objectMapper.readValue(request.getInputStream(), LoginDTO.class);
+		try {
+			ObjectMapper objectMapper = new ObjectMapper();
+			LoginDTO loginRequest = objectMapper.readValue(request.getInputStream(), LoginDTO.class);
 
-            String loginid = loginRequest.getLoginId();
-            String password = loginRequest.getPassword();
+			String loginid = loginRequest.getLoginId();
+			String password = loginRequest.getPassword();
 
-            System.out.println("[LoginFilter] 입력 loginId=" + loginid);
+			System.out.println("[LoginFilter] 입력 loginId=" + loginid);
 
-            UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(loginid, password);
+			UsernamePasswordAuthenticationToken authToken =
+					new UsernamePasswordAuthenticationToken(loginid, password);
 
-            return authenticationManager.authenticate(authToken);
+			return authenticationManager.authenticate(authToken);
 
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException("로그인 요청 JSON 파싱 실패", e);
-        }
-    }
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException("로그인 요청 JSON 파싱 실패", e);
+		}
+	}
 
-    // 로그인 성공 시 처리 (JWT를 HttpOnly 쿠키에 저장)
-    @Override
-    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-                                            FilterChain chain, Authentication authentication)
-            throws IOException, ServletException {
+	// 로그인 성공 시 처리 (JWT를 HttpOnly 쿠키에 저장)
+	@Override
+	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+			FilterChain chain, Authentication authentication)
+					throws IOException, ServletException {
 
-        CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-        String username = customUserDetails.getUsername();
+		CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
+		String username = customUserDetails.getUsername();
 
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-        String roles = authorities.stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(","));
+		// 🔽 여기 추가
+		String nickname = customUserDetails.getNickname();  // CustomUserDetails에서 닉네임 가져오기
 
-        // JWT 생성 (1시간 유효)
-        String token = jwtUtil.createJwt(username, roles, 60 * 60 * 1000L);
+		Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+		String roles = authorities.stream()
+				.map(GrantedAuthority::getAuthority)
+				.collect(Collectors.joining(","));
 
-      
-        
-     // JWT를 ResponseCookie로 설정 (SameSite 지원)
-        ResponseCookie cookie = ResponseCookie.from("jwt", token)
-            .httpOnly(true)
-            .secure(!request.getServerName().equals("localhost")) // 로컬은 false
-            .sameSite("Lax") // 또는 "None" (크로스사이트 대응 필요 시)
-            .path("/")
-            .maxAge(60 * 60) // 1시간
-            .build();
+		// JWT 생성 (1시간 유효)
+		String token = jwtUtil.createJwt(
+				username,
+				nickname,   // 이제 nickname 변수가 정의됨
+				roles,
+				60 * 60 * 1000L
+				);
 
-        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        System.out.println("[LoginFilter] 로그인 성공: 아이디 = " + username + ", 권한 = " + roles);
-        System.out.println("[LoginFilter] JWT 쿠키 발급 완료");
 
-        // 응답 바디 (토큰 포함 X)
-        response.setContentType("application/json; charset=UTF-8");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"message\": \"로그인 성공\"}");
-    }
+		// JWT를 ResponseCookie로 설정 (SameSite 지원)
+		ResponseCookie cookie = ResponseCookie.from("jwt", token)
+				.httpOnly(true)
+				.secure(!request.getServerName().equals("localhost")) // 로컬은 false
+				.sameSite("Lax") // 또는 "None" (크로스사이트 대응 필요 시)
+				.path("/")
+				.maxAge(60 * 60) // 1시간
+				.build();
 
-    // 로그인 실패 시 처리
-    @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-                                              AuthenticationException failed)
-            throws IOException, ServletException {
+		response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        System.out.println("로그인 실패: " + failed.getMessage());
+		System.out.println("[LoginFilter] 로그인 성공: 아이디 = " + username + ", 권한 = " + roles);
+		System.out.println("[LoginFilter] JWT 쿠키 발급 완료");
+		// 응답 바디 (닉네임과 역할 포함)
+		response.setContentType("application/json; charset=UTF-8");
+		response.setCharacterEncoding("UTF-8");
 
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json; charset=UTF-8");
-        response.getWriter().write("{\"error\": \"인증 실패\"}");
-    }
+		// nickname과 role을 JSON으로 내려줌
+		String jsonResponse = String.format(
+			    "{\"message\": \"로그인 성공\", \"nickname\": \"%s\", \"roles\": \"%s\"}",
+			    nickname, roles
+			);
+		response.getWriter().write(jsonResponse);
+	}
+
+	// 로그인 실패 시 처리
+	@Override
+	protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+			AuthenticationException failed)
+					throws IOException, ServletException {
+
+		System.out.println("로그인 실패: " + failed.getMessage());
+
+		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+		response.setContentType("application/json; charset=UTF-8");
+		response.getWriter().write("{\"error\": \"인증 실패\"}");
+	}
 }
