@@ -51,6 +51,9 @@ const Navigation = () => {
           <Link to="/chatbot" className="text-foreground hover:text-primary transition-colors font-medium">
             챗봇
           </Link>
+		  <Link to="/mypage" className="text-foreground hover:text-primary transition-colors font-medium">
+		            마이페이지
+		  </Link>
         </div>
 
         {/* Right Side */}
