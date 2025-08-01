@@ -1,3 +1,5 @@
+// ✅ Chat.tsx 실시간 로그 전송 기능 반영한 최종 버전
+
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -30,26 +32,7 @@ const Chat = () => {
   const { teacherId } = useParams<{ teacherId: string }>();
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      sender: "teacher",
-      content: "안녕하세요! 매칭해주셔서 감사합니다. 어떤 것을 도와드릴까요?",
-      timestamp: "오후 2:30"
-    },
-    {
-      id: 2,
-      sender: "student", 
-      content: "안녕하세요! 조선시대 정치제도에 대해서 질문이 있어요.",
-      timestamp: "오후 2:31"
-    },
-    {
-      id: 3,
-      sender: "teacher",
-      content: "좋습니다! 조선시대 정치제도는 정말 중요한 주제네요. 구체적으로 어떤 부분이 궁금하신가요?",
-      timestamp: "오후 2:32"
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const teacher = teacherId ? teacherData[teacherId as keyof typeof teacherData] : null;
 
@@ -57,100 +40,89 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (!teacher) {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-20">
-        <Navigation />
-        <div className="max-w-4xl mx-auto px-6 py-12 text-center">
-          <h1 className="text-2xl font-bold text-foreground">멘토를 찾을 수 없습니다</h1>
-          <Button onClick={() => navigate("/matching")} className="mt-4">
-            매칭 페이지로 돌아가기
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      const newMessage: Message = {
-        id: messages.length + 1,
-        sender: "student",
-        content: message,
-        timestamp: new Date().toLocaleTimeString('ko-KR', { 
-          hour: 'numeric', 
-          minute: '2-digit',
-          hour12: true 
+    const timestamp = new Date().toISOString();
+
+    const newMessage: Message = {
+      id: messages.length + 1,
+      sender: "student",
+      content: message,
+      timestamp: new Date().toLocaleTimeString("ko-KR", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+    };
+
+    setMessages([...messages, newMessage]);
+    setMessage("");
+
+    try {
+      await fetch("/api/chat/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "chat_message",
+          roomId: teacherId,
+          senderId: "student",
+          content: message,
+          timestamp: timestamp
+        })
+      });
+    } catch (err) {
+      console.error("로그 전송 실패", err);
+    }
+
+    setTimeout(() => {
+      const responses = [
+        "좋은 질문입니다. 자세히 설명드릴게요.",
+        "그 부분은 많은 학생이 헷갈려하죠. 정리해드릴게요.",
+        "잘 이해하셨습니다. 추가로 말씀드리면...",
+        "정확히 파악하셨어요! 이어서 설명드릴게요."
+      ];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      const teacherMessage: Message = {
+        id: messages.length + 2,
+        sender: "teacher",
+        content: randomResponse,
+        timestamp: new Date().toLocaleTimeString("ko-KR", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
         })
       };
-      setMessages([...messages, newMessage]);
-      setMessage("");
-
-      setTimeout(() => {
-        const responses = [
-          "네, 좋은 질문이네요! 자세히 설명해드리겠습니다.",
-          "그 부분은 많은 학생들이 어려워하는 부분입니다. 차근차근 설명해드릴게요.",
-          "맞습니다! 이해가 빠르시네요. 추가로 설명드리면...",
-          "정확히 파악하셨습니다. 관련해서 더 설명드리면..."
-        ];
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        const teacherMessage: Message = {
-          id: messages.length + 2,
-          sender: "teacher",
-          content: randomResponse,
-          timestamp: new Date().toLocaleTimeString('ko-KR', { 
-            hour: 'numeric', 
-            minute: '2-digit',
-            hour12: true 
-          })
-        };
-        setMessages(prev => [...prev, teacherMessage]);
-      }, 1000 + Math.random() * 2000);
-    }
+      setMessages(prev => [...prev, teacherMessage]);
+    }, 1500);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  return (
-   <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-purple-100">
+  if (!teacher) return <div>멘토 정보가 없습니다</div>;
 
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-purple-100">
       <Navigation />
       <div className="max-w-4xl mx-auto px-6 py-6">
         <Card className="mb-4">
           <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-primary to-primary-glow text-white">
-                        {teacher.avatar}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{teacher.name} 멘토</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">{teacher.subject}</Badge>
-                      <span className="text-sm text-green-600 font-medium">온라인</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm"><Phone className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm"><Video className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
-              </div>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Avatar className="h-12 w-12">
+                <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-primary to-primary-glow text-white">
+                  {teacher.avatar}
+                </AvatarFallback>
+              </Avatar>
+              <CardTitle className="text-lg">{teacher.name} 멘토</CardTitle>
+              <Badge variant="outline" className="text-xs">{teacher.subject}</Badge>
             </div>
           </CardHeader>
         </Card>
@@ -208,12 +180,6 @@ const Chat = () => {
             </div>
           </div>
         </Card>
-
-        <div className="mt-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            💡 질문이 많으시면 언제든지 편하게 물어보세요!
-          </p>
-        </div>
       </div>
     </div>
   );
