@@ -6,12 +6,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   Minimize2, 
-  Maximize2, 
   X, 
   Send, 
   Phone, 
   Video, 
-  MoreVertical,
   GripVertical 
 } from "lucide-react";
 import { useChat, ChatRoom } from "@/contexts/ChatContext";
@@ -30,7 +28,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const chatWindowRef = useRef<HTMLDivElement>(null);
 
   const otherParticipant = room.participants.find(p => p.id !== 'current-user') || room.participants[0];
-  
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.messages]);
@@ -41,9 +39,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
     }
   }, [room.isMinimized, room.id, markAsRead]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (message.trim()) {
       sendMessage(room.id, message);
+
+      // ✅ 채팅 로그 백엔드로 전송
+      try {
+        await fetch("/api/chat/log", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            roomId: room.id,
+            senderId: "current-user", // 나중에 로그인 사용자로 교체 가능
+            content: message.trim()
+          })
+        });
+      } catch (err) {
+        console.error("채팅 로그 전송 실패", err);
+      }
+
       setMessage('');
     }
   };
@@ -89,15 +105,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
 
   if (room.isMinimized) {
     return (
-      <div
-        ref={chatWindowRef}
-        className="fixed bottom-4 w-60 z-50 animate-fade-in"
-        style={{ left: `${position.x}px` }}
-      >
-        <Card 
-          className="shadow-elegant cursor-pointer hover:shadow-glow transition-shadow"
-          onClick={() => minimizeChat(room.id)}
-        >
+      <div ref={chatWindowRef} className="fixed bottom-4 w-60 z-50 animate-fade-in" style={{ left: `${position.x}px` }}>
+        <Card className="shadow-elegant cursor-pointer hover:shadow-glow transition-shadow" onClick={() => minimizeChat(room.id)}>
           <CardHeader className="p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -118,15 +127,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                   )}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeChat(room.id);
-                }}
-                className="h-6 w-6 p-0"
-              >
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); closeChat(room.id); }} className="h-6 w-6 p-0">
                 <X className="h-3 w-3" />
               </Button>
             </div>
@@ -137,17 +138,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   }
 
   return (
-    <div
-      ref={chatWindowRef}
-      className="fixed w-80 h-96 z-50 animate-scale-in"
-      style={{ left: `${position.x}px`, top: `${position.y}px` }}
-    >
+    <div ref={chatWindowRef} className="fixed w-80 h-96 z-50 animate-scale-in" style={{ left: `${position.x}px`, top: `${position.y}px` }}>
       <Card className="h-full flex flex-col shadow-elegant bg-card border border-border/50">
-        {/* Header */}
-        <CardHeader 
-          className="p-3 cursor-move select-none bg-gradient-to-r from-primary/5 to-primary-glow/5"
-          onMouseDown={handleMouseDown}
-        >
+        <CardHeader className="p-3 cursor-move select-none bg-gradient-to-r from-primary/5 to-primary-glow/5" onMouseDown={handleMouseDown}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -164,35 +157,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                 <span className="text-xs text-green-600">온라인</span>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                <Phone className="h-3 w-3" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                <Video className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => minimizeChat(room.id)}
-                className="h-6 w-6 p-0"
-              >
-                <Minimize2 className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => closeChat(room.id)}
-                className="h-6 w-6 p-0"
-              >
-                <X className="h-3 w-3" />
-              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Phone className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Video className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => minimizeChat(room.id)} className="h-6 w-6 p-0"><Minimize2 className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => closeChat(room.id)} className="h-6 w-6 p-0"><X className="h-3 w-3" /></Button>
             </div>
           </div>
         </CardHeader>
 
-        {/* Messages */}
         <CardContent className="flex-1 p-3 overflow-y-auto bg-background/50">
           <div className="space-y-2">
             {room.messages.length === 0 ? (
@@ -201,10 +175,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
               </div>
             ) : (
               room.messages.map((msg) => (
-                <div 
-                  key={msg.id}
-                  className={`flex ${msg.senderId === 'current-user' ? 'justify-end' : 'justify-start'}`}
-                >
+                <div key={msg.id} className={`flex ${msg.senderId === 'current-user' ? 'justify-end' : 'justify-start'}`}>
                   <div className="flex items-end gap-1 max-w-[70%]">
                     {msg.senderId !== 'current-user' && (
                       <Avatar className="h-6 w-6">
@@ -213,25 +184,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                         </AvatarFallback>
                       </Avatar>
                     )}
-                    
+
                     <div className="space-y-1">
-                      <div 
-                        className={`px-2 py-1 rounded-lg text-xs ${
-                          msg.senderId === 'current-user' 
-                            ? 'bg-primary text-primary-foreground ml-auto' 
-                            : 'bg-muted text-foreground'
-                        }`}
-                      >
+                      <div className={`px-2 py-1 rounded-lg text-xs ${
+                        msg.senderId === 'current-user' 
+                          ? 'bg-primary text-primary-foreground ml-auto' 
+                          : 'bg-muted text-foreground'
+                      }`}>
                         <p>{msg.content}</p>
                       </div>
                       <p className={`text-xs text-muted-foreground ${
                         msg.senderId === 'current-user' ? 'text-right' : 'text-left'
                       }`}>
-                        {msg.timestamp.toLocaleTimeString('ko-KR', { 
-                          hour: 'numeric', 
-                          minute: '2-digit',
-                          hour12: true 
-                        })}
+                        {msg.timestamp.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
                       </p>
                     </div>
 
@@ -249,8 +214,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
             <div ref={messagesEndRef} />
           </div>
         </CardContent>
-        
-        {/* Input */}
+
         <div className="p-2 border-t">
           <div className="flex gap-1">
             <Input
