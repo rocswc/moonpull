@@ -8,9 +8,10 @@ const CheckoutPage = () => {
   const location = useLocation();
   const [ready, setReady] = useState(false);
   const [widgets, setWidgets] = useState(null);
+  const [planName, setPlanName] = useState(location.state?.planName);
   const [amount, setAmount] = useState({
     currency: "KRW",
-    value: location.state?.amount || 50_123,
+    value: location.state?.amount || 0
   });
 
   useEffect(() => {
@@ -63,6 +64,12 @@ const CheckoutPage = () => {
     renderPaymentWidgets();
   }, [widgets]);
 
+  const createSuccessUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('planName', planName);
+    return `${window.location.origin}/payment/success?${params.toString()}`;
+  };
+
   return (
     <div className="wrapper w-100">
       <div className="max-w-540 w-100">
@@ -81,10 +88,10 @@ const CheckoutPage = () => {
                  */
                 await widgets?.requestPayment({
                   orderId: generateRandomString(),
-                  orderName: "토스 티셔츠 외 2건",
+                  orderName: planName,
                   customerName: "김토스",
                   customerEmail: "customer123@gmail.com",
-                  successUrl: window.location.origin + "/payment/success" + window.location.search,
+                  successUrl: createSuccessUrl(),
                   failUrl: window.location.origin + "/payment/fail" + window.location.search
                 });
               } catch (error) {
