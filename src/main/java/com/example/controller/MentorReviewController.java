@@ -19,6 +19,7 @@ public class MentorReviewController {
     @GetMapping("/{mentorId}")
     public List<MentorReviewVO> getReviews(@PathVariable("mentorId") int mentorId) {
         return mentorReviewService.getReviewsByMentorId(mentorId);
+    //d
     }
 
     // 리뷰 등록 및 평균 평점 업데이트
