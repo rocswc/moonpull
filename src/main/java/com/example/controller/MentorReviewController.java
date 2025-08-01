@@ -8,7 +8,7 @@ import com.example.VO.MentorReviewVO;
 import com.example.service.MentorReviewService;
 
 @RestController
-@RequestMapping("/mentor-review")
+@RequestMapping("/api/mentor-review")
 @CrossOrigin(origins = "*") // 모든 오리진 허용 (테스트용)
 public class MentorReviewController {
 
