@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChatProvider, useChat } from "@/contexts/ChatContext";
 
+
+import { AuthProvider } from "@/contexts/AuthContext";
+
 import AdminDashboard from "./pages/AdminDashboard";
 import UserListDrawer from "@/components/UserListDrawer";
 import ChatRequestNotifications from "@/components/ChatRequestNotification";
@@ -48,15 +51,19 @@ const ChatComponents = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+  <AuthProvider>
     <ChatProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
+		  {/*  로그인/회원가입을 명확하게 나눔 */}
+		  <Route path="/auth/login" element={<AuthPage />} />
+		  <Route path="/auth/signup" element={<AuthPage />} />
+		  
           <Route path="/" element={<Index />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/auth" element={<AuthPage />} />
           <Route path="/matching" element={<Matching />} />
           <Route path="/matching/:subject" element={<TeacherList />} />
           <Route path="/chat/:teacherId" element={<Chat />} />
@@ -82,6 +89,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </ChatProvider>
+	</AuthProvider>
   </QueryClientProvider>
 );
 

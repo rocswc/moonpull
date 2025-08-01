@@ -89,36 +89,35 @@ public class JoinServiceImpl implements JoinService {
         user.setUniversity(joinDTO.getUniversity());
         user.setMajor(joinDTO.getMajor());
 
-     // 5. 졸업증명서 파일 업로드 처리 (절대경로)
+     // 5. 졸업증명서 파일 업로드 처리 (STS 내부 경로)
         MultipartFile graduationFile = joinDTO.getGraduationFile();
         if (graduationFile != null && !graduationFile.isEmpty()) {
-            // 절대경로 지정 (윈도우 환경)
-            String uploadDir = "D:/졸업증명서 파일저장";
+            // STS4 프로젝트 내부에 저장할 경로
+            String uploadDir = new File("src/main/resources/static/uploads").getAbsolutePath();
 
-            // 경로가 없으면 생성
             File dir = new File(uploadDir);
             if (!dir.exists()) {
                 dir.mkdirs();
             }
 
-            // 안전한 파일명 생성 (UUID + 원본파일명 특수문자 _ 변환)
             String originalFilename = graduationFile.getOriginalFilename();
             String safeFilename = UUID.randomUUID().toString() + "_"
                 + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 
-            // 저장할 파일 객체 생성
             File targetFile = new File(dir, safeFilename);
 
             try {
                 graduationFile.transferTo(targetFile);
-                // DB에 저장될 경로 (절대경로 또는 상대경로 선택)
-                user.setGraduationFile(uploadDir + "/" + safeFilename);
+
+                // 💡 DB에는 상대경로 저장해두면 frontend에서 static 하위에 접근 가능
+                user.setGraduationFile("/uploads/" + safeFilename);
             } catch (IOException e) {
                 throw new RuntimeException("졸업증명서 파일 저장 실패", e);
             }
         } else {
             user.setGraduationFile(null);
         }
+
 
         // 6. 주민등록번호 AES256 암호화 후 저장
         String encryptedNationalId = aes256Util.encrypt(joinDTO.getNationalId());
