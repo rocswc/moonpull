@@ -5,7 +5,7 @@
 
 <mapper namespace="com.example.DAO.MentorReviewDAO">
 
-    <!-- 멘토 ID로 리뷰 조회 -->
+    <!-- 멘토 ID로 리뷰 조회 1-->
     <select id="getReviewsByMentorId" resultType="MentorReviewVO">
         SELECT * FROM mentor_review WHERE mentor_id = #{mentor_id}
     </select>

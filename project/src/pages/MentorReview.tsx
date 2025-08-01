@@ -27,7 +27,7 @@ const MentorReview = () => {
         headers: {
           "Content-Type": "application/json",
         },
-		credentials: "include", // ✅ 이 줄 추가!
+		credentials: "include", // ✅ 이 줄 추가!!
 		body: JSON.stringify({
           rating,
           feedback,
