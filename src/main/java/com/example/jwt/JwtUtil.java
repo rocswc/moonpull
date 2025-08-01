@@ -42,6 +42,7 @@ public class JwtUtil {
             return null;
         }
     }
+    
 
     // JWT에서 "roles" 클레임 추출 (예: ROLE_USER,ROLE_ADMIN)
     public String getRole(String token) {
