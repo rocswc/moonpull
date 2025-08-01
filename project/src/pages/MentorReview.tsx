@@ -12,26 +12,26 @@ const MentorReview = () => {
   const [feedback, setFeedback] = useState("");
 
   const mentorInfo = {
-    id: 2, // 실제 mentor_id
+    id: 2,
     name: "김역사",
     introduction: "서울대 한국사 전공, 10년 경력의 한국사 전문가",
     averageRating: 4.9,
   };
 
-  // 실제 로그인된 멘티 ID로 설정
-  const menteeId = 1;
+  const menteeId = 2;
 
   const submitReview = async () => {
     try {
-      const response = await fetch("http://localhost:8888/mentor-review/insert", {
+      const response = await fetch("/api/mentor-review/insert", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          rating: rating,
-          feedback: feedback,
-          menteeId: menteeId,
+		credentials: "include", // ✅ 이 줄 추가!
+		body: JSON.stringify({
+          rating,
+          feedback,
+          menteeId,
           mentorId: mentorInfo.id,
         }),
       });
