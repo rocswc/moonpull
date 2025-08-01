@@ -22,6 +22,8 @@ public class CustomUserDetailsServiceImpl implements CustomUserDetailsService {
     public CustomUserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         MemberVO user = userRepository.findByLoginid(username)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        
+   
 
         return new CustomUserDetails(user);
     }

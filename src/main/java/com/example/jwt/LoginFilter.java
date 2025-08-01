@@ -63,53 +63,65 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	// 로그인 성공 시 처리 (JWT를 HttpOnly 쿠키에 저장)
 	@Override
 	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-			FilterChain chain, Authentication authentication)
-					throws IOException, ServletException {
+	        FilterChain chain, Authentication authentication)
+	        throws IOException, ServletException {
 
-		CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-		String username = customUserDetails.getUsername();
+	    CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
+	    String username = customUserDetails.getUsername();
 
-		// 🔽 여기 추가
-		String nickname = customUserDetails.getNickname();  // CustomUserDetails에서 닉네임 가져오기
+	    // 그대로 유지
+	    String nickname = customUserDetails.getNickname();
 
-		Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-		String roles = authorities.stream()
-				.map(GrantedAuthority::getAuthority)
-				.collect(Collectors.joining(","));
+	    var authorities = authentication.getAuthorities();
+	    String roles = authorities.stream()
+	            .map(GrantedAuthority::getAuthority)
+	            .collect(Collectors.joining(","));
 
-		// JWT 생성 (1시간 유효)
-		String token = jwtUtil.createJwt(
-				username,
-				nickname,   // 이제 nickname 변수가 정의됨
-				roles,
-				60 * 60 * 1000L
-				);
+	    // ✅ ① JWT 만료시간: 1시간 -> 24시간
+	 // === 24시간 토큰 생성 (그대로 유지) ===
+	    String token = jwtUtil.createJwt(
+	            username,
+	            nickname,                 // 기존 JwtUtil 시그니처 그대로
+	            roles,
+	            24 * 60 * 60 * 1000L     // 하루(밀리초)
+	    );
 
+	    // === (여기부터 교체) HTTPS/SameSite 결정 ===
+	    // 1) HTTPS 여부 (프록시 뒤면 X-Forwarded-Proto 반영)
+	    boolean isHttps = request.isSecure()
+	            || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
 
+	    // 2) 크로스사이트 여부 간단 판별 → SameSite 결정
+	    String sameSite = "Lax"; // 기본값
+	    String origin = request.getHeader("Origin");
+	    if (origin != null) {
+	        try {
+	            java.net.URI o = java.net.URI.create(origin);
+	            String originHost   = o.getHost();
+	            String originScheme = o.getScheme();
+	            String reqHost      = request.getServerName();
+	            String reqScheme    = request.getScheme();
 
-		// JWT를 ResponseCookie로 설정 (SameSite 지원)
-		ResponseCookie cookie = ResponseCookie.from("jwt", token)
-				.httpOnly(true)
-				.secure(!request.getServerName().equals("localhost")) // 로컬은 false
-				.sameSite("Lax") // 또는 "None" (크로스사이트 대응 필요 시)
-				.path("/")
-				.maxAge(60 * 60) // 1시간
-				.build();
+	            boolean crossSite = !(originHost != null && originHost.equalsIgnoreCase(reqHost))
+	                              || !(originScheme != null && originScheme.equalsIgnoreCase(reqScheme));
+	            if (crossSite) sameSite = "None"; // 진짜 크로스사이트면 None
+	        } catch (Exception ignore) {}
+	    }
 
-		response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+	    // SameSite=None이면 Secure=true가 브라우저 정책상 필수
+	    boolean secureFlag = isHttps || "None".equals(sameSite);
 
-		System.out.println("[LoginFilter] 로그인 성공: 아이디 = " + username + ", 권한 = " + roles);
-		System.out.println("[LoginFilter] JWT 쿠키 발급 완료");
-		// 응답 바디 (닉네임과 역할 포함)
-		response.setContentType("application/json; charset=UTF-8");
-		response.setCharacterEncoding("UTF-8");
+	    // === 쿠키 생성/추가 (여기까지 교체) ===
+	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
+	            .httpOnly(true)
+	            .secure(secureFlag)     // ✅ 핵심: HTTPS이거나 SameSite=None일 때만 true
+	            .sameSite(sameSite)     // "Lax" 또는 "None"
+	            .path("/")
+	            .maxAge(24 * 60 * 60)   // 하루(초)
+	            .build();
 
-		// nickname과 role을 JSON으로 내려줌
-		String jsonResponse = String.format(
-			    "{\"message\": \"로그인 성공\", \"nickname\": \"%s\", \"roles\": \"%s\"}",
-			    nickname, roles
-			);
-		response.getWriter().write(jsonResponse);
+	    // setHeader 대신 addHeader 권장 (여러 Set-Cookie 지원)
+	    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 	}
 
 	// 로그인 실패 시 처리
