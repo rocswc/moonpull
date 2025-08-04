@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Check, X } from "lucide-react";
-import { useChat, ChatRequest } from "@/contexts/ChatContext";
-import OnlineUserListWithReport from "@/components/OnlineUserListWithReport"; // ✅ 추가
-
+import { useChat, ChatRequest } from "@/contexts/ChatContext";  
+import { OnlineUserListWithReport } from "@/contexts/ChatContext"; 
+  
 interface ChatRequestNotificationProps {
   request: ChatRequest;
-}
+}  
 
 const ChatRequestNotification: React.FC<ChatRequestNotificationProps> = ({ request }) => {
   const { acceptChatRequest, rejectChatRequest } = useChat();
