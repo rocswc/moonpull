@@ -2,7 +2,6 @@ package com.example.service;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.hc.client5.http.fluent.Request;
@@ -22,6 +21,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Autowired
     private PaymentRepository paymentRepository;
     
+    @Transactional 
     public Map<String, Object> confirmPayment(PaymentDTO req) {
         try {
             // 1. 토스페이먼츠 결제 확인 API 호출
@@ -55,6 +55,9 @@ public class PaymentServiceImpl implements PaymentService {
             
             // 3. DB에 결제 정보 저장 (트랜잭션 내에서 실행)
             PaymentDTO paymentData = new PaymentDTO();
+            SubscribeDTO subscriptionData = new SubscribeDTO();
+            
+          //결제 테이블에 정보를 세팅(임시)
             paymentData.setMember_id(1);
             paymentData.setName("김갑중");
             paymentData.setEmail("kkjspdlqj@naver.com");
@@ -65,10 +68,14 @@ public class PaymentServiceImpl implements PaymentService {
             paymentData.setPayment_status((String)responseMap.get("status"));
             paymentData.setPayment_key(req.getPayment_key());
             
-      
+            //구독 테이블에 정보를 세팅
+            subscriptionData.setMember_id(1);
+            subscriptionData.setPlan_type(req.getPlan_type());         
+            subscriptionData.setStatus("ACTIVE");
+            subscriptionData.setAmount(req.getAmount());
+
             paymentRepository.insertPayment(paymentData);
-            paymentRepository.createSubscription(null);
-            
+            paymentRepository.insertSubscription(subscriptionData);       
             return responseMap;
             
         } catch (Exception e) {     

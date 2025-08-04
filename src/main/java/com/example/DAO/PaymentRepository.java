@@ -6,5 +6,5 @@ import com.example.dto.SubscribeDTO;
 @Mapper
 public interface PaymentRepository {
 	Integer insertPayment(PaymentDTO vo);
-	Integer createSubscription(SubscribeDTO vo);
+	Integer insertSubscription(SubscribeDTO vo);
 }
