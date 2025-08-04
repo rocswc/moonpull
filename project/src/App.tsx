@@ -4,8 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ChatProvider, useChat } from "@/contexts/ChatContext";
-
-
+import PrivateRoute from "@/components/common/PrivateRoute";
+import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -33,6 +33,8 @@ import MyChatBot from "./components/MyChatBot";
 import Checkout from "./pages/Checkout"; 
 import Success from "./pages/Success"; 
 import Fail from "./pages/Fail"; 
+import PaymentSubscribe from "./pages/PaymentSubscribe"; 
+
 const queryClient = new QueryClient();
 
 const ChatComponents = () => {
@@ -51,45 +53,50 @@ const ChatComponents = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-  <AuthProvider>
-    <ChatProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-		  {/*  로그인/회원가입을 명확하게 나눔 */}
-		  <Route path="/auth/login" element={<AuthPage />} />
-		  <Route path="/auth/signup" element={<AuthPage />} />
-          <Route path="/" element={<Index />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/matching" element={<Matching />} />
-          <Route path="/matching/:subject" element={<TeacherList />} />
-          <Route path="/chat/:teacherId" element={<Chat />} />
-          <Route path="/wrong-note" element={<WrongNotePage />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/mypage" element={<MyPage />} />
-          <Route path="/profileEdit" element={<ProfileEdit />} />
-          <Route path="/subscriptionStatus" element={<SubscriptionStatus />} />
-          <Route path="/mentorReview" element={<MentorReview />} />
-           <Route path="/search" element={<SearchResultPage />} />
-           <Route path="/admin/logs" element={<LogMonitoring />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/mentor" element={<MentorPage />} />
-          <Route path="/mentte" element={<MenteePage />} />
-          <Route path="/chatbot" element={<MyChatBot />} />       
-          <Route path="/payment/checkout" element={<Checkout />} /> {/* 결제화면 호출 페이지 */}
-          <Route path="/payment/success" element={<Success />} /> {/* 결제 성공 페이지 */}
-          <Route path="/payment/fail" element={<Fail />} /> {/* 결제 실패 페이지 */}
-          </Routes>
-          <ChatComponents />
-        </BrowserRouter>
-      </TooltipProvider>
-    </ChatProvider>
-	</AuthProvider>
-  </QueryClientProvider>
-);
+    <AuthProvider>
+      <ChatProvider>
+        <TooltipProvider>
+          
+          <BrowserRouter>
+            <Routes>
+		      {/*  로그인/회원가입을 명확하게 나눔 */}
+		      <Route path="/auth/login" element={<AuthPage />} />
+		      <Route path="/auth/signup" element={<AuthPage />} />
+			  
+			  {/* 메인 페이지는 보호x */}
+			  <Route path="/" element={<Index />} /> 
+		      {/*  로그인 필요 페이지 보호 시작 */}
+		      <Route path="/pricing" element={<PrivateRoute><Pricing /></PrivateRoute>} />
+		      <Route path="/matching" element={<PrivateRoute><Matching /></PrivateRoute>} />
+		      <Route path="/matching/:subject" element={<PrivateRoute><TeacherList /></PrivateRoute>} />
+		      <Route path="/chat/:teacherId" element={<PrivateRoute><Chat /></PrivateRoute>} />
+		      <Route path="/wrong-note" element={<PrivateRoute><WrongNotePage /></PrivateRoute>} />
+		      <Route path="/quiz" element={<PrivateRoute><Quiz /></PrivateRoute>} />
+		      <Route path="/mypage" element={<PrivateRoute><MyPage /></PrivateRoute>} />
+		      <Route path="/profileEdit" element={<PrivateRoute><ProfileEdit /></PrivateRoute>} />
+		      <Route path="/subscriptionStatus" element={<PrivateRoute><SubscriptionStatus /></PrivateRoute>} />
+		      <Route path="/mentorReview" element={<PrivateRoute><MentorReview /></PrivateRoute>} />
+		      <Route path="/search" element={<PrivateRoute><SearchResultPage /></PrivateRoute>} />
+		      <Route path="/admin/logs" element={<PrivateRoute><LogMonitoring /></PrivateRoute>} />
+		      <Route path="/admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
+		      <Route path="/mentor" element={<PrivateRoute><MentorPage /></PrivateRoute>} />
+		      <Route path="/mentte" element={<PrivateRoute><MenteePage /></PrivateRoute>} />
+		      <Route path="/chatbot" element={<PrivateRoute><MyChatBot /></PrivateRoute>} />       
 
+		      {/* 결제 관련 페이지들도 모두 로그인 필요 */}
+		      <Route path="/payment/checkout" element={<PrivateRoute><Checkout /></PrivateRoute>} /> {/* 결제화면 호출 페이지 */}
+		      <Route path="/payment/success" element={<PrivateRoute><Success /></PrivateRoute>} />   {/* 결제 성공 페이지 */}
+		      <Route path="/payment/fail" element={<PrivateRoute><Fail /></PrivateRoute>} />         {/* 결제 실패 페이지 */}
+			  <Route path="/payment/paymentSubscribe" element={<PaymentSubscribe />} /> {/* 결제화면 호출 페이지(구독) */}
+			  
+		      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+			  <Route path="*" element={<NotFound />} />
+              </Routes>
+              <ChatComponents />
+            </BrowserRouter>
+          </TooltipProvider>
+        </ChatProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+);
 export default App;

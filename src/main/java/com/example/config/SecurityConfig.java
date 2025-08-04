@@ -29,19 +29,19 @@ import com.example.security.CustomAccessDeniedHandler;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-	private final AuthenticationConfiguration authenticationConfiguration;
-	private final JwtUtil jwtUtil;
-	private final UserRepository userRepository;
+   private final AuthenticationConfiguration authenticationConfiguration;
+   private final JwtUtil jwtUtil;
+   private final UserRepository userRepository;
 
-	public SecurityConfig(
-	    AuthenticationConfiguration authenticationConfiguration,
-	    JwtUtil jwtUtil,
-	    UserRepository userRepository // ✅ 매개변수에 추가
-	) {
-	    this.authenticationConfiguration = authenticationConfiguration;
-	    this.jwtUtil = jwtUtil;
-	    this.userRepository = userRepository; // ✅ 정상 초기화
-	}
+   public SecurityConfig(
+       AuthenticationConfiguration authenticationConfiguration,
+       JwtUtil jwtUtil,
+       UserRepository userRepository // ✅ 매개변수에 추가
+   ) {
+       this.authenticationConfiguration = authenticationConfiguration;
+       this.jwtUtil = jwtUtil;
+       this.userRepository = userRepository; // ✅ 정상 초기화
+   }
 
     // AuthenticationManager
     @Bean
@@ -60,11 +60,11 @@ public class SecurityConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(
-        	    "http://localhost:3000",
-        	    "http://localhost:8888",
-        	    "http://192.168.56.1:8888",
-        	    "http://192.168.0.27:8888"
-        	));
+               "http://localhost:3000",
+               "http://localhost:8888",
+               "http://192.168.56.1:8888",
+               "http://192.168.0.27:8888"
+           ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // 필요하면 명시적으로: List.of("Content-Type","X-XSRF-TOKEN","Authorization")
         config.setAllowedHeaders(List.of("*"));
@@ -105,26 +105,35 @@ public class SecurityConfig {
                         "/",
                         "/api/login",
                         "/api/join",
+                        "/api/profile/check-email",
+                        "/api/profile/check-phone",                      
                         "/api/check-duplicate",
                         "/api/keywords/trending",
                         "/api/keywords/autocomplete",
                         "/api/kibana/**"
                 ).permitAll() 
-            	    
-            	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
-            	    .requestMatchers("/admin/**").permitAll()
-            	    .requestMatchers("/api/admin/**").permitAll()
-            	  //.requestMatchers("/admin/**").hasRole("ADMIN")
-            	    .requestMatchers("/mentor-review/**").permitAll()
-            	  //.requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
-            	    .requestMatchers("/mentee/**").permitAll() 	    
-            	    //.requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
-            	    .requestMatchers("/payments/**").permitAll()
-            	    .requestMatchers("/mentorReview/**").permitAll()
-            	    .requestMatchers(HttpMethod.POST, "/api/chat/log").permitAll()
-            	    .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
-            	    .anyRequest().authenticated()// 그 외에는 인증 필요
-            	)
+                   
+                
+                   .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")       
+                   .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                   .requestMatchers("/admin/**").permitAll()
+                 //.requestMatchers("/admin/**").hasRole("ADMIN")
+                 //.requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
+                   .requestMatchers("/mentee/**").permitAll()        
+                   //.requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
+                   .requestMatchers("/payments/**").permitAll()
+                   .requestMatchers(HttpMethod.POST, "/api/chat/log").permitAll()
+                   .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
+                   .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated() // 프로필 수정 인증 필요
+                 
+                   // 멘토리뷰?
+                   .requestMatchers("/api/mentor-review/**").permitAll()
+                   .requestMatchers("/mentor-review/**").permitAll()
+                   .requestMatchers("/mentorReview/**").permitAll()
+                   
+                   .requestMatchers("/api/admin/spam-stats").permitAll()
+                   .anyRequest().authenticated()// 그 외에는 인증 필요
+               )
 
             // 접근 거부 처리
             .exceptionHandling(ex ->
