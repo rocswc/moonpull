@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.VO.ChatLogRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -22,8 +23,10 @@ public class ChatLogController {
         logData.put("roomId", request.getRoomId());
         logData.put("senderId", request.getSenderId());
         logData.put("content", request.getContent());
-        logData.put("timestamp", Instant.now().toString());
+        logData.put("timestamp", request.getTimestamp());
+        logData.put("abusive", request.isAbusive());
 
-        log.info(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(logData));
+        log.info(new ObjectMapper().writeValueAsString(logData));
     }
 }
+

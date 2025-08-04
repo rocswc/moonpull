@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, MessageSquare, Search, Ban, Eye, Info } from "lucide-react";
 import {
@@ -13,17 +12,17 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
+  Legend,
 } from "recharts";
 
 const AnomalyDetection = () => {
   const [selectedTab, setSelectedTab] = useState("spam-detection");
   const [reportLogs, setReportLogs] = useState([]);
+  const [spamData, setSpamData] = useState([]);
 
   useEffect(() => {
     fetchReports();
+    fetchSpamStats();
   }, []);
 
   const fetchReports = () => {
@@ -32,17 +31,36 @@ const AnomalyDetection = () => {
       .catch(err => console.error("신고 목록 로딩 실패", err));
   };
 
-  const handleToggleUserStatus = async (id: number, isBanned: boolean) => {
+  const fetchSpamStats = () => {
+    axios.get("/api/admin/spam-stats")
+      .then(res => {
+        const rawData = Array.isArray(res.data) ? res.data : [];
+        const top3SpamMessages = rawData
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3)
+          .map(item => ({
+            ...item,
+            label: item.message.length > 12 ? item.message.slice(0, 12) + "..." : item.message,
+            tooltipLabel: `[${item.time?.split("T")[1]?.slice(0,5) || "--:--"}] ${item.message}`
+          }));
+        setSpamData(top3SpamMessages);
+      })
+      .catch(err => {
+        console.error("❌ 스팸 통계 로딩 실패", err);
+      });
+  };
+
+  const handleToggleUserStatus = async (id, isBanned) => {
     try {
       const url = isBanned ? `/api/admin/unban/${id}` : `/api/admin/ban/${id}`;
       await axios.post(url);
-      fetchReports(); // 상태 갱신
+      fetchReports();
     } catch (error) {
       console.error(`${isBanned ? "해제" : "비활성화"} 요청 실패`, error);
     }
   };
 
-  const handleViewDetails = (id: number) => {
+  const handleViewDetails = (id) => {
     console.log(`상세 보기 - ID: ${id}`);
   };
 
@@ -54,23 +72,16 @@ const AnomalyDetection = () => {
           targetNickname: log.targetNickname ?? `ID:${log.targetUserId}`,
           reportCount: log.reportCount,
         }))
-        // 중복 제거 (같은 targetUserId는 마지막 값으로 유지됨)
         .sort((a, b) => b.reportCount - a.reportCount)
-        .map(item => [item.targetUserId, item]) // Map: key=userId, value=item
+        .map(item => [item.targetUserId, item])
     ).values()
   )
-    .sort((a, b) => b.reportCount - a.reportCount) // 다시 정렬 (Map은 순서 유지 안 됨)
-    .slice(0, 3) // 🔥 Top 3만
+    .sort((a, b) => b.reportCount - a.reportCount)
+    .slice(0, 3)
     .map(user => ({
       name: user.targetNickname,
       value: user.reportCount,
     }));
-
-  const offensiveTopWords = [
-    { name: "XX놈", value: 120, color: "#ef4444" },
-    { name: "꺼져", value: 95, color: "#f97316" },
-    { name: "ㅅㅂ", value: 80, color: "#eab308" },
-  ];
 
   return (
     <div className="space-y-6">
@@ -83,24 +94,7 @@ const AnomalyDetection = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={offensiveTopWords}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {offensiveTopWords.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${value}회`} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="w-full h-[300px]">{/* 추후 추가 */}</div>
           </CardContent>
         </Card>
 
@@ -117,10 +111,45 @@ const AnomalyDetection = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value: number) => `${value}회`} />
+                <Tooltip formatter={(value) => `${value}회`} />
                 <Bar dataKey="value" fill="#ef4444" />
               </BarChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Ban className="w-5 h-5 text-admin-danger" />
+              반복 메시지 Top 3
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {spamData.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground">📭 스팸 통계 데이터가 없습니다.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={spamData} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="label"
+                    interval={0}
+                    tick={{ fontSize: 12 }}
+                    height={50}
+                  />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip
+                    formatter={(value) => [`${value}회`, "반복 횟수"]}
+                    labelFormatter={(_, payload) =>
+                      `메시지: ${payload?.[0]?.payload?.tooltipLabel || "N/A"}`
+                    }
+                  />
+                  <Legend />
+                  <Bar dataKey="count" fill="#f59e0b" name="반복 메시지 수" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
