@@ -1,28 +1,26 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-import { IdCard } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
+import axios, { AxiosError } from "axios";
 import Navigation from "@/components/Navigation";
-import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
+import NaverLoginButton from "@/components/socialLogin/NaverLoginButton";
+import KakaoLoginButton from "@/components/socialLogin/KakaoLoginButton";
+import GoogleLoginButton from "@/components/socialLogin/GoogleLoginButton";
 
 const AuthPage = () => {
   const location = useLocation();
-  const [isLogin, setIsLogin] = useState(location.pathname.includes("/login"));
-
-  useEffect(() => {
-    setIsLogin(location.pathname.includes("/login"));
-  }, [location.pathname]);
-
-  const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const { isLoggedIn, login } = useAuth();
+
+  const [isLogin, setIsLogin] = useState(location.pathname.includes("/login"));
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     login_id: "",
@@ -42,6 +40,26 @@ const AuthPage = () => {
     major: "",
     graduation_file: null as File | null,
   });
+
+  // 1) 쿼리 파라미터 읽어서 로그인 필요 시 토스트 띄우기
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("reason") === "unauthorized") {
+      toast.warning("로그인이 필요합니다.");
+    }
+  }, [location]);
+
+  // 2) 로그인 상태면 홈으로 이동
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate("/", { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
+
+  // 3) 경로 변화 감지해서 로그인/회원가입 모드 관리
+  useEffect(() => {
+    setIsLogin(location.pathname.includes("/login"));
+  }, [location.pathname]);
 
   const resetToLogin = () => {
     setFormData({
@@ -172,7 +190,7 @@ const AuthPage = () => {
         }, { withCredentials: true });
 
         const { nickname, roles } = res.data;
-        login({ nickname: nickname ?? "사용자", role: Array.isArray(roles) ? roles[0] ?? "" : roles ?? "" });
+		login(res.data); // ServerUser 타입 그대로 넘김
         navigate("/");
       }
 	  } catch (error) {
@@ -456,13 +474,17 @@ const AuthPage = () => {
                   </div>
                 )}
 
-                {isLogin && (
-                  <div className="text-right">
-                    <button type="button" className="text-sm text-primary hover:underline">
-                      비밀번호를 잊으셨나요?
-                    </button>
-                  </div>
-                )}
+				{isLogin && (
+				  <div className="text-right">
+				    <button
+				      type="button"
+				      className="text-sm text-primary hover:underline"
+				      onClick={() => navigate("/auth/reset-password")}
+				    >
+				      비밀번호를 잊으셨나요?
+				    </button>
+				  </div>
+				)}
 
                 <Button type="submit" variant="hero" size="lg" className="w-full">
                   {isLogin ? "로그인" : "회원가입"}
@@ -476,17 +498,11 @@ const AuthPage = () => {
                 </span>
               </div>
 
-              <div className="space-y-3">
-                <Button type="button" variant="outline" size="lg" className="w-full">
-                  구글로 {isLogin ? "로그인" : "회원가입"}
-                </Button>
-                <Button type="button" variant="outline" size="lg" className="w-full">
-                  카카오로 {isLogin ? "로그인" : "회원가입"}
-                </Button>
-                <Button type="button" variant="outline" size="lg" className="w-full">
-                  네이버로 {isLogin ? "로그인" : "회원가입"}
-                </Button>
-              </div>
+			  <div className="space-y-3">
+			    <GoogleLoginButton />
+			    <KakaoLoginButton />
+			    <NaverLoginButton />
+			  </div>
 
               {!isLogin && (
                 <p className="text-xs text-muted-foreground text-center">
