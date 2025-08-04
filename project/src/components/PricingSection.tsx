@@ -1,17 +1,20 @@
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, CreditCard, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const PricingSection = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const navigate = useNavigate();
+  
   const plans = [
     {
       name: "무료",
       description: "BASIC",
       price: "무료",
       period: "",
+      paymentType: "free",
+      paymentLabel: "무료 체험",
       features: [
         "하루에 2번 제 질문 가능",
         "AI 문제 풀이와 여러 문제 질착 가능을 하루에 2번만 이용할 수 있어요",
@@ -27,6 +30,8 @@ const PricingSection = () => {
       description: "PLUS",
       price: "₩12,500",
       period: "/ 월간",
+      paymentType: "onetime",
+      paymentLabel: "일시불 결제",
       features: [
         "무제한 질문과 답변",
         "AI 문제 풀이와 여러 문제 질착 가능을 제한없이 이용할 수 있어요",
@@ -39,7 +44,7 @@ const PricingSection = () => {
         "무제한 무료 노트 필기 검화",
         "자유롭게 필기 및 공재 틀이 적혀을 무료로 사용할 수 있어요!"
       ],
-      buttonText: "프리미엄 시작하기",
+      buttonText: "1개월 이용하기",
       buttonVariant: "hero" as const,
       popular: false
     },
@@ -48,6 +53,8 @@ const PricingSection = () => {
       description: "PREMIUM",
       price: "₩130,000",
       period: "/ 연간",
+      paymentType: "subscription",
+      paymentLabel: "자동결제 구독",
       originalPrice: "₩150,000",
       discount: "₩20,000 할인",
       features: [
@@ -62,7 +69,7 @@ const PricingSection = () => {
         "무제한 무료 노트 필기 검화",
         "자유롭게 필기 및 공재 틀이 적혀을 무료롬 사용할 수 있어요"
       ],
-      buttonText: "연간 프리미엄 시작하기",
+      buttonText: "연간 구독 시작하기",
       buttonVariant: "hero" as const,
       popular: false
     }
@@ -72,8 +79,22 @@ const PricingSection = () => {
     if (plan.name === "무료") {
       alert("안녕");
     } else {
-      const amount = plan.name === "월간 플러스" ? 12500 : 130000;
-      navigate("/payment/checkout", { state: { amount, planName: plan.description } });
+      if(plan.name === "월간 플러스"){
+        navigate("/payment/checkout", { state: { amount:12500, planName: plan.description, paymentType: 'onetime' } });
+      }else{
+        navigate("/payment/paymentSubscribe", { state: { amount:130000, planName: plan.description, paymentType: 'subscription' } });
+      }
+    }
+  };
+
+  const getPaymentIcon = (paymentType) => {
+    switch(paymentType) {
+      case 'onetime':
+        return <CreditCard className="w-4 h-4" />;
+      case 'subscription':
+        return <RefreshCw className="w-4 h-4" />;
+      default:
+        return null;
     }
   };
 
@@ -106,7 +127,7 @@ const PricingSection = () => {
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <span className="bg-orange-600 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                    프리미엄
+                    인기
                   </span>
                 </div>
               )}
@@ -116,6 +137,21 @@ const PricingSection = () => {
                 <div className="text-center space-y-2">
                   <div className="text-sm font-medium opacity-80">{plan.description}</div>
                   <h3 className="text-xl font-bold">{plan.name}</h3>
+                  
+                  {/* Payment Type Badge */}
+                  {plan.paymentType !== 'free' && (
+                    <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${
+                      plan.popular || hoveredIndex === index 
+                        ? 'bg-white/20 text-white' 
+                        : plan.paymentType === 'onetime' 
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    }`}>
+                      {getPaymentIcon(plan.paymentType)}
+                      <span>{plan.paymentLabel}</span>
+                    </div>
+                  )}
+                  
                   {plan.originalPrice && (
                     <div className="flex items-center justify-center space-x-2">
                       <span className="text-base line-through opacity-60">{plan.originalPrice}</span>
@@ -128,6 +164,18 @@ const PricingSection = () => {
                     <span className="text-3xl font-bold">{plan.price}</span>
                     <span className="text-sm opacity-75">{plan.period}</span>
                   </div>
+                  
+                  {/* Payment Info */}
+                  {plan.paymentType === 'onetime' && (
+                    <p className={`text-xs mt-2 ${plan.popular || hoveredIndex === index ? 'text-white/80' : 'text-muted-foreground'}`}>
+                      한 번만 결제하고 1개월 이용
+                    </p>
+                  )}
+                  {plan.paymentType === 'subscription' && (
+                    <p className={`text-xs mt-2 ${plan.popular || hoveredIndex === index ? 'text-white/80' : 'text-muted-foreground'}`}>
+                      매년 자동 결제 (언제든 해지 가능)
+                    </p>
+                  )}
                 </div>
 
                 {/* Features */}
@@ -162,10 +210,19 @@ const PricingSection = () => {
 
               {/* Button */}
               <div className="mt-8">
+                {/* Additional payment info above button */}
+                {plan.paymentType !== 'free' && (
+                  <p className={`text-xs text-center mb-3 ${
+                    plan.popular || hoveredIndex === index ? 'text-white/70' : 'text-muted-foreground'
+                  }`}>
+                    {plan.paymentType === 'onetime' ? '카드 정보는 저장되지 않아요' : '구독 관리에서 언제든 해지 가능'}
+                  </p>
+                )}
+                
                 <Button
                   onClick={() => handleButtonClick(plan)}
                   variant="hero"
-                  className={`w-full py-3 text-base rounded-xl font-semibold ${
+                  className={`w-full py-3 text-base rounded-xl font-semibold transition-all ${
                     plan.popular || hoveredIndex === index
                       ? 'bg-white text-orange-500 hover:bg-gray-100'
                       : 'bg-orange-500 text-white hover:bg-orange-600'
@@ -179,10 +236,20 @@ const PricingSection = () => {
         </div>
 
         {/* Footer Note */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-12 space-y-2">
           <p className="text-sm text-muted-foreground">
             질의 여러 문제 질착 / 등등상 풀이 / 1:1 선생님 질문은 량다 앱에서 사용할 수 있어요.
           </p>
+          <div className="flex items-center justify-center space-x-6 text-xs text-muted-foreground">
+            <div className="flex items-center space-x-1">
+              <CreditCard className="w-3 h-3" />
+              <span>일시불: 한 번만 결제</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <RefreshCw className="w-3 h-3" />
+              <span>구독: 자동 갱신</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
