@@ -18,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import com.example.DAO.UserRepository;
 import com.example.jwt.JwtFilter;
 import com.example.jwt.JwtUtil;
 import com.example.jwt.LoginFilter;
@@ -28,13 +29,19 @@ import com.example.security.CustomAccessDeniedHandler;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    private final AuthenticationConfiguration authenticationConfiguration;
-    private final JwtUtil jwtUtil;
+	private final AuthenticationConfiguration authenticationConfiguration;
+	private final JwtUtil jwtUtil;
+	private final UserRepository userRepository;
 
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JwtUtil jwtUtil) {
-        this.authenticationConfiguration = authenticationConfiguration;
-        this.jwtUtil = jwtUtil;
-    }
+	public SecurityConfig(
+	    AuthenticationConfiguration authenticationConfiguration,
+	    JwtUtil jwtUtil,
+	    UserRepository userRepository // ✅ 매개변수에 추가
+	) {
+	    this.authenticationConfiguration = authenticationConfiguration;
+	    this.jwtUtil = jwtUtil;
+	    this.userRepository = userRepository; // ✅ 정상 초기화
+	}
 
     // AuthenticationManager
     @Bean
@@ -52,12 +59,12 @@ public class SecurityConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "http://localhost:8888",
-            "http://192.168.56.1:8888",
-            "http://192.168.0.27:8888"
-        ));
+        config.setAllowedOriginPatterns(List.of(
+        	    "http://localhost:3000",
+        	    "http://localhost:8888",
+        	    "http://192.168.56.1:8888",
+        	    "http://192.168.0.27:8888"
+        	));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // 필요하면 명시적으로: List.of("Content-Type","X-XSRF-TOKEN","Authorization")
         config.setAllowedHeaders(List.of("*"));
@@ -80,11 +87,13 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(httpBasic -> httpBasic.disable())
+            .headers(headers -> headers.frameOptions().sameOrigin())
 
             // JWT 로그인/검증 필터 등록
             .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil),
                     UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new JwtFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class)
+
 
             // 인가 규칙
             .authorizeHttpRequests(auth -> auth
@@ -98,7 +107,8 @@ public class SecurityConfig {
                         "/api/join",
                         "/api/check-duplicate",
                         "/api/keywords/trending",
-                        "/api/keywords/autocomplete"
+                        "/api/keywords/autocomplete",
+                        "/api/kibana/**"
                 ).permitAll() 
             	    
             	    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")	    
@@ -112,7 +122,7 @@ public class SecurityConfig {
             	    .requestMatchers("/payments/**").permitAll()
             	    .requestMatchers("/mentorReview/**").permitAll()
             	    .requestMatchers(HttpMethod.POST, "/api/chat/log").permitAll()
-            	    .requestMatchers(HttpMethod.GET, "/api/user").permitAll()
+            	    .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
             	    .anyRequest().authenticated()// 그 외에는 인증 필요
             	)
 
