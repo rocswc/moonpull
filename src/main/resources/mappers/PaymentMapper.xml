@@ -4,12 +4,13 @@
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.example.DAO.PaymentRepository">
+
 	<insert id="insertPayment" parameterType="com.example.dto.PaymentDTO">
     	INSERT INTO payment(member_id,order_id,order_name,name,email,payment_method,amount,payment_status,payment_key,paid_at)
     	VALUES(#{member_id},#{order_id},#{order_name},#{name},#{email},#{payment_method},#{amount},#{payment_status},#{payment_key},NOW())
 	</insert>
 	
-	<insert id="createSubscription" parameterType="com.example.dto.SubscriptionDTO">
+	<insert id="insertSubscription" parameterType="com.example.dto.SubscribeDTO">
     	INSERT INTO subscribe(member_id,plan_type,status,amount,started_at,expires_at)
     	VALUES(#{member_id},#{plan_type},#{status},#{amount},NOW(),	
 		<choose>
@@ -25,4 +26,5 @@
     	</choose>
     	)
 	</insert>
+	
 </mapper>
