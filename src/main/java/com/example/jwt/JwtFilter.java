@@ -48,21 +48,27 @@ public class JwtFilter extends OncePerRequestFilter {
         // 1. 인증 예외 경로
         String path = request.getRequestURI();
         if (
-            path.equals("/api/login") ||
-            path.equals("/api/join") ||
-            path.equals("/api/check-duplicate") ||
-            path.equals("/api/keywords/trending") ||
-            path.startsWith("/admin/") ||
-            path.equals("/apply/mentor") ||
-            path.equals("/mentorReview/insert") ||
-            path.startsWith("/mentorReview/") ||
-            path.startsWith("/mentee/") ||
-            path.startsWith("/payments/") ||
-            path.startsWith("/api/mentor-review/")
-        ) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        	    path.equals("/api/login") ||
+        	    path.equals("/api/join") ||
+        	    path.equals("/api/check-duplicate") ||
+        	    path.equals("/api/keywords/trending") ||
+        	    path.equals("/api/keywords/autocomplete") ||
+        	    path.equals("/api/profile/check-email") ||
+        	    path.equals("/api/profile/check-phone") ||
+        	    path.equals("/api/chat/log") ||
+
+        	    path.startsWith("/admin/") ||
+        	    path.equals("/apply/mentor") ||
+        	    path.startsWith("/mentee/") ||
+        	    path.startsWith("/payments/") ||
+
+        	    path.startsWith("/api/mentor-review/") ||
+        	    path.equals("/mentorReview/insert") ||
+        	    path.startsWith("/mentorReview/")
+        	) {
+        	    filterChain.doFilter(request, response);
+        	    return;
+        	}
 
         // 2. 쿠키에서 JWT 추출
         String token = null;
