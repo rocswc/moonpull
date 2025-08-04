@@ -8,8 +8,12 @@ const SuccessPage = () => {
   const payment_key = searchParams.get("paymentKey");
   const order_id = searchParams.get("orderId");
   const amount = searchParams.get("amount");
+  const plan_type = searchParams.get("planName");
 
   async function confirmPayment() {
+    console.log(payment_key);
+    console.log(order_id);
+    console.log(amount);
     const response = await fetch("http://localhost:8080/payments/confirm", {
       method: "POST",
       headers: {
@@ -18,7 +22,8 @@ const SuccessPage = () => {
       body: JSON.stringify({
         payment_key,
         order_id,
-        amount
+        amount,
+        plan_type
       })
     });
 
