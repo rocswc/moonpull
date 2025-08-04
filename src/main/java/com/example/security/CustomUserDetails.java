@@ -64,6 +64,10 @@ public class CustomUserDetails implements UserDetails {
                 : nickname;
     }
 
+    // ✅ 추가된 부분: userId 꺼내기
+    public Integer getUserId() {
+        return memberVO.getUserId();
+    }
 
     // memberVO를 그대로 가져오는 메서드
     public MemberVO getMemberVO() {
@@ -72,10 +76,13 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() { return true; }
+
     @Override
     public boolean isAccountNonLocked() { return true; }
+
     @Override
     public boolean isCredentialsNonExpired() { return true; }
+
     @Override
     public boolean isEnabled() { return true; }
 }
