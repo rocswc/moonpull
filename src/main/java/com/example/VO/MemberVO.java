@@ -41,8 +41,12 @@ public class MemberVO {
     @Column(nullable = false, length = 30)
     private String roles; // 권한 정보 (예: MENTEE, MENTOR, ADMIN)
 
-    @Column(name = "national_id", nullable = false, unique = true, length = 255)
-    private String nationalid;
+    // ✅ 주민등록번호 제거하고 생년월일 및 성별 추가
+    @Column(name = "birthday", nullable = false, length = 8)
+    private String birthday; // 생년월일 (예: 19991111)
+
+    @Column(name = "gender", nullable = false, length = 1)
+    private String gender; // 성별 (예: 'M', 'F')
 
     @Column(name = "phone_number", nullable = false, unique = true, length = 20)
     private String phonenumber; // 전화번호 (필수, 중복 불가)

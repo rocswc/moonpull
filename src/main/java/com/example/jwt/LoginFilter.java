@@ -47,12 +47,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 			String loginid = loginRequest.getLoginId();
 			String password = loginRequest.getPassword();
 
-			System.out.println("[LoginFilter] 입력 loginId=" + loginid);
+			 System.out.println("[LoginFilter] 입력 loginId: " + loginid);
+		     System.out.println("[LoginFilter] 입력 password: " + password); // 실제 서비스에서는 빼야 하지만 디버깅 시 필요
 
 			UsernamePasswordAuthenticationToken authToken =
 					new UsernamePasswordAuthenticationToken(loginid, password);
 
-			return authenticationManager.authenticate(authToken);
+			Authentication result = authenticationManager.authenticate(authToken);
+			System.out.println("[LoginFilter] 인증 성공?: " + result.isAuthenticated());
+			return result;
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -68,6 +71,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
 	    CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
 	    String username = customUserDetails.getUsername();
+	    
+	    System.out.println("[LoginFilter] 로그인 성공. 사용자: " + username);
 
 	    // 그대로 유지
 	    String nickname = customUserDetails.getNickname();
@@ -113,12 +118,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
 	    // === 쿠키 생성/추가 (여기까지 교체) ===
 	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
-	            .httpOnly(true)
-	            .secure(secureFlag)     // ✅ 핵심: HTTPS이거나 SameSite=None일 때만 true
-	            .sameSite(sameSite)     // "Lax" 또는 "None"
-	            .path("/")
-	            .maxAge(24 * 60 * 60)   // 하루(초)
-	            .build();
+	    	    .httpOnly(true)
+	    	    .secure(false)          // ✅ HTTP 환경에서는 false 필수
+	    	    .sameSite("Lax")        // ✅ 기본값이므로 생략도 가능
+	    	    .path("/")
+	    	    .maxAge(24 * 60 * 60)
+	    	    .build();
 
 	    // setHeader 대신 addHeader 권장 (여러 Set-Cookie 지원)
 	    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());

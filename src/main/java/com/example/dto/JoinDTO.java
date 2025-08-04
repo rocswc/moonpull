@@ -1,9 +1,7 @@
 package com.example.dto;
 
 import org.springframework.web.multipart.MultipartFile;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
 
 @Data
@@ -33,9 +31,6 @@ public class JoinDTO {
     @JsonProperty("roles")
     private String roles;
 
-    @JsonProperty("national_id")
-    private String nationalId;
-
     @JsonProperty("phone_number")
     private String phoneNumber;
 
@@ -47,6 +42,12 @@ public class JoinDTO {
 
     @JsonProperty("major")
     private String major;
+
+    @JsonProperty("birthday")
+    private String birthday; // 생년월일 (예: "19991111")
+
+    @JsonProperty("gender")
+    private String gender; // 성별 ("M" 또는 "F")
 
     private MultipartFile graduationFile;
 }

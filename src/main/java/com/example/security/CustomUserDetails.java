@@ -58,8 +58,12 @@ public class CustomUserDetails implements UserDetails {
 
     // 닉네임 꺼내기
     public String getNickname() {
-        return memberVO.getNickname();  // ✅ MemberVO에서 닉네임 꺼냄
+        String nickname = memberVO.getNickname();
+        return (nickname == null || nickname.trim().isEmpty())
+                ? memberVO.getLoginid()
+                : nickname;
     }
+
 
     // memberVO를 그대로 가져오는 메서드
     public MemberVO getMemberVO() {

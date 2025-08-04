@@ -14,7 +14,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.DAO.UserRepository;
 import com.example.dto.JoinDTO;
 import com.example.service.JoinService;
-import com.example.util.Aes256Util;
 
 @CrossOrigin(origins = {
     "http://localhost:8888",
@@ -26,24 +25,10 @@ public class JoinController {
 
     private final JoinService joinService;
     private final UserRepository userRepository;
-    private final Aes256Util aes256Util;
 
-    public JoinController(JoinService joinService, UserRepository userRepository, Aes256Util aes256Util) {
+    public JoinController(JoinService joinService, UserRepository userRepository) {
         this.joinService = joinService;
         this.userRepository = userRepository;
-        this.aes256Util = aes256Util;
-    }
-
-    // 주민등록번호가 이미 존재하는지 확인 (복호화 비교)
-    private boolean isNationalIdDuplicate(String rawNationalId) {
-        return userRepository.findAll().stream().anyMatch(member -> {
-            try {
-                String decrypted = aes256Util.decrypt(member.getNationalid());
-                return rawNationalId.equals(decrypted);
-            } catch (Exception e) {
-                return false;
-            }
-        });
     }
 
     // 회원가입 처리 API (multipart/form-data)
@@ -53,11 +38,6 @@ public class JoinController {
         @RequestPart(value = "graduation_file", required = false) MultipartFile graduationFile
     ) {
         try {
-            // 주민등록번호 중복 검사
-            if (isNationalIdDuplicate(joinDTO.getNationalId().replace("-", ""))) {
-                return ResponseEntity.badRequest().body(Map.of("error", "이미 가입한 회원입니다."));
-            }
-
             // 전화번호 중복 검사
             if (userRepository.existsByPhonenumber(joinDTO.getPhoneNumber().replace("-", ""))) {
                 return ResponseEntity.badRequest().body(Map.of("error", "이미 가입한 회원입니다."));
