@@ -6,7 +6,8 @@ import lombok.Data;
 
 @Data
 public class ChatLogRequest {
-	 private String senderId;
+	 private String senderId; 
+	 //
 	    private String content;
 	    private String roomId;
 	    private String type;
