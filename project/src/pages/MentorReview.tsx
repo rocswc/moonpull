@@ -13,7 +13,7 @@ const MentorReview = () => {
 
   const mentorInfo = {
     id: 2,
-    name: "김역사",
+    name: "김역사1",
     introduction: "서울대 한국사 전공, 10년 경력의 한국사 전문가",
     averageRating: 4.9,
   };
