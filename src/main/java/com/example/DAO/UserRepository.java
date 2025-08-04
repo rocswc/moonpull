@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<MemberVO, Integer> {
 	
-    Boolean existsByLoginid(String loginid); // 
+    Boolean existsByLoginid(String loginid); // 11
     Boolean existsByEmail(String email);
     Boolean existsByNickname(String nickname);
     Boolean existsByPhonenumber(String phonenumber); //  전화번호 중복 확인용

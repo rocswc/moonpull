@@ -15,7 +15,7 @@ const ProfileEdit = () => {
     email: "user@example.com",
     newPassword: "",
     confirmPassword: "",
-    phone: "+82 10-1234-5678"
+    phone: "01012345678", // 🇰🇷 DB 형식 맞춤
   });
 
   const [passwordStrength, setPasswordStrength] = useState(0);
@@ -33,16 +33,56 @@ const ProfileEdit = () => {
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setProfileData({ ...profileData, [name]: value });
-    if (name === "newPassword") setPasswordStrength(calculatePasswordStrength(value));
+    if (name === "newPassword") {
+      setPasswordStrength(calculatePasswordStrength(value));
+    }
   };
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (profileData.newPassword && profileData.newPassword !== profileData.confirmPassword) {
-      toast({ title: "비밀번호 불일치", description: "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.", variant: "destructive" });
+      toast({
+        title: "비밀번호 불일치",
+        description: "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.",
+        variant: "destructive",
+      });
       return;
     }
-    toast({ title: "프로필 수정 완료", description: "프로필 변경 사항이 저장되었습니다." });
+
+    try {
+      const res = await fetch("/api/profile/update", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: profileData.email,
+          phone: profileData.phone,
+          newPassword: profileData.newPassword,
+
+        }),
+      });
+
+      if (res.ok) {
+        toast({
+          title: "프로필 수정 완료",
+          description: "프로필 변경 사항이 저장되었습니다.",
+        });
+      } else {
+        toast({
+          title: "오류",
+          description: "프로필 수정 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "네트워크 오류",
+        description: "서버에 연결할 수 없습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getPasswordStrengthColor = (strength: number) => {
@@ -57,6 +97,32 @@ const ProfileEdit = () => {
     return "강함";
   };
 
+  const handleEmailCheck = async () => {
+    try {
+      const res = await fetch(`/api/profile/check-email?email=${encodeURIComponent(profileData.email)}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const result = await res.json();
+      alert(result.available ? "사용 가능한 이메일입니다." : "이미 사용 중인 이메일입니다.");
+    } catch {
+      alert("중복 확인 중 오류 발생");
+    }
+  };
+
+  const handlePhoneCheck = async () => {
+    try {
+      const res = await fetch(`/api/profile/check-phone?phone=${encodeURIComponent(profileData.phone)}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const result = await res.json();
+      alert(result.available ? "사용 가능한 전화번호입니다." : "이미 사용 중인 전화번호입니다.");
+    } catch {
+      alert("중복 확인 중 오류 발생");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
       <Navigation />
@@ -64,18 +130,10 @@ const ProfileEdit = () => {
         <aside className="w-64 bg-white dark:bg-background rounded-2xl shadow p-6 space-y-4 min-h-full">
           <h2 className="text-xl font-bold mb-4">마이페이지</h2>
           <nav className="flex flex-col gap-3">
-            <Link to="/profileEdit">
-                         <Button variant="outline" className="justify-start w-full">정보 수정</Button>
-                       </Link>
-                       <Link to="/subscriptionStatus">
-                         <Button variant="outline" className="justify-start w-full">구독 현황</Button>
-                       </Link>
-                       <Link to="/mypage">
-                         <Button variant="outline" className="justify-start w-full">학습 현황</Button>
-                       </Link>
-                       <Link to="mentorReview">
-                         <Button variant="outline" className="justify-start w-full">멘토 평가하기</Button>
-                       </Link>
+            <Link to="/profileEdit"><Button variant="outline" className="justify-start w-full">정보 수정</Button></Link>
+            <Link to="/subscriptionStatus"><Button variant="outline" className="justify-start w-full">구독 현황</Button></Link>
+            <Link to="/mypage"><Button variant="outline" className="justify-start w-full">학습 현황</Button></Link>
+            <Link to="/mentorReview"><Button variant="outline" className="justify-start w-full">멘토 평가하기</Button></Link>
           </nav>
         </aside>
 
@@ -92,7 +150,7 @@ const ProfileEdit = () => {
                     <Label htmlFor="email">이메일</Label>
                     <div className="flex flex-col items-center space-y-2">
                       <Input id="email" name="email" type="email" value={profileData.email} onChange={handleProfileChange} />
-                      <Button type="button">중복 확인</Button>
+                      <Button type="button" onClick={handleEmailCheck}>중복 확인</Button>
                     </div>
                   </div>
                 )}
@@ -105,7 +163,7 @@ const ProfileEdit = () => {
                     <Label htmlFor="phone">전화번호</Label>
                     <div className="flex flex-col items-center space-y-2">
                       <Input id="phone" name="phone" type="tel" value={profileData.phone} onChange={handleProfileChange} />
-                      <Button type="button">중복 확인</Button>
+                      <Button type="button" onClick={handlePhoneCheck}>중복 확인</Button>
                     </div>
                   </div>
                 )}

@@ -138,8 +138,28 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
+    /* 애니메이션 키프레임 */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes scaleUp {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* 애니메이션 클래스 */
+    .animate-fadeIn {
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    .animate-scaleUp {
+      animation: scaleUp 0.3s ease forwards;
+    }
+  }
+
 
   body {
     @apply bg-background text-foreground;
-  }
 }
