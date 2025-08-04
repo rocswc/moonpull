@@ -10,6 +10,36 @@ const SuccessPage = () => {
   const amount = searchParams.get("amount");
   const plan_type = searchParams.get("planName");
 
+//http://localhost:8888/payment/success?customerKey=toveCXEwa_CJS_pE8w0tQ&authKey=bln_O174ljjEe7k
+
+  const customerKey = searchParams.get("customerKey");
+  const authKey = searchParams.get("authKey");
+
+  async function subscriptionPayment() {
+
+    console.log(customerKey);
+    console.log(authKey);
+   
+    const response = await fetch("http://localhost:8080/payments/create_billing_key", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        customerKey,
+        authKey,
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(data);
+      setPaymentData(data);
+      setIsConfirmed(true);
+    }
+  }
+
+
   async function confirmPayment() {
     console.log(payment_key);
     console.log(order_id);
@@ -117,6 +147,11 @@ const SuccessPage = () => {
             <button className="btn primary w-100" onClick={confirmPayment}>
             결제 승인하기
           </button>
+
+            <button className="btn primary w-100" onClick={subscriptionPayment}>
+            결제 구독하기
+          </button>
+
           </div>
         </div>
       )}
