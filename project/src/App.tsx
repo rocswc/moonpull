@@ -7,7 +7,7 @@ import { ChatProvider, useChat } from "@/contexts/ChatContext";
 
 
 import { AuthProvider } from "@/contexts/AuthContext";
-
+import Navigation from "@/components/Navigation";
 import AdminDashboard from "./pages/AdminDashboard";
 import UserListDrawer from "@/components/UserListDrawer";
 import ChatRequestNotifications from "@/components/ChatRequestNotification";
@@ -61,7 +61,6 @@ const App = () => (
 		  {/*  로그인/회원가입을 명확하게 나눔 */}
 		  <Route path="/auth/login" element={<AuthPage />} />
 		  <Route path="/auth/signup" element={<AuthPage />} />
-		  
           <Route path="/" element={<Index />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/matching" element={<Matching />} />
