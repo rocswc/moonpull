@@ -4,14 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Minimize2, 
-  X, 
-  Send, 
-  Phone, 
-  Video, 
-  GripVertical 
-} from "lucide-react";
+import { Minimize2, X, Send, Phone, Video, GripVertical } from "lucide-react";
 import { useChat, ChatRoom } from "@/contexts/ChatContext";
 
 interface ChatWindowProps {
@@ -33,33 +26,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.messages]);
 
+  // ✅ 무한루프 방지용 조건 추가
   useEffect(() => {
-    if (!room.isMinimized) {
+    if (!room.isMinimized && room.unreadCount > 0) {
       markAsRead(room.id);
     }
-  }, [room.isMinimized, room.id, markAsRead]);
+  }, [room.isMinimized, room.unreadCount, room.id]);
 
   const handleSendMessage = async () => {
     if (message.trim()) {
       sendMessage(room.id, message);
-
-      // ✅ 채팅 로그 백엔드로 전송
       try {
         await fetch("/api/chat/log", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             roomId: room.id,
-            senderId: "current-user", // 나중에 로그인 사용자로 교체 가능
+            senderId: "current-user",
             content: message.trim()
           })
         });
       } catch (err) {
         console.error("채팅 로그 전송 실패", err);
       }
-
       setMessage('');
     }
   };
@@ -73,10 +62,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    });
+    setDragOffset({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -88,9 +74,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
     }
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  const handleMouseUp = () => setIsDragging(false);
 
   useEffect(() => {
     if (isDragging) {
@@ -116,14 +100,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                       {otherParticipant.avatar}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                 </div>
                 <div>
                   <h4 className="text-sm font-medium">{otherParticipant.name}</h4>
                   {room.unreadCount > 0 && (
-                    <Badge variant="destructive" className="text-xs h-4 px-1">
-                      {room.unreadCount}
-                    </Badge>
+                    <Badge variant="destructive" className="text-xs h-4 px-1">{room.unreadCount}</Badge>
                   )}
                 </div>
               </div>
@@ -150,14 +132,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                     {otherParticipant.avatar}
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
               </div>
               <div>
                 <h4 className="text-sm font-medium">{otherParticipant.name}</h4>
                 <span className="text-xs text-green-600">온라인</span>
               </div>
             </div>
-
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Phone className="h-3 w-3" /></Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Video className="h-3 w-3" /></Button>
@@ -184,11 +165,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                         </AvatarFallback>
                       </Avatar>
                     )}
-
                     <div className="space-y-1">
                       <div className={`px-2 py-1 rounded-lg text-xs ${
-                        msg.senderId === 'current-user' 
-                          ? 'bg-primary text-primary-foreground ml-auto' 
+                        msg.senderId === 'current-user'
+                          ? 'bg-primary text-primary-foreground ml-auto'
                           : 'bg-muted text-foreground'
                       }`}>
                         <p>{msg.content}</p>
@@ -199,12 +179,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                         {msg.timestamp.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
                       </p>
                     </div>
-
                     {msg.senderId === 'current-user' && (
                       <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs bg-secondary">
-                          나
-                        </AvatarFallback>
+                        <AvatarFallback className="text-xs bg-secondary">나</AvatarFallback>
                       </Avatar>
                     )}
                   </div>
@@ -224,12 +201,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
               placeholder="메시지 입력..."
               className="text-xs h-8"
             />
-            <Button 
-              onClick={handleSendMessage}
-              disabled={!message.trim()}
-              size="sm"
-              className="h-8 px-2"
-            >
+            <Button onClick={handleSendMessage} disabled={!message.trim()} size="sm" className="h-8 px-2">
               <Send className="h-3 w-3" />
             </Button>
           </div>

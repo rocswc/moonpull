@@ -34,7 +34,7 @@ import Checkout from "./pages/Checkout";
 import Success from "./pages/Success"; 
 import Fail from "./pages/Fail"; 
 import PaymentSubscribe from "./pages/PaymentSubscribe"; 
-
+    
 const queryClient = new QueryClient();
 
 const ChatComponents = () => {
@@ -93,6 +93,7 @@ const App = () => (
 			  <Route path="*" element={<NotFound />} />
               </Routes>
               <ChatComponents />
+			  <Toaster/>
             </BrowserRouter>
           </TooltipProvider>
         </ChatProvider>
