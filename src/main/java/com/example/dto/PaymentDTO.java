@@ -14,7 +14,7 @@ public class PaymentDTO {
     private Integer amount; //결제금액
     private String payment_key; //결제의 키값, 결제를 식별하는 역할로,중복되지 않는 고유한 값
     private Date paid_at; //결제시각
-    
+
     //결제 처리 상태
     /*
     -READY: 결제를 생성하면 가지게 되는 초기 상태입니다. 인증 전까지는 READY 상태를 유지합니다.
@@ -27,6 +27,7 @@ public class PaymentDTO {
     -EXPIRED: 결제 유효 시간 30분이 지나 거래가 취소된 상태입니다. IN_PROGRESS 상태에서 결제 승인 API를 호출하지 않으면 EXPIRED가 됩니다.
 	 */
     private String payment_status; 
+    private String plan_type;
 }
 
 

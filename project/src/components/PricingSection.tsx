@@ -9,7 +9,7 @@ const PricingSection = () => {
   const plans = [
     {
       name: "무료",
-      description: "베이직",
+      description: "BASIC",
       price: "무료",
       period: "",
       features: [
@@ -23,8 +23,8 @@ const PricingSection = () => {
       popular: false
     },
     {
-      name: "월간 프리미엄",
-      description: "월간",
+      name: "월간 플러스",
+      description: "PLUS",
       price: "₩12,500",
       period: "/ 월간",
       features: [
@@ -45,7 +45,7 @@ const PricingSection = () => {
     },
     {
       name: "연간 프리미엄",
-      description: "연간",
+      description: "PREMIUM",
       price: "₩130,000",
       period: "/ 연간",
       originalPrice: "₩150,000",
@@ -72,8 +72,8 @@ const PricingSection = () => {
     if (plan.name === "무료") {
       alert("안녕");
     } else {
-      const amount = plan.name === "월간 프리미엄" ? 12500 : 130000;
-      navigate("/payment/checkout", { state: { amount, planName: plan.name } });
+      const amount = plan.name === "월간 플러스" ? 12500 : 130000;
+      navigate("/payment/checkout", { state: { amount, planName: plan.description } });
     }
   };
 
