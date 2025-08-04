@@ -16,16 +16,23 @@ import com.example.security.CustomUserDetails;
 @RestController
 public class UserController {
 
-    @GetMapping("/api/user") // or "/api/me"
-    public ResponseEntity<?> me(@AuthenticationPrincipal CustomUserDetails user) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증 안됨");
-        }
-        Map<String, Object> body = new HashMap<>();
-        body.put("loginId", user.getUsername());
-        body.put("roles", user.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toList()));
-        return ResponseEntity.ok(body);
-    }
+	@GetMapping("/api/user")
+	public ResponseEntity<?> me(@AuthenticationPrincipal CustomUserDetails user) {
+	    System.out.println(" 현재 로그인 유저: " + user); // <-- 이 라인 추가
+
+	    if (user == null) {
+	        System.out.println(" 인증 객체가 없습니다!");
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증 안됨");
+	    }
+	    
+	    System.out.println("nickname: " + user.getNickname());
+
+	    Map<String, Object> body = new HashMap<>();
+	    body.put("loginId", user.getUsername());
+	    body.put("nickname", user.getNickname());
+	    body.put("roles", user.getAuthorities().stream()
+	            .map(GrantedAuthority::getAuthority)
+	            .collect(Collectors.toList()));
+	    return ResponseEntity.ok(body);
+	}
 }

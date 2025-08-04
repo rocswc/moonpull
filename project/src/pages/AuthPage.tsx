@@ -1,23 +1,27 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom"; // ✅ useLocation 추가
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import { IdCard } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 
-// ✅ 컴포넌트 props 제거 (더 이상 필요 없음)
 const AuthPage = () => {
-  const location = useLocation(); // ✅ 현재 경로 확인
-  const isLogin = location.pathname.includes("/login"); // ✅ 경로가 /auth/login인지 여부로 로그인/회원가입 분기
+  const location = useLocation();
+  const [isLogin, setIsLogin] = useState(location.pathname.includes("/login"));
+
+  useEffect(() => {
+    setIsLogin(location.pathname.includes("/login"));
+  }, [location.pathname]);
 
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth(); // ✅ 전역 로그인 상태 설정 함수
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -27,7 +31,8 @@ const AuthPage = () => {
     social_id: "",
     nickname: "",
     name: "",
-    national_id: "",
+    birthday: "",
+    gender: "",
     phone_number: "",
     email: "",
     password: "",
@@ -38,7 +43,6 @@ const AuthPage = () => {
     graduation_file: null as File | null,
   });
 
-  // ✅ 로그인 상태로 이동 + 폼 초기화만 수행
   const resetToLogin = () => {
     setFormData({
       login_id: "",
@@ -47,7 +51,8 @@ const AuthPage = () => {
       social_id: "",
       nickname: "",
       name: "",
-      national_id: "",
+      birthday: "",
+      gender: "",
       phone_number: "",
       email: "",
       password: "",
@@ -57,36 +62,24 @@ const AuthPage = () => {
       major: "",
       graduation_file: null,
     });
-    navigate("/auth/login"); // ✅ 경로 전환만 수행
+    navigate("/auth/login");
   };
 
   const validatePassword = (password: string) =>
     /^(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{10,}$/.test(password);
 
-  const validateNationalId = (id: string) => /^\d{6}-\d{7}$/.test(id);
-
   const validateEmail = (email: string) => /^[\w.-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(email);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (e.target instanceof HTMLInputElement) {
-      const { name, value, type, files } = e.target;
-
-      if (type === "file") {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: files && files.length > 0 ? (files[0] as File) : null,
-        }));
-        return;
-      }
-
+    const { name, value, type, files } = e.target as HTMLInputElement;
+    if (type === "file") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: files && files.length > 0 ? files[0] : null,
+      }));
+    } else {
       let newValue = value;
-
-      // 주민번호/전화번호 형식 자동 변환
-      if (name === "national_id") {
-        const onlyNums = value.replace(/\D/g, "").slice(0, 13);
-        newValue =
-          onlyNums.length > 6 ? onlyNums.slice(0, 6) + "-" + onlyNums.slice(6) : onlyNums;
-      } else if (name === "phone_number") {
+      if (name === "phone_number") {
         const onlyNums = value.replace(/\D/g, "").slice(0, 11);
         if (onlyNums.length >= 11) {
           newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
@@ -98,50 +91,35 @@ const AuthPage = () => {
           newValue = onlyNums;
         }
       }
-
-      setFormData((prev) => ({
-        ...prev,
-        [name]: newValue,
-      }));
+      setFormData((prev) => ({ ...prev, [name]: newValue }));
     }
   };
 
-  const checkDuplicate = async (type: "login_id" | "email" | "nickname" ) => {
+  const checkDuplicate = async (type: "login_id" | "email" | "nickname") => {
     const value = formData[type];
-
-    // 사용자 친화적인 한국어 라벨
-    const labels: Record<typeof type, string> = {
+    const labels = {
       login_id: "아이디",
       email: "이메일",
       nickname: "닉네임",
     };
-
     if (!value) {
       alert(`${labels[type]}를 먼저 입력하세요.`);
       return;
     }
-
     try {
       const res = await axios.get("/api/check-duplicate", {
         params: { type, value },
         withCredentials: true,
       });
-
-      if (res.data.exists) {
-        alert(`이미 사용 중인 ${labels[type]}입니다.`);
-      } else {
-        alert(`사용 가능한 ${labels[type]}입니다.`);
-      }
-    } catch (err) {
+      alert(res.data.exists ? `이미 사용 중인 ${labels[type]}입니다.` : `사용 가능한 ${labels[type]}입니다.`);
+    } catch {
       alert("중복 확인 중 오류가 발생했습니다.");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!isLogin) {
-      // 회원가입 유효성 체크
       if (!validatePassword(formData.password)) {
         alert("비밀번호는 10자 이상이며 특수문자를 하나 이상 포함해야 합니다.");
         return;
@@ -150,19 +128,13 @@ const AuthPage = () => {
         alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
         return;
       }
-      if (!validateNationalId(formData.national_id)) {
-        alert("주민등록번호는 앞자리 6자리-뒷자리 7자리 형식으로 입력해야 합니다.");
-        return;
-      }
       if (!validateEmail(formData.email)) {
         alert("올바른 이메일 형식을 입력하세요.");
         return;
       }
     }
-
     try {
       if (!isLogin) {
-        //  회원가입 요청
         const joinPayload = {
           login_id: formData.login_id,
           password: formData.password,
@@ -171,8 +143,9 @@ const AuthPage = () => {
           social_id: formData.social_id || null,
           name: formData.name,
           nickname: formData.nickname,
+          birthday: formData.birthday,
+          gender: formData.gender,
           roles: formData.roles,
-          national_id: formData.national_id.replace("-", ""),
           phone_number: formData.phone_number.replace(/-/g, ""),
           email: formData.email,
           university: formData.university,
@@ -191,34 +164,28 @@ const AuthPage = () => {
         });
 
         alert("회원가입이 완료되었습니다.");
-        resetToLogin(); // ✅ 로그인 화면으로 이동
+        resetToLogin();
       } else {
-        // ✅ 로그인 요청
-        const res = await axios.post(
-          "/api/login",
-          {
-            loginId: formData.login_id,
-            password: formData.password,
-          },
-          { withCredentials: true }
-        );
+        const res = await axios.post("/api/login", {
+          loginId: formData.login_id,
+          password: formData.password,
+        }, { withCredentials: true });
 
         const { nickname, roles } = res.data;
-        login(nickname, roles); // ✅ 전역 상태 저장
-        alert("로그인 성공!");
+        login({ nickname: nickname ?? "사용자", role: Array.isArray(roles) ? roles[0] ?? "" : roles ?? "" });
         navigate("/");
       }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const data = error.response?.data as { message?: string; error?: string } | undefined;
-		const msg = data?.message || data?.error || "요청 처리에 실패했습니다.";
-		alert(msg);
-      } else {
-        alert("알 수 없는 오류가 발생했습니다.");
-      }
-    }
-  };
+	  } catch (error) {
+	    let msg = "알 수 없는 오류가 발생했습니다.";
 
+	    if (axios.isAxiosError(error)) {
+	      const err = error as AxiosError<{ message?: string; error?: string }>;
+	      msg = err.response?.data?.message || err.response?.data?.error || msg;
+	    }
+
+	    alert(msg);
+	  }
+  };
   
   return (
     <>
@@ -338,17 +305,32 @@ const AuthPage = () => {
                       required
                     />
 
-                    <div className="relative">
-                      <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        name="national_id"
-                        placeholder="주민등록번호 (000000-0000000)"
-                        value={formData.national_id}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+					<div className="relative">
+					  <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+					  <Input
+					    name="birthday"
+					    placeholder="생년월일 (예: 19990101)"
+					    value={formData.birthday}
+					    onChange={(e) => {
+					      const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 8); // 숫자만, 8자리 제한
+					      setFormData((prev) => ({ ...prev, birthday: onlyNums }));
+					    }}
+					    className="pl-10"
+					    required
+					  />
+					</div>
+
+					<select
+					  name="gender"
+					  value={formData.gender}
+					  onChange={handleInputChange}
+					  required
+					  className="w-full border border-input bg-background px-3 py-2 rounded-md text-sm"
+					>
+					  <option value="">성별 선택</option>
+					  <option value="M">남성</option>
+					  <option value="F">여성</option>
+					</select>
 
                     <Input
                       name="phone_number"
