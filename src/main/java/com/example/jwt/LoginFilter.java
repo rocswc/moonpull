@@ -1,11 +1,11 @@
 package com.example.jwt;
 
 import java.io.IOException;
-import java.util.Collection;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -125,8 +124,18 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	    	    .maxAge(24 * 60 * 60)
 	    	    .build();
 
-	    // setHeader 대신 addHeader 권장 (여러 Set-Cookie 지원)
+	 // 쿠키 설정
 	    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+	    // ✅ 사용자 정보 JSON 응답 추가
+	    response.setContentType("application/json; charset=UTF-8");
+	    response.getWriter().write(new ObjectMapper().writeValueAsString(Map.of(
+	        "loginId", username,
+	        "nickname", nickname,
+	        "roles", authorities.stream()
+	            .map(GrantedAuthority::getAuthority)
+	            .collect(Collectors.toList())
+	    )));
 	}
 
 	// 로그인 실패 시 처리

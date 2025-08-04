@@ -18,7 +18,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
   bootstrapped: boolean;
-  login: (user: User) => void;
+  login: (user: ServerUser) => void;  // ✅ 타입 변경
   logout: () => Promise<void>;
 }
 
@@ -40,7 +40,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 서버 응답 → 프론트 사용자 객체 변환
   const mapServerUser = (data: ServerUser): User => {
-	console.log("🟣 서버 응답:", data); // ← 여기에 추가
     const nickname = data.nickname?.trim();
     const loginId = data.loginId?.trim();
 
@@ -49,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ? nickname
         : loginId && loginId.length > 0
           ? loginId
-          : "사용자";
+          : "";
 
     let role = "";
     if (Array.isArray(data.roles)) role = data.roles[0] ?? "";
@@ -57,43 +56,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return { nickname: displayName, role };
   };
-  // 최초 진입 시 로그인 상태 복원
-  useEffect(() => {
-    const bootstrap = async () => {
-      try {
-        const res = await axios.get<ServerUser>("/api/user");
-        setUser(mapServerUser(res.data));
-        setIsLoggedIn(true);
-		} catch (e: unknown) {
-		  if (axios.isAxiosError(e) && e.response?.status === 401) {
-		    setUser(null);
-		    setIsLoggedIn(false);
-		  } else {
-		    console.error("초기 유저 상태 조회 실패:", e);
-		    setUser(null);
-		    setIsLoggedIn(false);
-		  }
-		} finally {
-        setBootstrapped(true);
-      }
-    };
-    bootstrap();
-  }, []);
 
-  // 로그인 성공 시 상태 반영
-  const login = (u: User) => {
-    setUser(u);
+  // ✅ login 함수 하나로 통일
+  const login = (data: ServerUser) => {
+    const user = mapServerUser(data);
+    setUser(user);
     setIsLoggedIn(true);
     setBootstrapped(true);
   };
 
-  // 로그아웃: 서버 → 상태 초기화
+  // 최초 진입 시 로그인 상태 복원
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+
+        const res = await axios.get<ServerUser>("/api/user", {
+          headers: { "Cache-Control": "no-store" },
+        });
+ 
+        setUser(mapServerUser(res.data));
+        setIsLoggedIn(true);
+      } catch (e) {
+   
+        setUser(null);
+        setIsLoggedIn(false);
+      } finally {
+ 
+        setBootstrapped(true);
+      }
+    };
+
+    bootstrap();
+  }, []);
+
+  // 로그아웃
   const logout = async () => {
     try {
       await axios.post("/api/logout");
-    } catch (e) {
-      console.error("로그아웃 실패(무시 가능):", e);
-    } finally {
+    } 	  	  catch (e) {
+	    console.error("로그아웃 실패:", e);
+	  } finally {
       setUser(null);
       setIsLoggedIn(false);
     }
