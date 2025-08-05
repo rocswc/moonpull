@@ -5,6 +5,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import com.example.VO.ChatMessage;
 import com.example.VO.MemberVO;
 import com.example.VO.MentorVO;
 
@@ -27,12 +28,12 @@ public interface MentorRepository {
 	    // ✅ 멘토 권한 철회
 	    void revokeMentor(@Param("userId") int userId);
 	    
-
+	    Integer getUserIdByLoginId(@Param("loginId") String loginId);
 	    // 🚫 블랙리스트 등록
-	    void banUser(@Param("userId") int userId);
+	    void banUser(@Param("reportId") int reportId);
 
 	    // ✅ 블랙리스트 해제
-	    void unbanUser(@Param("userId") int userId);
+	    void unbanUser(@Param("reportId") int reportId);
 
 	    // 🔎 블랙리스트 전체 조회
 	    List<MemberVO> getBlacklistedUsers();
@@ -40,4 +41,6 @@ public interface MentorRepository {
 	    void insertMentorApplication(MentorVO mentorVO);
 	    int getUserCount();
 	    int getInactiveUserCount();
+	    
+	    void insertChatMessage(ChatMessage message);
 }
