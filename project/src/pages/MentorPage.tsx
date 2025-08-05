@@ -13,18 +13,8 @@ const MentorPage = () => {
     { id: 2, name: "박서준", age: 16 },
   ]);
 
-  const [mentees, setMentees] = useState([
-    {
-      id: 1,
-      name: "이민지",
-      age: 17,
-      accuracy: 85,
-      wrongRate: 15,
-      questionsAsked: 42,
-      feedbacksGiven: 20,
-      recentSubject: "수학",
-    },
-  ]);
+  const [mentees, setMentees] = useState([]);
+
   interface Mentee {
     id: number;
     name: string;
@@ -35,9 +25,20 @@ const MentorPage = () => {
     feedbacksGiven?: number;
     recentSubject?: string;
   }
-  const handleAccept = (id: number) => {
+
+  const handleAccept = async (id: number) => {
     const accepted = requests.find((r) => r.id === id);
-    if (accepted) {
+    if (!accepted) return;
+
+    try {
+      const response = await axios.post("/api/mentoring/accept", {
+        menteeId: accepted.id,
+        mentorId: 2, // TODO: 실제 로그인한 멘토 ID로 교체 필요
+      });
+
+      const chatId = response.data.chatId;
+      console.log("Chat created with ID:", chatId);
+
       setMentees((prev) => [
         ...prev,
         {
@@ -49,7 +50,11 @@ const MentorPage = () => {
           recentSubject: "국어",
         },
       ]);
+
       setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch (error) {
+      console.error("멘토 수락 실패:", error);
+      alert("멘토 수락 중 오류가 발생했습니다.");
     }
   };
 
@@ -57,7 +62,7 @@ const MentorPage = () => {
     setRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const handleReport = async (mentee: Mentee ) => {
+  const handleReport = async (mentee: Mentee) => {
     const reason = window.prompt(`"${mentee.name}" 멘티를 신고하는 이유를 입력하세요:`);
 
     if (!reason || reason.trim() === "") {
@@ -67,12 +72,11 @@ const MentorPage = () => {
 
     try {
       await axios.post("/api/admin/report", {
-        reporterId: 2, // 실제 로그인한 멘토 ID로 대체 필요
+        reporterId: 2, // TODO: 실제 로그인한 멘토 ID로 교체 필요
         targetUserId: mentee.id,
         targetMentorId: null,
-        reason: reason,
-      }
-	  );
+        reason,
+      });
       alert("신고가 정상적으로 접수되었습니다.");
     } catch (err) {
       console.error("신고 실패", err);
@@ -84,7 +88,6 @@ const MentorPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
       <Navigation />
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
-        {/* 멘토 요청 관리 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-bold">멘토 요청 관리</CardTitle>
@@ -116,7 +119,6 @@ const MentorPage = () => {
           </CardContent>
         </Card>
 
-        {/* 멘토링 중인 멘티 현황 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-bold">멘토링 중인 멘티 현황</CardTitle>
@@ -150,7 +152,6 @@ const MentorPage = () => {
           </CardContent>
         </Card>
 
-        {/* 탭 영역 */}
         <Tabs defaultValue="questions" className="w-full mt-8">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="questions">오늘의 질문</TabsTrigger>

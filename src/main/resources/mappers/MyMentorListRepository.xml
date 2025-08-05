@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.DAO.MyMentorListRepository">
+
+  <resultMap id="MentorProgressMap" type="com.example.dto.MyMentorListDTO">
+    <result property="mentoring_progress_id" column="mentoring_progress_id" />
+    <result property="mentor_id" column="mentor_id" />
+    <result property="mentor_name" column="mentor_name" />
+    <result property="chat_id" column="chat_id" />
+    <result property="connection_status" column="connection_status" />
+    <result property="start_date" column="start_date" />
+    <result property="end_date" column="end_date" />
+  </resultMap>
+
+  <select id="findByMenteeId" parameterType="int" resultMap="MentorProgressMap">
+    SELECT 
+      mp.mentoring_progress_id,
+      mp.mentor_id,
+      m.name AS mentor_name,
+      mp.chat_id,
+      mp.connection_status,
+      mp.start_date,
+      mp.end_date
+    FROM mentoring_progress mp
+    JOIN mentor m ON mp.mentor_id = m.mentor_id
+    WHERE mp.mentee_id = #{menteeId}
+  </select>
+
+</mapper>
