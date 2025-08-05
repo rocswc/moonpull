@@ -188,10 +188,14 @@ const AuthPage = () => {
           loginId: formData.login_id,
           password: formData.password,
         }, { withCredentials: true });
-
-        const { nickname, roles } = res.data;
-		login(res.data); // ServerUser 타입 그대로 넘김
-        navigate("/");
+		if (res.data.token) {
+		   localStorage.setItem("token", res.data.token);
+		   login(res.data); // AuthContext의 로그인 처리 함수
+		   navigate("/");
+		 } else {
+		   alert("토큰이 응답에 포함되지 않았습니다.");
+		 }
+       
       }
 	  } catch (error) {
 	    let msg = "알 수 없는 오류가 발생했습니다.";

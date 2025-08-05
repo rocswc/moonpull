@@ -80,7 +80,8 @@ public class JwtUtil {
         return Jwts.builder()
                 .claim("username", username)
                 .claim("nickname", nickname)
-                .claim("roles", role)
+                .claim("roles", role.replace("ROLE_", ""))
+
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiredMs))
                 .signWith(secretKey)

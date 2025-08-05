@@ -7,46 +7,47 @@
 
 <mapper namespace="com.example.DAO.ReportRepository">
 
-  <select id="getAllReports" resultType="com.example.VO.ReportVO">
-    SELECT
-      r.report_id AS reportId,
-      r.reporter_id AS reporterId,
-      r.target_user_id AS targetUserId,
-      r.target_mentor_id AS targetMentorId,
-      r.reason,
-      r.status,
-      r.created_at AS createdAt,
+  <select id="getAllReports" resultType="ReportVO">
+  SELECT
+    r.report_id AS reportId,
+    r.reporter_id AS reporterId,
+    r.target_user_id AS targetUserId,
+    r.target_mentor_id AS targetMentorId,
+    r.reason,
+    r.status,
+    r.created_at AS createdAt,
 
-      rep.nickname AS reporterNickname,
-      tgt.nickname AS targetNickname,
-      tgt.is_banned AS targetBanned,
+    rep.nickname AS reporterNickname,
+    tgt.nickname AS targetNickname,
+    tgt.is_banned AS targetBanned,
 
-      (
-        SELECT COUNT(*)
-        FROM report
-        WHERE target_user_id = r.target_user_id
-      ) AS reportCount
+    (
+      SELECT COUNT(*)
+      FROM report
+      WHERE target_user_id = r.target_user_id
+    ) AS reportCount
 
-    FROM report r
-    JOIN member rep ON r.reporter_id = rep.user_id
-    JOIN member tgt ON r.target_user_id = tgt.user_id
-    ORDER BY r.created_at DESC
-  </select>
+  FROM report r
+  JOIN member rep ON r.reporter_id = rep.user_id
+  LEFT JOIN member tgt ON r.target_user_id = tgt.user_id  <!-- ✅ LEFT JOIN으로 변경 -->
+  ORDER BY r.created_at DESC
+</select>
 
-  <insert id="insertReport" parameterType="com.example.VO.ReportVO">
-    INSERT INTO report (
-      reporter_id,
-      target_user_id,
-      target_mentor_id,
-      reason
-    )
-    VALUES (
-      #{reporterId},
-      #{targetUserId},
-      #{targetMentorId},
-      #{reason}
-    )
-  </insert>
+ 
+ <insert id="insertReport" parameterType="ReportVO">
+  INSERT INTO report (
+    reporter_id
+    <if test="targetUserId != null">, target_user_id</if>
+    <if test="targetMentorId != null">, target_mentor_id</if>
+    , reason
+  )
+  VALUES (
+    #{reporterId}
+    <if test="targetUserId != null">, #{targetUserId}</if>
+    <if test="targetMentorId != null">, #{targetMentorId}</if>
+    , #{reason}
+  )
+</insert>
 
 
 	<select id="getTopReportedUsers" resultType="ReportVO">
