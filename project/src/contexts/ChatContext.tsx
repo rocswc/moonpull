@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode
+} from "react";
 
 export interface User {
   id: string;
@@ -6,7 +12,7 @@ export interface User {
   avatar: string;
   isOnline: boolean;
   subject?: string;
-  mentorId?: number; 
+  mentorId?: number;
 }
 
 export interface ChatMessage {
@@ -31,7 +37,7 @@ export interface ChatRequest {
   from: User;
   to: User;
   timestamp: Date;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: "pending" | "accepted" | "rejected";
 }
 
 interface ChatContextType {
@@ -54,28 +60,44 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-
-
 export const useChat = () => {
   const context = useContext(ChatContext);
   if (!context) {
-    throw new Error('useChat must be used within a ChatProvider');
+    throw new Error("useChat must be used within a ChatProvider");
   }
   return context;
 };
 
 export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
- const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
   const [isUserListOpen, setIsUserListOpen] = useState(false);
 
-  const currentUser: User = {
-    id: '1', // TODO: 실제 로그인 사용자 ID와 연동 필요
-    name: '나',
-    avatar: '나',
-    isOnline: true
-  };
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetch("/api/user", { credentials: "include" });
+        const user = await res.json();
+
+        if (!user?.userId) throw new Error("userId 없음");
+
+        setCurrentUser({
+          id: user.userId.toString(),
+          name: user.name,
+          avatar: user.name?.charAt(0) || "👤",
+          isOnline: true,
+          subject: user.major || undefined,
+          mentorId: user.roles === "MENTOR" ? user.userId : undefined
+        });
+      } catch (err) {
+        console.error("❌ 현재 로그인 유저 정보를 불러오지 못했습니다.", err);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -83,12 +105,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const res = await fetch("http://localhost:8080/users/all");
         const data = await res.json();
 
-        // ✅ 변환 작업 (MemberVO -> User)
         const converted: User[] = data.map((user: any) => ({
           id: user.userId.toString(),
           name: user.name,
           avatar: user.name?.charAt(0) || "👤",
-          isOnline: true, // 백엔드에서 이 필드 없으니 기본값 true
+          isOnline: true,
           subject: user.major || undefined,
           mentorId: user.roles === "MENTOR" ? user.userId : undefined
         }));
@@ -102,8 +123,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchUsers();
   }, []);
 
+  // 🔐 로그인 정보 로딩 전이면 아무것도 안 보여주기
+  if (!currentUser) return <div>로그인 정보를 불러오는 중입니다...</div>;
+
   const sendChatRequest = (toUserId: string) => {
-    const toUser = users.find(u => u.id === toUserId);
+    const toUser = users.find((u) => u.id === toUserId);
     if (!toUser) return;
 
     const newRequest: ChatRequest = {
@@ -111,14 +135,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       from: currentUser,
       to: toUser,
       timestamp: new Date(),
-      status: 'pending'
+      status: "pending"
     };
 
-    setChatRequests(prev => [...prev, newRequest]);
+    setChatRequests((prev) => [...prev, newRequest]);
   };
 
   const acceptChatRequest = (requestId: string) => {
-    const request = chatRequests.find(r => r.id === requestId);
+    const request = chatRequests.find((r) => r.id === requestId);
     if (!request) return;
 
     const newRoom: ChatRoom = {
@@ -130,12 +154,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       typingUsers: []
     };
 
-    setChatRooms(prev => [...prev, newRoom]);
-    setChatRequests(prev => prev.filter(r => r.id !== requestId));
+    setChatRooms((prev) => [...prev, newRoom]);
+    setChatRequests((prev) => prev.filter((r) => r.id !== requestId));
   };
 
   const rejectChatRequest = (requestId: string) => {
-    setChatRequests(prev => prev.filter(r => r.id !== requestId));
+    setChatRequests((prev) => prev.filter((r) => r.id !== requestId));
   };
 
   const sendMessage = (roomId: string, content: string) => {
@@ -147,8 +171,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isRead: false
     };
 
-    setChatRooms(prev =>
-      prev.map(room =>
+    setChatRooms((prev) =>
+      prev.map((room) =>
         room.id === roomId
           ? { ...room, messages: [...room.messages, newMessage] }
           : room
@@ -157,8 +181,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const minimizeChat = (roomId: string) => {
-    setChatRooms(prev =>
-      prev.map(room =>
+    setChatRooms((prev) =>
+      prev.map((room) =>
         room.id === roomId
           ? { ...room, isMinimized: !room.isMinimized }
           : room
@@ -167,7 +191,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const closeChat = (roomId: string) => {
-    setChatRooms(prev => prev.filter(room => room.id !== roomId));
+    setChatRooms((prev) => prev.filter((room) => room.id !== roomId));
   };
 
   const setTyping = (roomId: string, isTyping: boolean) => {
@@ -175,20 +199,23 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const markAsRead = (roomId: string) => {
-    setChatRooms(prev =>
-      prev.map(room =>
-        room.id === roomId
-          ? { ...room, unreadCount: 0 }
-          : room
+    setChatRooms((prev) =>
+      prev.map((room) =>
+        room.id === roomId ? { ...room, unreadCount: 0 } : room
       )
     );
   };
 
   const toggleUserList = () => {
-    setIsUserListOpen(prev => !prev);
+    setIsUserListOpen((prev) => !prev);
   };
 
   const reportUser = async (targetUser: User) => {
+    if (!currentUser) {
+      alert("로그인 후 이용해주세요.");
+      return;
+    }
+
     const reason = window.prompt(`"${targetUser.name}"님을 신고하는 이유를 입력하세요:`);
 
     if (!reason || reason.trim() === "") {
@@ -197,20 +224,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      // 명확한 타입 지정
       const reportData: {
-        reporterId: string;
         reason: string;
         targetUserId?: string;
         targetMentorId?: number;
       } = {
-        reporterId: currentUser.id,
         reason
       };
 
-	  if (targetUser.id !== undefined && targetUser.id !== "0") {
-	    reportData.targetUserId = targetUser.id;
-	  }
+      if (targetUser.id && targetUser.id !== "0") {
+        reportData.targetUserId = targetUser.id;
+      }
 
       if (targetUser.mentorId !== undefined) {
         reportData.targetMentorId = targetUser.mentorId;
@@ -221,7 +245,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: {
           "Content-Type": "application/json"
         },
-		credentials: "include",
+        credentials: "include",
         body: JSON.stringify(reportData)
       });
 
@@ -231,7 +255,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       alert("신고 처리 중 오류가 발생했습니다.");
     }
   };
-
 
   return (
     <ChatContext.Provider
