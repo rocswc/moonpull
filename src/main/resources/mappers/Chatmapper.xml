@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.DAO.ChatRepository">
+
+ <select id="AllUsers" resultType="MemberVO">
+  SELECT DISTINCT
+    m.user_id AS userId,
+    m.login_id AS loginid,
+    m.is_social AS isSocial,
+    m.social_type AS socialType,
+    m.social_id AS socialId,
+    m.name,
+    m.password_hash AS passwordhash,
+    m.nickname,
+    m.roles,
+    -- m.national_id AS nationalid,
+    m.birthday,
+    m.gender,
+    m.phone_number AS phonenumber,
+    m.email,
+    m.is_banned AS isBanned,
+    m.university,
+    m.major,
+    m.graduation_file AS graduationFile,
+    m.created_at AS createdat,
+    m.last_login AS lastLogin
+  FROM member m
+  LEFT JOIN mentor mt ON m.user_id = mt.user_id
+</select>
+
+
+</mapper>

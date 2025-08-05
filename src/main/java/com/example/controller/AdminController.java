@@ -57,17 +57,45 @@ public class AdminController {
         return "멘토 신청 거부 완료";
     }
     
-    @PostMapping("/ban/{userId}")
-    public String banUser(@PathVariable int userId) {
-        mentorRepository.banUser(userId);
+    @PostMapping("/ban/{reportId}")
+    public String banUser(@PathVariable int reportId) {
+        mentorRepository.banUser(reportId);
         return "블랙리스트 등록 완료";
     }
 
-    @PostMapping("/unban/{userId}")
-    public String unbanUser(@PathVariable int userId) {
-        mentorRepository.unbanUser(userId);
+    @PostMapping("/unban/{reportId}")
+    public String unbanUser(@PathVariable int reportId) {
+        mentorRepository.unbanUser(reportId);
         return "블랙리스트 해제 완료";
     }
+    
+    
+ // ✅ loginId로 사용자 차단
+    @PostMapping("/ban/login/{loginId}")
+    public String banUserByLoginId(@PathVariable String loginId) {
+    	System.out.println("➡️ ban 요청 loginId: " + loginId);
+        Integer userId = mentorRepository.getUserIdByLoginId(loginId);
+        System.out.println("➡️ 매핑된 userId: " + userId);
+        if (userId == null) {
+            return "해당 loginId 사용자를 찾을 수 없습니다.";
+        }
+        mentorRepository.banUser(userId);
+        return "loginId로 블랙리스트 등록 완료";
+    }
+
+    // ✅ loginId로 사용자 차단 해제
+    @PostMapping("/unban/login/{loginId}")
+    public String unbanUserByLoginId(@PathVariable String loginId) {
+    	 System.out.println("➡️ unban 요청 loginId: " + loginId);
+        Integer userId = mentorRepository.getUserIdByLoginId(loginId);
+        System.out.println("➡️ 매핑된 userId: " + userId);
+        if (userId == null) {
+            return "해당 loginId 사용자를 찾을 수 없습니다.";
+        }
+        mentorRepository.unbanUser(userId);
+        return "loginId로 블랙리스트 해제 완료";
+    }
+
     @GetMapping("/stats")
     public ResponseEntity<?> getAdminStats() {
         try {
