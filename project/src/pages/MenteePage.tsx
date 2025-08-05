@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useChat } from "@/contexts/ChatContext"; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, UserCheck, RotateCcw, LineChart } from "lucide-react";
 import {
@@ -58,20 +59,20 @@ const MenteePage = () => {
 
   const [activeList, setActiveList] = useState<MentoringProgress[]>([]);
   const [endedList, setEndedList] = useState<MentoringProgress[]>([]);
-
+  const { currentUser } = useChat();
   useEffect(() => {
+    if (!currentUser) return; // 로그인 유저가 로드되지 않으면 요청 X
+
     axios
-      .get("/api/mentoring/progress", { params: { menteeId: 3 } })
+      .get("/api/mentoring/progress", {
+        params: { menteeId: currentUser.id },
+        withCredentials: true,
+      })
       .then((res) => {
-        console.log("👀 받은 데이터:", res.data); // 받아온 전체 배열 출력
-
+        console.log("👀 받은 데이터:", res.data);
         const all: MentoringProgress[] = res.data;
-
         const active = all.filter((p) => p.connection_status !== "ended");
         const ended = all.filter((p) => p.connection_status === "ended");
-
-        console.log("🟢 activeList:", active); // 진행 중인 멘토링
-        console.log("🔴 endedList:", ended);   // 종료된 멘토링
 
         setActiveList(active);
         setEndedList(ended);
@@ -79,8 +80,9 @@ const MenteePage = () => {
       .catch((err) => {
         console.error("❌ 멘토링 현황 불러오기 실패:", err);
       });
-  }, []);
+  }, [currentUser]); // currentUser 바뀔 때마다 실행
 
+   // 로그인 유저 정보
 
   const handleReport = async (mentor: Mentor) => {
     const reason = window.prompt(`"${mentor.name}" 멘토를 신고하는 이유를 입력하세요:`);
@@ -91,7 +93,7 @@ const MenteePage = () => {
 
     try {
       await axios.post("/api/admin/report", {
-        reporterId: 1,
+        reporterId: currentUser.id,           // ✅ 현재 유저 ID 사용
         targetUserId: mentor.id,
         targetMentorId: mentor.id,
         reason: reason,
