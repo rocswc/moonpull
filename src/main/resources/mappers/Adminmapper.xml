@@ -62,7 +62,7 @@
     SELECT *
     FROM member
     WHERE name LIKE CONCAT('%', #{keyword}, '%')
-       OR login_id LIKE CONCAT('%', #{login_id}, '%')
+       OR login_id LIKE CONCAT('%', #{keyword}, '%')
   </select>
 
   <!-- ✅ 멘토 인증 요청 목록 -->
@@ -106,14 +106,29 @@
     SELECT * FROM member WHERE is_banned = true
   </select>
 
-  <update id="banUser" parameterType="int">
-    UPDATE member SET is_banned = true WHERE user_id = #{userId};
-  </update>
+ <update id="banUser" parameterType="int">
+  UPDATE member
+  SET is_banned = true
+  WHERE user_id = (
+    SELECT target_user_id
+    FROM report
+    WHERE report_id = #{reportId}
+  );
+</update>
 
-  <update id="unbanUser" parameterType="int">
-    UPDATE member SET is_banned = false WHERE user_id = #{userId};
-  </update>
-
+<update id="unbanUser" parameterType="int">
+  UPDATE member
+  SET is_banned = false
+  WHERE user_id = (
+    SELECT target_user_id
+    FROM report
+    WHERE report_id = #{reportId}
+  );
+</update>
+<select id="getUserIdByLoginId" resultType="int" parameterType="String">
+  SELECT user_id FROM member 
+  WHERE LOWER(TRIM(login_id)) = LOWER(#{loginId})
+</select>
   <!-- ✅ 사용자 통계 -->
   <select id="getUserCount" resultType="int">
     SELECT COUNT(*) FROM member
@@ -124,5 +139,22 @@
     FROM member
     WHERE last_login IS NULL OR last_login &lt; NOW() - INTERVAL 2 DAY
   </select>
+  
+  
+  <insert id="insertChatMessage" parameterType="ChatMessage">
+    INSERT INTO chat_message (
+        chatroom_id,
+        sender_id,
+        content,
+        timestamp,
+        is_read
+    ) VALUES (
+        #{chatroomId},
+        #{senderId},
+        #{content},
+        #{timestamp},
+        #{isRead}
+    )
+</insert>
 
 </mapper>
