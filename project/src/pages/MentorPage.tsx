@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Navigation from "@/components/Navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -6,38 +6,77 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, ThumbsUp, BarChart2, Megaphone } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+// ✅ JWT 쿠키 자동 포함
+axios.defaults.withCredentials = true;
+
+interface Mentee {
+  id: number;
+  name: string;
+  age: number;
+  accuracy?: number;
+  wrongRate?: number;
+  questionsAsked?: number;
+  feedbacksGiven?: number;
+  recentSubject?: string;
+}
 
 const MentorPage = () => {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([
     { id: 1, name: "이민지", age: 17 },
     { id: 2, name: "박서준", age: 16 },
   ]);
+  const [mentees, setMentees] = useState<Mentee[]>([]);
+  const [mentorId, setMentorId] = useState<number | null>(null);
 
-  const [mentees, setMentees] = useState([]);
+  // ✅ 유저 정보 불러오기 → mentorId 추출
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get("/api/user");
+        console.log("유저 정보:", res.data);
+        const userId = res.data.userId;
+        if (!userId) {
+          console.error("❌ userId 없음");
+          return;
+        }
 
-  interface Mentee {
-    id: number;
-    name: string;
-    age: number;
-    accuracy?: number;
-    wrongRate?: number;
-    questionsAsked?: number;
-    feedbacksGiven?: number;
-    recentSubject?: string;
-  }
+        const mentorRes = await axios.get(`/api/mentor-id?userId=${userId}`);
+        console.log("멘토 정보:", mentorRes.data);
+        setMentorId(mentorRes.data.mentorId);
+      } catch (err) {
+        console.error("유저 정보 가져오기 실패 ❌", err);
+      }
+    };
 
-  const handleAccept = async (id: number) => {
-    const accepted = requests.find((r) => r.id === id);
-    if (!accepted) return;
+    fetchUser();
+  }, []);
+
+  // ✅ 멘토 요청 수락
+  const handleAccept = async (menteeUserId: number) => {
+    const accepted = requests.find((r) => r.id === menteeUserId);
+    if (!accepted) {
+      console.warn("❗ 수락할 멘티 정보가 없습니다.");
+      return;
+    }
+
+    if (!mentorId) {
+      console.warn("❗ 멘토 ID가 설정되지 않았습니다.");
+      return;
+    }
 
     try {
+      const menteeRes = await axios.get(`/api/mentee-id?userId=${menteeUserId}`);
+      const menteeId = menteeRes.data.menteeId;
+
       const response = await axios.post("/api/mentoring/accept", {
-        menteeId: accepted.id,
-        mentorId: 2, // TODO: 실제 로그인한 멘토 ID로 교체 필요
+        menteeId,
+        mentorId,
       });
 
       const chatId = response.data.chatId;
-      console.log("Chat created with ID:", chatId);
 
       setMentees((prev) => [
         ...prev,
@@ -51,9 +90,12 @@ const MentorPage = () => {
         },
       ]);
 
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      setRequests((prev) => prev.filter((r) => r.id !== menteeUserId));
+
+      // ✅ 채팅방으로 이동
+      navigate(`/chat/${chatId}`);
     } catch (error) {
-      console.error("멘토 수락 실패:", error);
+      console.error("❌ 멘토 수락 실패", error);
       alert("멘토 수락 중 오류가 발생했습니다.");
     }
   };
@@ -72,14 +114,14 @@ const MentorPage = () => {
 
     try {
       await axios.post("/api/admin/report", {
-        reporterId: 2, // TODO: 실제 로그인한 멘토 ID로 교체 필요
+        reporterId: mentorId,
         targetUserId: mentee.id,
         targetMentorId: null,
         reason,
       });
       alert("신고가 정상적으로 접수되었습니다.");
     } catch (err) {
-      console.error("신고 실패", err);
+      console.error("❌ 신고 실패", err);
       alert("신고 처리 중 오류가 발생했습니다.");
     }
   };
@@ -88,6 +130,7 @@ const MentorPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
       <Navigation />
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
+        {/* 멘토 요청 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-bold">멘토 요청 관리</CardTitle>
@@ -106,7 +149,7 @@ const MentorPage = () => {
                     <p className="text-sm text-muted-foreground">나이: {req.age}세</p>
                   </div>
                   <div className="space-x-2">
-                    <Button size="sm" variant="default" onClick={() => handleAccept(req.id)}>
+                    <Button size="sm" onClick={() => handleAccept(req.id)}>
                       수락
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => handleReject(req.id)}>
@@ -119,6 +162,7 @@ const MentorPage = () => {
           </CardContent>
         </Card>
 
+        {/* 멘토링 중인 멘티 현황 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-bold">멘토링 중인 멘티 현황</CardTitle>
@@ -133,9 +177,7 @@ const MentorPage = () => {
                   {mentee.name} ({mentee.age}세)
                 </h3>
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    정답률: <span className="font-bold text-foreground">{mentee.accuracy}%</span>
-                  </p>
+                  <p>정답률: <span className="font-bold text-foreground">{mentee.accuracy}%</span></p>
                   <p>오답률: {mentee.wrongRate}%</p>
                   <p>질문 횟수: {mentee.questionsAsked}회</p>
                   <p>피드백 제공: {mentee.feedbacksGiven}회</p>
@@ -152,6 +194,7 @@ const MentorPage = () => {
           </CardContent>
         </Card>
 
+        {/* 탭 영역 */}
         <Tabs defaultValue="questions" className="w-full mt-8">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="questions">오늘의 질문</TabsTrigger>
