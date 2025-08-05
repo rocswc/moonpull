@@ -99,7 +99,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 프리플라이트
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
+                .requestMatchers("/api/admin/spam-stats").permitAll()
                 // 공개 엔드포인트
                 .requestMatchers(
                         "/",
@@ -112,7 +112,13 @@ public class SecurityConfig {
                         "/api/keywords/autocomplete",
                         "/api/kibana/**"
                 ).permitAll() 
-                   
+                .requestMatchers("/api/admin/reports").permitAll()
+                	
+                .requestMatchers(HttpMethod.POST, "/api/admin/report").permitAll()
+                
+                
+                .requestMatchers(HttpMethod.GET, "/users/all").permitAll()
+                
                 
                    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")       
                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -130,8 +136,10 @@ public class SecurityConfig {
                    .requestMatchers("/api/mentor-review/**").permitAll()
                    .requestMatchers("/mentor-review/**").permitAll()
                    .requestMatchers("/mentorReview/**").permitAll()
+                   .requestMatchers("/api/mentoring/accept").permitAll()
+                 //추가
+                 .requestMatchers("/api/mentoring/progress").authenticated()
                    
-                   .requestMatchers("/api/admin/spam-stats").permitAll()
                    .anyRequest().authenticated()// 그 외에는 인증 필요
                )
 

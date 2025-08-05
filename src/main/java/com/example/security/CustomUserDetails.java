@@ -42,7 +42,7 @@ public class CustomUserDetails implements UserDetails {
         return java.util.Arrays.stream(role.split(","))
                 .map(String::trim)
                 .filter(r -> !r.isEmpty())
-                .map(SimpleGrantedAuthority::new)
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
                 .collect(java.util.stream.Collectors.toList());
     }
 
