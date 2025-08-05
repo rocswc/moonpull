@@ -68,7 +68,8 @@ public class CustomUserDetails implements UserDetails {
     public Integer getUserId() {
         return memberVO.getUserId();
     }
-
+  
+    
     // memberVO를 그대로 가져오는 메서드
     public MemberVO getMemberVO() {
         return memberVO;  // ✅ 필드 그대로 반환
