@@ -1,24 +1,24 @@
 package com.example.controller;
 
-import com.example.dto.MyMentorlistDTO;
-import com.example.service.MyMentorlistService;
+import com.example.DAO.MyMentorListRepository;
+import com.example.dto.MyMentorListDTO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api")//1
-
+@RequestMapping("/api/mentoring")
 public class MyMentorlistController {
 
-    private final MyMentorlistService myMentorlistService;
+    @Autowired
+    private MyMentorListRepository repository;
 
-    public MyMentorlistController(MyMentorlistService myMentorlistService) {
-        this.myMentorlistService = myMentorlistService;
-    }
-
-    @GetMapping("/my-mentors")
-    public List<MyMentorlistDTO> getMyMentors() {
-        return myMentorlistService.getMyMentors();
+    @GetMapping("/progress")
+    public List<MyMentorListDTO> getMentoringProgress(@RequestParam("menteeId") int menteeId) {
+        System.out.println("menteeId: " + menteeId);
+        List<MyMentorListDTO> list = repository.findByMenteeId(menteeId);
+        System.out.println("결과: " + list.size());  // 출력 개수 확인
+        return list;
     }
 }

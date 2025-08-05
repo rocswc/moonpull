@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Navigation from "@/components/Navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -15,6 +15,18 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+
+// 타입 정의
+interface MentoringProgress {
+  mentoring_progress_id: number;
+  mentor_id: number;
+  mentor_name: string;
+  chat_id: number | null;
+  connection_status: string;
+  start_date: string;
+  end_date: string | null;
+}
+
 interface Mentor {
   id: number;
   name: string;
@@ -23,8 +35,9 @@ interface Mentor {
   experience: string;
   intro: string;
 }
+
 const MenteePage = () => {
-  const [mentors] = useState([
+  const [mentors] = useState<Mentor[]>([
     {
       id: 1,
       name: "김역사",
@@ -43,6 +56,53 @@ const MenteePage = () => {
     },
   ]);
 
+  const [activeList, setActiveList] = useState<MentoringProgress[]>([]);
+  const [endedList, setEndedList] = useState<MentoringProgress[]>([]);
+
+  useEffect(() => {
+    axios
+      .get("/api/mentoring/progress", { params: { menteeId: 3 } })
+      .then((res) => {
+        console.log("👀 받은 데이터:", res.data); // 받아온 전체 배열 출력
+
+        const all: MentoringProgress[] = res.data;
+
+        const active = all.filter((p) => p.connection_status !== "ended");
+        const ended = all.filter((p) => p.connection_status === "ended");
+
+        console.log("🟢 activeList:", active); // 진행 중인 멘토링
+        console.log("🔴 endedList:", ended);   // 종료된 멘토링
+
+        setActiveList(active);
+        setEndedList(ended);
+      })
+      .catch((err) => {
+        console.error("❌ 멘토링 현황 불러오기 실패:", err);
+      });
+  }, []);
+
+
+  const handleReport = async (mentor: Mentor) => {
+    const reason = window.prompt(`"${mentor.name}" 멘토를 신고하는 이유를 입력하세요:`);
+    if (!reason || reason.trim() === "") {
+      alert("신고 사유를 입력해야 합니다.");
+      return;
+    }
+
+    try {
+      await axios.post("/api/admin/report", {
+        reporterId: 1,
+        targetUserId: mentor.id,
+        targetMentorId: mentor.id,
+        reason: reason,
+      });
+      alert("신고가 정상적으로 접수되었습니다.");
+    } catch (err) {
+      console.error("신고 실패", err);
+      alert("신고 처리 중 오류가 발생했습니다.");
+    }
+  };
+
   const wrongAnswers = [
     { id: 101, question: "임진왜란 발생 연도는?", subject: "한국사" },
     { id: 102, question: "미분 가능 조건은?", subject: "수학" },
@@ -58,29 +118,6 @@ const MenteePage = () => {
     { day: "일", questions: 3, answers: 2 },
   ];
 
-  const handleReport = async (mentor: Mentor) => {
-    const reason = window.prompt(`"${mentor.name}" 멘토를 신고하는 이유를 입력하세요:`);
-
-    if (!reason || reason.trim() === "") {
-      alert("신고 사유를 입력해야 합니다.");
-      return;
-    }
-
-    try {
-      await axios.post("/api/admin/report", {
-        reporterId: 1, // TODO: 로그인 사용자 ID로 교체
-        targetUserId: mentor.id, // 멘토가 member.user_id와 동일하다고 가정
-        targetMentorId: mentor.id,
-        reason: reason
-      });
-
-      alert("신고가 정상적으로 접수되었습니다.");
-    } catch (err) {
-      console.error("신고 실패", err);
-      alert("신고 처리 중 오류가 발생했습니다.");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
       <Navigation />
@@ -93,7 +130,7 @@ const MenteePage = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {mentors.map((mentor) => (
-              <div key={mentor.id} className="border border-border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm">
+              <div key={mentor.id} className="border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm">
                 <h3 className="text-lg font-semibold mb-1">{mentor.name} ({mentor.subject})</h3>
                 <div className="text-sm text-muted-foreground space-y-1">
                   <p>평균 평점: {mentor.rating}</p>
@@ -102,22 +139,68 @@ const MenteePage = () => {
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <Badge variant="secondary">멘토 연결됨</Badge>
-                  <Button size="sm" variant="destructive" onClick={() => handleReport(mentor)}>
-                    신고하기
-                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleReport(mentor)}>신고하기</Button>
                 </div>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        {/* 멘토링 현황 */}
+        {/* 진행 중 멘토링 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-bold">멘토링 중인 멘토 현황</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">현재 멘토링 중인 멘토와의 활동 현황을 확인할 수 있습니다.</p>
+          <CardContent className="space-y-2">
+            {activeList.length === 0 ? (
+              <p className="text-muted-foreground">진행 중인 멘토링이 없습니다.</p>
+            ) : (
+              activeList.map((item) => (
+                <div key={item.mentoring_progress_id} className="p-3 border rounded-md">
+                  <p className="font-medium">멘토: {item.mentor_name}</p>
+                  <p className="text-sm text-muted-foreground">채팅방 ID: {item.chat_id ?? "없음"}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 종료된 멘토링 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl font-bold">종료된 멘토링</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {endedList.length === 0 ? (
+              <p className="text-muted-foreground">종료된 멘토링이 없습니다.</p>
+            ) : (
+              endedList.map((item) => (
+                <div key={item.mentoring_progress_id} className="p-3 border rounded-md">
+				<p className="font-medium">
+				  {item.mentor_name} ({item.start_date?.slice(0, 7)} ~ {item.end_date !== null ? item.end_date.slice(0, 7) : "진행 중"})
+				</p>
+
+
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() =>
+                      handleReport({
+                        id: item.mentor_id,
+                        name: item.mentor_name,
+                        subject: "",
+                        rating: 0,
+                        experience: "",
+                        intro: "",
+                      })
+                    }
+                    className="mt-2"
+                  >
+                    신고하기
+                  </Button>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 

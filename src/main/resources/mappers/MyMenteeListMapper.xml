@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.DAO.MyMenteeListMapper">
+
+  <select id="findMyMentees" parameterType="long" resultType="com.example.dto.MyMenteeListDTO">
+    SELECT
+      mp.id AS mentoringProgressId,
+      m.id AS menteeId,
+      m.name AS menteeName,
+      m.age AS menteeAge,
+      s.correct_rate AS correctRate,
+      s.incorrect_rate AS incorrectRate,
+      s.total_questions AS totalQuestions,
+      s.feedback_count AS feedbackCount,
+      s.recent_subject AS recentSubject,
+      mp.connection_status AS connectionStatus
+    FROM mentoring_progress mp
+    JOIN member m ON mp.mentee_id = m.id
+    LEFT JOIN mentee_stats s ON mp.mentee_id = s.mentee_id
+    WHERE mp.mentor_id = #{mentorId}
+      AND mp.connection_status = 'accepted'
+  </select>
+
+  <update id="acceptMentoringRequest" parameterType="long">
+    UPDATE mentoring_progress
+    SET connection_status = 'accepted'
+    WHERE id = #{progressId}
+  </update>
+
+</mapper>
