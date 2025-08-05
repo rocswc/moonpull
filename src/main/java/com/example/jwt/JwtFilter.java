@@ -56,8 +56,20 @@ public class JwtFilter extends OncePerRequestFilter {
         	    path.equals("/api/profile/check-email") ||
         	    path.equals("/api/profile/check-phone") ||
         	    path.equals("/api/chat/log") ||
-
+        	    path.startsWith("/api/admin/report") || // 바꾼거
+        	   
+        	    
+        	    path.startsWith("/api/admin/reports") || 
+        	    
+        	    
+        	    
         	    path.startsWith("/admin/") ||
+        	    
+        	    
+        	    
+        	    
+        	    
+        	    
         	    path.equals("/apply/mentor") ||
         	    path.startsWith("/mentee/") ||
         	    path.startsWith("/payments/") ||
@@ -65,6 +77,8 @@ public class JwtFilter extends OncePerRequestFilter {
         	    path.startsWith("/api/mentor-review/") ||
         	    path.equals("/mentorReview/insert") ||
         	    path.startsWith("/mentorReview/")
+        	    
+        	    
         	) {
         	    filterChain.doFilter(request, response);
         	    return;
