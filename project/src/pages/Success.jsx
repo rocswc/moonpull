@@ -25,6 +25,7 @@ const SuccessPage = () => {
       headers: {
         "Content-Type": "application/json"
       },
+      credentials: 'include', 
       body: JSON.stringify({
         customerKey,
         authKey,
@@ -49,6 +50,7 @@ const SuccessPage = () => {
       headers: {
         "Content-Type": "application/json"
       },
+      credentials: 'include',
       body: JSON.stringify({
         payment_key,
         order_id,

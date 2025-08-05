@@ -11,4 +11,5 @@ public class SubscribeDTO {
 	private Integer amount; //금액
 	private Date started_at; //구독 시작일
 	private Date expires_at; //구독 만료일
+	private String billing_key; //구독에 사용하는 빌링키
 }

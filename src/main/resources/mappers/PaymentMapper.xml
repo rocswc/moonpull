@@ -11,8 +11,8 @@
 	</insert>
 	
 	<insert id="insertSubscription" parameterType="com.example.dto.SubscribeDTO">
-    	INSERT INTO subscribe(member_id,plan_type,status,amount,started_at,expires_at)
-    	VALUES(#{member_id},#{plan_type},#{status},#{amount},NOW(),	
+    	INSERT INTO subscribe(member_id,plan_type,status,amount,started_at,billing_key,expires_at)
+    	VALUES(#{member_id},#{plan_type},#{status},#{amount},NOW(),#{billing_key},	
 		<choose>
 		    <when test="plan_type == 'PLUS'">
 		        DATE_ADD(NOW(), INTERVAL 1 MONTH)
