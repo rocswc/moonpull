@@ -26,8 +26,10 @@ public class UserController {
 	    }
 	    
 	    System.out.println("nickname: " + user.getNickname());
-
+	    
 	    Map<String, Object> body = new HashMap<>();
+	    body.put("userId", user.getUserId());             // ✅ 프론트에서 필수
+	    body.put("name", user.getNickname()); 
 	    body.put("loginId", user.getUsername());
 	    body.put("nickname", user.getNickname());
 	    body.put("roles", user.getAuthorities().stream()
