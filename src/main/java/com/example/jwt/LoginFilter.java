@@ -77,9 +77,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	    String nickname = customUserDetails.getNickname();
 
 	    var authorities = authentication.getAuthorities();
-	    String roles = authorities.stream()
-	            .map(GrantedAuthority::getAuthority)
-	            .collect(Collectors.joining(","));
+	    String roles = authentication.getAuthorities().stream()
+	    	    .map(auth -> {
+	    	        String role = auth.getAuthority();
+	    	        return role.startsWith("ROLE_") ? role : "ROLE_" + role;
+	    	    })
+	    	    .collect(Collectors.joining(","));
 
 	    // ✅ ① JWT 만료시간: 1시간 -> 24시간
 	 // === 24시간 토큰 생성 (그대로 유지) ===
@@ -130,6 +133,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	    // ✅ 사용자 정보 JSON 응답 추가
 	    response.setContentType("application/json; charset=UTF-8");
 	    response.getWriter().write(new ObjectMapper().writeValueAsString(Map.of(
+	    	"token", token, 
 	        "loginId", username,
 	        "nickname", nickname,
 	        "roles", authorities.stream()

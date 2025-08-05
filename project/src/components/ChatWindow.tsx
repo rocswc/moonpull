@@ -12,7 +12,14 @@ interface ChatWindowProps {
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
-  const { sendMessage, minimizeChat, closeChat, markAsRead } = useChat();
+  const {
+    sendMessage,
+    minimizeChat,
+    closeChat,
+    markAsRead,
+    currentUser // ✅ 여기 추가
+  } = useChat();
+
   const [message, setMessage] = useState('');
   const [position, setPosition] = useState({ x: window.innerWidth - 400, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
@@ -20,13 +27,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatWindowRef = useRef<HTMLDivElement>(null);
 
-  const otherParticipant = room.participants.find(p => p.id !== 'current-user') || room.participants[0];
+  const otherParticipant = room.participants.find(p => p.id !== currentUser.id) || room.participants[0];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.messages]);
 
-  // ✅ 무한루프 방지용 조건 추가
+  
   useEffect(() => {
     if (!room.isMinimized && room.unreadCount > 0) {
       markAsRead(room.id);
@@ -36,19 +43,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const handleSendMessage = async () => {
     if (message.trim()) {
       sendMessage(room.id, message);
+
       try {
         await fetch("/api/chat/log", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             roomId: room.id,
-            senderId: "current-user",
-            content: message.trim()
+            senderId: currentUser.id, // ✅ 오류 수정됨
+            content: message.trim(),
+            timestamp: new Date().toISOString(),
+            type: "text",
+            abusive: false
           })
         });
       } catch (err) {
-        console.error("채팅 로그 전송 실패", err);
+        console.error("❌ 채팅 로그 전송 실패:", err);
       }
+
       setMessage('');
     }
   };
@@ -156,9 +168,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
               </div>
             ) : (
               room.messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.senderId === 'current-user' ? 'justify-end' : 'justify-start'}`}>
+                <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
                   <div className="flex items-end gap-1 max-w-[70%]">
-                    {msg.senderId !== 'current-user' && (
+                    {msg.senderId !== currentUser.id && (
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-xs bg-gradient-to-br from-primary to-primary-glow text-white">
                           {otherParticipant.avatar}
@@ -167,19 +179,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                     )}
                     <div className="space-y-1">
                       <div className={`px-2 py-1 rounded-lg text-xs ${
-                        msg.senderId === 'current-user'
+                        msg.senderId === currentUser.id
                           ? 'bg-primary text-primary-foreground ml-auto'
                           : 'bg-muted text-foreground'
                       }`}>
                         <p>{msg.content}</p>
                       </div>
                       <p className={`text-xs text-muted-foreground ${
-                        msg.senderId === 'current-user' ? 'text-right' : 'text-left'
+                        msg.senderId === currentUser.id ? 'text-right' : 'text-left'
                       }`}>
                         {msg.timestamp.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
                       </p>
                     </div>
-                    {msg.senderId === 'current-user' && (
+                    {msg.senderId === currentUser.id && (
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-xs bg-secondary">나</AvatarFallback>
                       </Avatar>
