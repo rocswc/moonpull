@@ -1,6 +1,7 @@
 package com.example.DAO;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -43,6 +44,14 @@ public interface MentorRepository {
 	    int getInactiveUserCount();
 	    
 	    void insertChatMessage(ChatMessage message);
+	    
 	    Long getTotalAmount();
 	    
+	    int getTotalPaymentCount();
+	    
+	    int getSubscribedUserCount();
+	    
+	    double getSubscriptionConversionRate();
+	    
+	    List<Map<String, Object>> getDailyRevenue();
 }

@@ -122,5 +122,28 @@ public class AdminController {
         System.out.println("총 결제액: " + totalAmount);
         return totalAmount == null ? 0L : totalAmount;
     }
+    
+    
+    @GetMapping("/payments/total-count")
+    public int getTotalPaymentCount() {
+        return mentorRepository.getTotalPaymentCount();
+    }
+
+    
+    
+    @GetMapping("/subscriptions/count")
+    public int getSubscribedUserCount() {
+        return mentorRepository.getSubscribedUserCount();
+    }
+    
+    @GetMapping("/subscriptions/conversion-rate")
+    public double getSubscriptionConversionRate() {
+        return mentorRepository.getSubscriptionConversionRate();
+    }
+    
+    @GetMapping("/payments/daily-revenue")
+    public List<Map<String, Object>> getDailyRevenue() {
+        return mentorRepository.getDailyRevenue();
+    }
 
 }

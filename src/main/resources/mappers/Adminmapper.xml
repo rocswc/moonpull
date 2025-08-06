@@ -162,4 +162,40 @@
 </select>
 
 
+<!-- ✅ 완료된(DONE) 결제 건수 조회 -->
+<select id="getTotalPaymentCount" resultType="int">
+  SELECT COUNT(*) 
+  FROM payment 
+  WHERE payment_status = 'DONE'
+</select>
+
+<select id="getSubscribedUserCount" resultType="int">
+  SELECT COUNT(*) 
+  FROM subscribe 
+  WHERE plan_type IS NOT NULL
+</select>
+
+
+<!-- ✅ 전환율 계산: 구독자 수 / 전체 사용자 수 * 100 -->
+<select id="getSubscriptionConversionRate" resultType="double">
+  SELECT 
+    ROUND(
+      (SELECT COUNT(DISTINCT s.member_id) 
+       FROM subscribe s 
+       WHERE s.plan_type IS NOT NULL) 
+      /
+      (SELECT COUNT(*) FROM member) * 100, 1
+    ) AS conversionRate
+</select>
+
+<select id="getDailyRevenue" resultType="map">
+  SELECT 
+    DATE(paid_at) AS pay_date,
+    SUM(amount) AS daily_revenue
+  FROM payment
+  WHERE payment_status = 'DONE'
+  GROUP BY DATE(paid_at)
+  ORDER BY pay_date ASC
+</select>
+
 </mapper>
