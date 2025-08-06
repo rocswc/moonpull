@@ -41,7 +41,7 @@ export interface ChatRequest {
 }
 
 interface ChatContextType {
-  currentUser: User;
+  currentUser?: User; // 로그인 안 한 경우 undefined 허용
   users: User[];
   chatRooms: ChatRoom[];
   chatRequests: ChatRequest[];
@@ -81,7 +81,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const res = await fetch("/api/user", { credentials: "include" });
         const user = await res.json();
 
-        if (!user?.userId) throw new Error("userId 없음");
+        if (!user?.userId) {
+          setCurrentUser(undefined); // 로그인 안 된 상태는 undefined
+          return;
+        }
 
         setCurrentUser({
           id: user.userId.toString(),
@@ -93,6 +96,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
       } catch (err) {
         console.error("❌ 현재 로그인 유저 정보를 불러오지 못했습니다.", err);
+        setCurrentUser(undefined);
       }
     };
 
@@ -123,8 +127,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchUsers();
   }, []);
 
-  // 🔐 로그인 정보 로딩 전이면 아무것도 안 보여주기
-  if (!currentUser) return <div>로그인 정보를 불러오는 중입니다...</div>;
+  if (currentUser === null) return <div>로그인 정보를 불러오는 중입니다...</div>;
 
   const sendChatRequest = (toUserId: string) => {
     const toUser = users.find((u) => u.id === toUserId);
@@ -132,7 +135,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const newRequest: ChatRequest = {
       id: Date.now().toString(),
-      from: currentUser,
+      from: currentUser!,
       to: toUser,
       timestamp: new Date(),
       status: "pending"
@@ -163,6 +166,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const sendMessage = (roomId: string, content: string) => {
+    if (!currentUser) return; // 로그인 안 됐으면 메시지 보내기 막기
+
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       senderId: currentUser.id,
@@ -259,7 +264,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <ChatContext.Provider
       value={{
-        currentUser,
+        currentUser: currentUser || undefined, // 로그인 안 된 상태는 undefined
         users,
         chatRooms,
         chatRequests,

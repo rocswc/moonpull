@@ -41,11 +41,11 @@ public class ChatLogAnalysisController {
         );
 
         DateHistogramAggregationBuilder dateHistogram = AggregationBuilders
-            .dateHistogram("by_hour")
-            .field("@timestamp")
-            .calendarInterval(DateHistogramInterval.HOUR)
-            .timeZone(ZoneId.of("Asia/Seoul"))
-            .minDocCount(1);
+        	    .dateHistogram("by_minute")
+        	    .field("@timestamp")
+        	    .calendarInterval(DateHistogramInterval.MINUTE)  // 시간 → 분 단위로 변경
+        	    .timeZone(ZoneId.of("Asia/Seoul"))
+        	    .minDocCount(1);
 
         TermsAggregationBuilder bySenderAgg = AggregationBuilders
             .terms("by_sender")
@@ -72,7 +72,7 @@ public class ChatLogAnalysisController {
         List<Map<String, Object>> finalData = new ArrayList<>();
 
         try {
-            Histogram histogram = response.getAggregations().get("by_hour");
+            Histogram histogram = response.getAggregations().get("by_minute");
 
             for (Histogram.Bucket timeBucket : histogram.getBuckets()) {
                 String time = timeBucket.getKeyAsString();

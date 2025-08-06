@@ -19,19 +19,12 @@ const HeroSection = () => {
   }, [fetchTrending]);
 
   const handleSearch = async (customKeyword?: string) => {
-		/*만약 customKeyword이게 null이면 디폴트로 keyword사용*/
     const base = customKeyword ?? keyword;
     const fullText = `${base} ${fileText}`.trim();
-	
+
     if (!fullText) return;
 
-   /* try {
-      await axios.get(`/api/keywords/autocomplete?q=${encodeURIComponent(base)}`);
-    } catch (e) {
-      console.error("검색어 로그 전송 실패", e);
-    }*/
-
-    navigate(`/search?query=${encodeURIComponent(fullText)}`);
+    navigate(`/chat-interface`, { state: { initialMessage: fullText } });
     setSuggestions([]);
   };
 
@@ -92,6 +85,11 @@ const HeroSection = () => {
     handleSearch(word);
   };
 
+  // 입력창 클릭 시도 chat-interface로 이동, 기본 메시지 전달
+  const handleInputClick = () => {
+    navigate("/chat-interface", { state: { initialMessage: "배우고 싶은 분야에 대해 알려주세요" } });
+  };
+
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary via-primary-glow to-accent">
       <div className="absolute inset-0 bg-gradient-subtle opacity-30" />
@@ -118,11 +116,12 @@ const HeroSection = () => {
                 value={keyword}
                 onChange={handleKeywordChange}
                 onKeyDown={handleKeyDown}
+                onClick={handleInputClick}
                 className="flex-1 px-6 py-4 text-lg rounded-full border-0 shadow-lg focus:outline-none focus:ring-2 focus:ring-white/20 bg-white/95 backdrop-blur-sm"
               />
               <Button
                 size="icon"
-                onClick={() => handleSearch()} // ✅ 래핑하여 오류 방지
+                onClick={() => handleSearch()}
                 className="rounded-full w-12 h-12 bg-gradient-primary hover:scale-105"
               >
                 <Search className="h-5 w-5" />
@@ -185,9 +184,24 @@ const HeroSection = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 max-w-5xl mx-auto">
-            <CategoryCard icon="📚" title="한국사" description="조선시대부터 현대사까지 체계적인 한국사 학습을 도와드립니다" />
-            <CategoryCard icon="✏️" title="국어" description="문법, 독해, 작문까지 국어 실력 향상을 위한 맞춤 지도" />
-            <CategoryCard icon="🔢" title="수학" description="기초부터 심화까지 단계별 수학 학습 코칭" />
+            <CategoryCard
+              icon="📚"
+              title="한국사"
+              description="조선시대부터 현대사까지 체계적인 한국사 학습을 도와드립니다"
+              onClick={() => navigate("/chat-interface", { state: { initialMessage: "한국사에 대해 알려주세요" } })}
+            />
+            <CategoryCard
+              icon="✏️"
+              title="국어"
+              description="문법, 독해, 작문까지 국어 실력 향상을 위한 맞춤 지도"
+              onClick={() => navigate("/chat-interface", { state: { initialMessage: "국어에 대해 알려주세요" } })}
+            />
+            <CategoryCard
+              icon="🔢"
+              title="수학"
+              description="기초부터 심화까지 단계별 수학 학습 코칭"
+              onClick={() => navigate("/chat-interface", { state: { initialMessage: "수학에 대해 알려주세요" } })}
+            />
           </div>
         </div>
       </div>
@@ -199,18 +213,25 @@ const CategoryCard = ({
   icon,
   title,
   description,
+  onClick,
 }: {
   icon: string;
   title: string;
   description: string;
-}) => (
-  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 hover:transform hover:-translate-y-2 transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer">
-    <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-primary to-primary-glow rounded-full flex items-center justify-center text-3xl">
-      {icon}
+  onClick: () => void;
+}) => {
+  return (
+    <div
+      onClick={onClick}
+      className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 hover:transform hover:-translate-y-2 transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer"
+    >
+      <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-primary to-primary-glow rounded-full flex items-center justify-center text-3xl">
+        {icon}
+      </div>
+      <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
+      <p className="text-gray-600 text-sm">{description}</p>
     </div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
-    <p className="text-gray-600 text-sm">{description}</p>
-  </div>
-);
+  );
+};
 
 export default HeroSection;
