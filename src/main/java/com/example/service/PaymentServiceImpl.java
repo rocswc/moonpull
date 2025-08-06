@@ -1,4 +1,5 @@
 package com.example.service;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -71,9 +72,15 @@ public class PaymentServiceImpl implements PaymentService {
             SubscribeDTO subscriptionData = new SubscribeDTO();
             
           //결제 테이블에 정보를 세팅(임시)
-            paymentData.setMember_id(req.getMember_id());
-            paymentData.setName(req.getName());
+            //paymentData.setMember_id(req.getMember_id());
+            //paymentData.setName(req.getName());
+            
+            paymentData.setMember_id(2);
+            paymentData.setName("테스트결제정보");
             paymentData.setEmail("kkjspdlqj@naver.com");
+            
+            
+            
             paymentData.setOrder_id(req.getOrder_id());
             paymentData.setOrder_name((String)responseMap.get("orderName"));
             paymentData.setPayment_method((String)responseMap.get("method"));
@@ -82,7 +89,7 @@ public class PaymentServiceImpl implements PaymentService {
             paymentData.setPayment_key(req.getPayment_key());
             
             //구독 테이블에 정보를 세팅
-            subscriptionData.setMember_id(1);
+            subscriptionData.setMember_id(2);
             subscriptionData.setPlan_type(req.getPlan_type());         
             subscriptionData.setStatus("ACTIVE");
             subscriptionData.setAmount(req.getAmount());
@@ -130,8 +137,11 @@ public class PaymentServiceImpl implements PaymentService {
             
         	Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
             
-            SubscribeDTO subscriptionData = new SubscribeDTO();                  
-            subscriptionData.setMember_id(payment.getMember_id());
+            SubscribeDTO subscriptionData = new SubscribeDTO();     
+            
+            //현재 로그인한 id를 받아올 수 없으므로 임시 id를 하드코딩
+            //subscriptionData.setMember_id(payment.getMember_id());
+            subscriptionData.setMember_id(2);
             subscriptionData.setPlan_type(payment.getPlan_type());         
             subscriptionData.setStatus("ACTIVE");
             subscriptionData.setAmount(payment.getAmount());
@@ -147,16 +157,27 @@ public class PaymentServiceImpl implements PaymentService {
         }   	
     }
         
-
+    //매월 1일 00시에 결제한다고 가정
     public void processMonthlyRecurringPayments(PaymentDTO payment) {  
-//	    HttpRequest request = HttpRequest.newBuilder()
-//	    	    .uri(URI.create("https://api.tosspayments.com/v1/billing/{billingKey}"))
-//	    	    .header("Authorization", "Basic dGVzdF9za196WExrS0V5cE5BcldtbzUwblgzbG1lYXhZRzVSOg==")
-//	    	    .header("Content-Type", "application/json")
-//	    	    .method("POST", HttpRequest.BodyPublishers.ofString("{\"customerKey\":\"x_1_Ug7haEgFWNunRMiHr\",\"amount\":4900,\"orderId\":\"OzUvizU00JRWjiRfrPq27\",\"orderName\":\"토스 프라임 구독\",\"customerEmail\":\"customer@email.com\",\"customerName\":\"박토스\",\"taxFreeAmount\":0}"))
-//	    	    .build();
-//	    	HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-//	    	System.out.println(response.body());      
+	    HttpRequest request = HttpRequest.newBuilder()
+	    		
+	    		
+	    	    .uri(URI.create("https://api.tosspayments.com/v1/billing/{billingKey}"))
+	    	    .header("Authorization", "Basic dGVzdF9za196WExrS0V5cE5BcldtbzUwblgzbG1lYXhZRzVSOg==")
+	    	    .header("Content-Type", "application/json")
+	    	    .method("POST", HttpRequest.BodyPublishers.ofString("{\"customerKey\":\"x_1_Ug7haEgFWNunRMiHr\",\"amount\":4900,\"orderId\":\"OzUvizU00JRWjiRfrPq27\",\"orderName\":\"연간 프리미엄 구독(자동결제)\",\"customerEmail\":\"customer@email.com\",\"customerName\":\"박토스\",\"taxFreeAmount\":0}"))
+	    	    .build();
+	    	HttpResponse<String> response;
+			try {
+				response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+				System.out.println(response.body());
+				
+						
+			} catch (IOException | InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	    	      
     }
     
     

@@ -9,7 +9,7 @@ const PricingSection = () => {
   
   const plans = [
     {
-      name: "무료",
+      name: "1달 무료체험",
       description: "BASIC",
       price: "무료",
       period: "",
@@ -51,7 +51,7 @@ const PricingSection = () => {
     {
       name: "연간 프리미엄",
       description: "PREMIUM",
-      price: "₩130,000",
+      price: "₩120,000",
       period: "/ 연간",
       paymentType: "subscription",
       paymentLabel: "자동결제 구독",
@@ -82,7 +82,7 @@ const PricingSection = () => {
       if(plan.name === "월간 플러스"){
         navigate("/payment/checkout", { state: { amount:12500, planName: plan.description, paymentType: 'onetime' } });
       }else{
-        navigate("/payment/paymentSubscribe", { state: { amount:130000, planName: plan.description, paymentType: 'subscription' } });
+        navigate("/payment/paymentSubscribe", { state: { amount:10000, planName: plan.description, paymentType: 'subscription' } });
       }
     }
   };
@@ -173,7 +173,7 @@ const PricingSection = () => {
                   )}
                   {plan.paymentType === 'subscription' && (
                     <p className={`text-xs mt-2 ${plan.popular || hoveredIndex === index ? 'text-white/80' : 'text-muted-foreground'}`}>
-                      매년 자동 결제 (언제든 해지 가능)
+                      매월 자동 결제 (언제든 해지 가능)
                     </p>
                   )}
                 </div>

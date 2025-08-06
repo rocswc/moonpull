@@ -37,26 +37,20 @@ public class PaymentController {
     private PaymentService paymentService;
 
     @PostMapping("/confirm")
-    public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request,Authentication authentication) {
-    	
-    	 //@AuthenticationPrincipal CustomUserDetails user
-    	
-    	
-        //if (authentication == null || !authentication.isAuthenticated()) {
-        //    return Map.of("authenticated", false);
-       // }
-        
-        CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
-        List<String> roles = user.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority).toList();
-    	
-    	System.out.println("로그인중인 유저 불러오기12");
+    public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request, @AuthenticationPrincipal CustomUserDetails user) {
+	
     	System.out.println(user);
-    	System.out.println("로그인중인 유저 불러오기23");
+    	
     	System.out.println(user.getUsername());
     	System.out.println(user.getUserId()); 
-    	request.setName(user.getUsername());
-    	request.setMember_id(user.getUserId());
+    	
+    	
+    	
+    	//현재 user의 값이 null이 나오기 때문에 로그인정보를 가져올수 없기에 임시로 하드코딩으로 insert하고 있음
+    	//request.setName(user.getUsername());
+    	//request.setMember_id(user.getUserId());
+    	
+    	
     	Object result = paymentService.confirmPayment(request);
     	ResponseEntity<?> response = ResponseEntity.ok(result);
         return response;
@@ -64,12 +58,18 @@ public class PaymentController {
     
     @PostMapping("/create_billing_key")
     public ResponseEntity<?> createBillingKey(@RequestBody PaymentDTO payment, @AuthenticationPrincipal CustomUserDetails user) { 
-    	payment.setMember_id(user.getUserId());
+    	//현재 user의 값이 null이 나오기 때문에 로그인정보를 가져올수 없기에 임시로 하드코딩으로 insert하고 있음
+    	//payment.setMember_id(user.getUserId());
+    	//plan_type=null,
+    	
+    	System.out.println("빌링키 테스트1234");
+    	System.out.println(payment.toString());
     	Object result = paymentService.createBillingKey(payment);    
     	ResponseEntity<?> response = ResponseEntity.ok(result);    	
         return response;
     }
     
+
     @PostMapping("/auto_payment")
     public void processAutoPayment(@RequestBody PaymentDTO payment) {
 //        HttpRequest request = HttpRequest.newBuilder()
