@@ -1,27 +1,48 @@
+// React 및 필요한 훅과 라이브러리 import
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { toast } from "react-toastify";
+
+// UI 컴포넌트 import
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+
+// 아이콘 import
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
+
+// HTTP 통신 및 에러 타입
 import axios, { AxiosError } from "axios";
+
+// 상단 네비게이션
 import Navigation from "@/components/Navigation";
+
+// 전역 인증 상태 (Context API)
 import { useAuth } from "@/contexts/AuthContext";
+
+// 소셜 로그인 버튼 컴포넌트
 import NaverLoginButton from "@/components/socialLogin/NaverLoginButton";
 import KakaoLoginButton from "@/components/socialLogin/KakaoLoginButton";
 import GoogleLoginButton from "@/components/socialLogin/GoogleLoginButton";
 
+// AuthPage 컴포넌트 시작
 const AuthPage = () => {
+  // 현재 URL 경로 정보
   const location = useLocation();
   const navigate = useNavigate();
+
+  // 전역 인증 상태와 로그인 처리 함수 가져오기
   const { isLoggedIn, login } = useAuth();
 
+  // 로그인 모드인지 여부를 저장 (URL에 /login 포함 여부)
   const [isLogin, setIsLogin] = useState(location.pathname.includes("/login"));
+
+  // 비밀번호 보기 토글 상태
   const [showPassword, setShowPassword] = useState(false);
 
+  // 폼 입력 상태값 (로그인/회원가입 공통)
   const [formData, setFormData] = useState({
     login_id: "",
     is_social: false,
@@ -41,7 +62,7 @@ const AuthPage = () => {
     graduation_file: null as File | null,
   });
 
-  // 1) 쿼리 파라미터 읽어서 로그인 필요 시 토스트 띄우기
+  // 쿼리 파라미터에서 reason=unauthorized일 경우 토스트 경고
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("reason") === "unauthorized") {
@@ -49,18 +70,42 @@ const AuthPage = () => {
     }
   }, [location]);
 
-  // 2) 로그인 상태면 홈으로 이동
+  // 로그인된 사용자는 홈으로 이동
   useEffect(() => {
     if (isLoggedIn) {
       navigate("/", { replace: true });
     }
   }, [isLoggedIn, navigate]);
 
-  // 3) 경로 변화 감지해서 로그인/회원가입 모드 관리
+  // URL 경로가 변경될 때마다 isLogin 상태 업데이트
   useEffect(() => {
+    //  경로에 따라 isLogin 값도 업데이트
     setIsLogin(location.pathname.includes("/login"));
+
+    //  로그인일 경우 폼 초기화
+    if (location.pathname.includes("/login")) {
+      setFormData({
+        login_id: "",
+        is_social: false,
+        social_type: "",
+        social_id: "",
+        nickname: "",
+        name: "",
+        birthday: "",
+        gender: "",
+        phone_number: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        roles: "",
+        university: "",
+        major: "",
+        graduation_file: null,
+      });
+    }
   }, [location.pathname]);
 
+  // 회원가입 완료 시 초기화 후 로그인 화면으로 이동
   const resetToLogin = () => {
     setFormData({
       login_id: "",
@@ -80,134 +125,201 @@ const AuthPage = () => {
       major: "",
       graduation_file: null,
     });
-    navigate("/auth/login");
-  };
+	setIsLogin(true); // ✅ 수동으로 로그인 모드 전환
+	  navigate("/auth/login");
+	};
 
+  // ✅ 비밀번호 유효성 검사 함수
   const validatePassword = (password: string) =>
-    /^(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{10,}$/.test(password);
+    // 8자 이상, 하나 이상의 특수문자 포함 여부 확인
+    /^(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/.test(password);
 
-  const validateEmail = (email: string) => /^[\w.-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(email);
+  // ✅ 이메일 유효성 검사 함수
+  const validateEmail = (email: string) =>
+    // 대략적인 이메일 정규 표현식 (user@domain.com)
+    /^[\w.-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(email);
 
+  // ✅ 입력값 변경 핸들러
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, files } = e.target as HTMLInputElement;
+
+    // 파일 타입 입력 처리 (ex. graduation_file)
     if (type === "file") {
       setFormData((prev) => ({
         ...prev,
-        [name]: files && files.length > 0 ? files[0] : null,
+        [name]: files && files.length > 0 ? files[0] : null, // 첫 번째 파일만 저장
       }));
     } else {
       let newValue = value;
+
+      // 전화번호 입력일 경우 숫자만 추출 후 자동 하이픈 삽입
       if (name === "phone_number") {
-        const onlyNums = value.replace(/\D/g, "").slice(0, 11);
+        const onlyNums = value.replace(/\D/g, "").slice(0, 11); // 숫자만 11자리까지 추출
+
         if (onlyNums.length >= 11) {
+          // 010-1234-5678
           newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
         } else if (onlyNums.length >= 7) {
+          // 010-1234-56
           newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
         } else if (onlyNums.length >= 4) {
+          // 010-123
           newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3)}`;
         } else {
+          // 010
           newValue = onlyNums;
         }
       }
+
+      // 나머지 일반 텍스트 필드 값 업데이트
       setFormData((prev) => ({ ...prev, [name]: newValue }));
     }
   };
 
+  //  아이디, 이메일, 닉네임 중복 확인 함수
   const checkDuplicate = async (type: "login_id" | "email" | "nickname") => {
-    const value = formData[type];
+    const value = formData[type]; // 해당 필드의 값 추출
+
+    // 라벨 매핑
     const labels = {
       login_id: "아이디",
       email: "이메일",
       nickname: "닉네임",
     };
+
+    // 빈 값이면 알림
     if (!value) {
       alert(`${labels[type]}를 먼저 입력하세요.`);
       return;
     }
+
     try {
+      // 서버에 중복 확인 요청
       const res = await axios.get("/api/check-duplicate", {
         params: { type, value },
         withCredentials: true,
       });
-      alert(res.data.exists ? `이미 사용 중인 ${labels[type]}입니다.` : `사용 가능한 ${labels[type]}입니다.`);
+
+      // 결과에 따라 알림 출력
+      if (res.data.exists) {
+        alert(`이미 사용 중인 ${labels[type]}입니다.`);
+      } else {
+        alert(`사용 가능한 ${labels[type]}입니다.`);
+      }
     } catch {
       alert("중복 확인 중 오류가 발생했습니다.");
     }
   };
 
+  //  회원가입 / 로그인 제출 처리 함수
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // 기본 폼 제출 동작 방지
+
+    // 회원가입일 경우 입력값 검증
     if (!isLogin) {
+      // 비밀번호 규칙 검증
       if (!validatePassword(formData.password)) {
-        alert("비밀번호는 10자 이상이며 특수문자를 하나 이상 포함해야 합니다.");
+        alert("비밀번호는 8자 이상이며 특수문자를 하나 이상 포함해야 합니다.");
         return;
       }
+
+      // 비밀번호 확인 일치 여부
       if (formData.password !== formData.confirmPassword) {
         alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
         return;
       }
+
+      // 이메일 형식 검증
       if (!validateEmail(formData.email)) {
         alert("올바른 이메일 형식을 입력하세요.");
         return;
       }
     }
+
     try {
-      if (!isLogin) {
-        const joinPayload = {
-          login_id: formData.login_id,
-          password: formData.password,
-          is_social: formData.is_social,
-          social_type: formData.social_type || null,
-          social_id: formData.social_id || null,
-          name: formData.name,
-          nickname: formData.nickname,
-          birthday: formData.birthday,
-          gender: formData.gender,
-          roles: formData.roles,
-          phone_number: formData.phone_number.replace(/-/g, ""),
-          email: formData.email,
-          university: formData.university,
-          major: formData.major,
-        };
+      //  회원가입 요청 처리
+	  if (!isLogin) {
+	    const joinPayload = {
+	      login_id: formData.login_id,
+	      password: formData.password,
+	      is_social: formData.is_social,
+	      social_type: formData.social_type || "",
+	      social_id: formData.social_id || "",
+	      name: formData.name,
+	      nickname: formData.nickname,
+	      birthday: formData.birthday,
+	      gender: formData.gender,
+	      roles: formData.roles,
+	      phone_number: formData.phone_number.replace(/-/g, ""),
+	      email: formData.email,
+	      university: formData.university,
+	      major: formData.major,
+	    };
 
-        const form = new FormData();
-        form.append("joinDTO", new Blob([JSON.stringify(joinPayload)], { type: "application/json" }));
-        if (formData.graduation_file) {
-          form.append("graduation_file", formData.graduation_file);
-        }
+	    const form = new FormData();
 
-        await axios.post("/api/join", form, {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true,
-        });
-
-        alert("회원가입이 완료되었습니다.");
-        resetToLogin();
-      } else {
-        const res = await axios.post("/api/login", {
-          loginId: formData.login_id,
-          password: formData.password,
-        }, { withCredentials: true });
-		if (res.data.token) {
-		   localStorage.setItem("token", res.data.token);
-		   login(res.data); // AuthContext의 로그인 처리 함수
-		   navigate("/");
-		 } else {
-		   alert("토큰이 응답에 포함되지 않았습니다.");
-		 }
-       
-      }
-	  } catch (error) {
-	    let msg = "알 수 없는 오류가 발생했습니다.";
-
-	    if (axios.isAxiosError(error)) {
-	      const err = error as AxiosError<{ message?: string; error?: string }>;
-	      msg = err.response?.data?.message || err.response?.data?.error || msg;
+	    //  JSON Blob으로 넣지 말고 직접 append
+	    for (const [key, value] of Object.entries(joinPayload)) {
+	      form.append(key, String(value));
 	    }
 
-	    alert(msg);
+	    if (formData.graduation_file) {
+	      form.append("graduationFile", formData.graduation_file);
+		  
+		  console.log("업로드된 졸업증명서:", form.get("graduation_file"));
+	    }
+
+	    await axios.post("/api/join", form, {
+	      headers: { "Content-Type": "multipart/form-data" },
+	      withCredentials: true,
+	    });
+
+	    alert("회원가입이 완료되었습니다.");
+	    resetToLogin();
 	  }
+
+      //  로그인 요청 처리
+      else {
+        const res = await axios.post(
+          "/api/login",
+          {
+            loginId: formData.login_id,
+            password: formData.password,
+          },
+          {
+            withCredentials: true, // 쿠키 포함
+          }
+        );
+
+        if (res.data.token) {
+          // 토큰을 localStorage에 저장
+          localStorage.setItem("token", res.data.token);
+
+          // 전역 인증 상태 로그인 처리
+          login(res.data);
+
+          // 홈으로 이동
+          navigate("/");
+        } else {
+          alert("토큰이 응답에 포함되지 않았습니다.");
+        }
+      }
+    } catch (error) {
+      // 에러 메시지 초기화
+	  let msg = "알 수 없는 오류가 발생했습니다.";
+
+	  if (axios.isAxiosError(error)) {
+	    const err = error as AxiosError<{ message?: string; error?: string }>;
+	    const data = err.response?.data;
+
+	    if (typeof data === "object" && data !== null) {
+	      msg = data.message || data.error || msg;
+	    }
+	  }
+	  alert(msg);
+    }
   };
+
   
   return (
     <>

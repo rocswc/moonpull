@@ -54,15 +54,13 @@ public class JoinServiceImpl implements JoinService {
     @Override
     public void joinProcess(JoinDTO joinDTO) {
         MemberVO user = new MemberVO();
-        user.setIsSocial(joinDTO.getIsSocial() != null && joinDTO.getIsSocial());
+        user.setLoginid(joinDTO.getLoginId()); // ✅ 소셜/일반 상관없이 항상 세팅
 
         if (user.getIsSocial()) {
             user.setSocialType(joinDTO.getSocialType());
             user.setSocialId(joinDTO.getSocialId());
-            user.setLoginid(null);
             user.setPasswordhash(null);
         } else {
-            user.setLoginid(joinDTO.getLoginId());
             user.setPasswordhash(bCryptPasswordEncoder.encode(joinDTO.getPassword()));
         }
 
@@ -70,7 +68,7 @@ public class JoinServiceImpl implements JoinService {
         user.setName(joinDTO.getName());
         user.setNickname(joinDTO.getNickname());
         user.setRoles("ROLE_" + joinDTO.getRoles());
-        user.setPhonenumber(joinDTO.getPhoneNumber());
+        user.setPhonenumber(joinDTO.getPhone_number());
         user.setEmail(joinDTO.getEmail());
         user.setIsBanned(false);
         user.setUniversity(joinDTO.getUniversity());
