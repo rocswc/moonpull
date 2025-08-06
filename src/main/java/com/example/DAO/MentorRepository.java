@@ -43,4 +43,6 @@ public interface MentorRepository {
 	    int getInactiveUserCount();
 	    
 	    void insertChatMessage(ChatMessage message);
+	    Long getTotalAmount();
+	    
 }

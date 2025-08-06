@@ -34,7 +34,7 @@ import Checkout from "./pages/Checkout";
 import Success from "./pages/Success"; 
 import Fail from "./pages/Fail"; 
 import PaymentSubscribe from "./pages/PaymentSubscribe"; 
-    
+import ChatInterface from"@/components/ChatInterface"    
 const queryClient = new QueryClient();
 
 const ChatComponents = () => {
@@ -82,7 +82,7 @@ const App = () => (
 		      <Route path="/mentor" element={<PrivateRoute><MentorPage /></PrivateRoute>} />
 		      <Route path="/mentte" element={<PrivateRoute><MenteePage /></PrivateRoute>} />
 		      <Route path="/chatbot" element={<PrivateRoute><MyChatBot /></PrivateRoute>} />       
-
+			  <Route path="/chat-interface" element={<PrivateRoute><ChatInterface /></PrivateRoute>} />
 		      {/* 결제 관련 페이지들도 모두 로그인 필요 */}
 		      <Route path="/payment/checkout" element={<PrivateRoute><Checkout /></PrivateRoute>} /> {/* 결제화면 호출 페이지 */}
 		      <Route path="/payment/success" element={<PrivateRoute><Success /></PrivateRoute>} />   {/* 결제 성공 페이지 */}
