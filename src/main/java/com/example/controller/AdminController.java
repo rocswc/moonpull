@@ -113,5 +113,14 @@ public class AdminController {
                                  .body("서버 오류: " + e.getMessage());
         }
     }
+    
+    
+    
+    @GetMapping("/payments/total-amount")
+    public Long getTotalPaymentAmount() {
+        Long totalAmount = mentorRepository.getTotalAmount();
+        System.out.println("총 결제액: " + totalAmount);
+        return totalAmount == null ? 0L : totalAmount;
+    }
 
 }
