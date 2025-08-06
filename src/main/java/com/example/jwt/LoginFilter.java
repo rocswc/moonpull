@@ -13,6 +13,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+
+import com.example.DAO.UserRepository;
 import com.example.dto.LoginDTO;
 import com.example.security.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,10 +29,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
 	private final AuthenticationManager authenticationManager;
 	private final JwtUtil jwtUtil;
-
-	public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
+	private final UserRepository userRepository;
+	public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UserRepository userRepository) {
 		this.authenticationManager = authenticationManager;
 		this.jwtUtil = jwtUtil;
+		 this.userRepository = userRepository;
 		setFilterProcessesUrl("/api/login"); 
 	}
 
@@ -75,7 +78,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
 	    // 그대로 유지
 	    String nickname = customUserDetails.getNickname();
-
+	    userRepository.updateLastLogin(username);
+	   
 	    var authorities = authentication.getAuthorities();
 	    String roles = authentication.getAuthorities().stream()
 	    	    .map(auth -> {

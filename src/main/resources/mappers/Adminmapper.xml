@@ -157,4 +157,9 @@
     )
 </insert>
 
+<select id="getTotalAmount" resultType="long">
+  SELECT SUM(amount)  AS totalAmount FROM payment 
+</select>
+
+
 </mapper>
