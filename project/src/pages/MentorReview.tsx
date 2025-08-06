@@ -19,7 +19,7 @@ const MentorReview = () => {
   };
 
   const menteeId = 2;
-
+	//API 경로 
   const submitReview = async () => {
     try {
       const response = await fetch("/api/mentor-review/insert", {
@@ -27,7 +27,7 @@ const MentorReview = () => {
         headers: {
           "Content-Type": "application/json",
         },
-		credentials: "include", // ✅ 이 줄 추가!!!!!
+		credentials: "include", // ✅ 이 줄 추가!!!!!  GET은 body 전송 불가 insert라
 		body: JSON.stringify({
           rating,
           feedback,
