@@ -14,7 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.DAO.UserRepository;
 import com.example.dto.JoinDTO;
 import com.example.service.JoinService;
-
+// 하 쉽지가 않네 
 @CrossOrigin(origins = {
 		"http://localhost:8888",
 		"http://127.0.0.1:8888",
@@ -65,7 +65,7 @@ public class JoinController {
 		}
 	}
 
-
+       
 	// 단일 파일 업로드 테스트용 API
 	@PostMapping("/upload")
 	public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
