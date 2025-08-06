@@ -89,9 +89,8 @@ public class SecurityConfig {
             .httpBasic(httpBasic -> httpBasic.disable())
             .headers(headers -> headers.frameOptions().sameOrigin())
 
-            // JWT 로그인/검증 필터 등록
-            .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil),
-                    UsernamePasswordAuthenticationFilter.class)
+            // JWT 로그인/검증 필터 등록  
+            .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(new JwtFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class)
 
 
