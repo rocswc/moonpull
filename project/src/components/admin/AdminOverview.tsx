@@ -7,6 +7,7 @@ import { Users, Activity, DollarSign, BookOpen, AlertTriangle } from "lucide-rea
 const AdminOverview = () => {
   const [userCount, setUserCount] = useState("로딩 중...");
   const [inactiveUserCount, setInactiveUserCount] = useState("로딩 중...");
+  const [totalPaymentAmount, setTotalPaymentAmount] = useState("로딩 중...");
 
   useEffect(() => {
     axios.get("/api/admin/stats")
@@ -18,13 +19,23 @@ const AdminOverview = () => {
         console.error("총 사용자 수 불러오기 실패", err);
         setUserCount("에러");
       });
+	  
+	  axios.get("/api/admin/payments/total-amount")
+	  .then((res) => {
+	     const amount = typeof res.data === "number" ? res.data : 0;
+	    setTotalPaymentAmount(amount.toLocaleString('ko-KR') + " 원");
+	  })
+	    .catch((err) => {
+	      console.error("총 결제액 불러오기 실패", err);
+	      setTotalPaymentAmount("에러");
+	    });
   }, []);
 
   const stats = [
     { title: "총 사용자 수", value: userCount, icon: Users, color: "text-admin-primary" }, // ✅ change 제거
     { title: "현재 온라인 사용자 수", value: "89", change: "+5%", icon: Activity, color: "text-admin-secondary" },
     { title: "장기간 미로그인 사용자", value: inactiveUserCount, icon: Users, color: "text-admin-success" },
-    { title: "월 수익", value: "₩2,450,000", change: "+18%", icon: DollarSign, color: "text-admin-success" },
+    { title: "월 수익", value: totalPaymentAmount, icon: DollarSign, color: "text-admin-success" }, 
     { title: "총 문제 수", value: "3,456", change: "+24", icon: BookOpen, color: "text-admin-warning" },
     { title: "이상 탐지", value: "3", change: "-2", icon: AlertTriangle, color: "text-admin-danger" },
   ];
