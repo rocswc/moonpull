@@ -1,24 +1,37 @@
 package com.example.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Data
 @Table(name = "mentoring_chatroom")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class MentoringChatroom {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int chatId;
+    private Long chatId;
+
+    @Column(nullable = true)
+    private String content;
+
+    @Column(nullable = true)
+    private LocalDateTime sentAt;
 
     @Column(nullable = false)
-    private int participant1Id;
+    private boolean isReported = false;
 
     @Column(nullable = false)
-    private int participant2Id;
+    private Long participant1Id; // 멘티
+
+    @Column(nullable = false)
+    private Long participant2Id; // 멘토
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
