@@ -1,15 +1,9 @@
 import React from "react";
 
-const GOOGLE_CLIENT_ID = "구글_클라이언트_ID"; // 나중에 실제 값으로 교체
-const REDIRECT_URI = encodeURIComponent("http://localhost:8888/auth/google/callback");
-const RESPONSE_TYPE = "code";
-const SCOPE = encodeURIComponent("openid email profile");
-
 const GoogleLoginButton = () => {
-  const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=${RESPONSE_TYPE}&scope=${SCOPE}`;
-
   const handleClick = () => {
-    window.location.href = googleLoginUrl;
+    // 백엔드에서 리디렉션 처리하도록 요청
+    window.location.href = "http://localhost:8080/auth/google/login";
   };
 
   return (

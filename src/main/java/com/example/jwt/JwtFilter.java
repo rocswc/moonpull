@@ -56,12 +56,11 @@ public class JwtFilter extends OncePerRequestFilter {
         	    path.equals("/api/profile/check-email") ||
         	    path.equals("/api/profile/check-phone") ||
         	    path.equals("/api/chat/log") ||
-        	    path.startsWith("/api/admin/report") || // 바꾼거
-        	   
-        	    
+        	    path.startsWith("/api/admin/report") || // 바꾼거    	        	    
         	    path.startsWith("/api/admin/reports") || 
         	    
-        	    
+        	    path.startsWith("/api/chat/") ||
+        	    path.startsWith("/api/teacher/") ||
         	    
         	    path.startsWith("/admin/") ||
         	    

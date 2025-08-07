@@ -10,7 +10,6 @@ import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
 import axios, { AxiosError } from "axios";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import NaverLoginButton from "@/components/socialLogin/NaverLoginButton";
 import KakaoLoginButton from "@/components/socialLogin/KakaoLoginButton";
 import GoogleLoginButton from "@/components/socialLogin/GoogleLoginButton";
 
@@ -505,7 +504,6 @@ const AuthPage = () => {
 			  <div className="space-y-3">
 			    <GoogleLoginButton />
 			    <KakaoLoginButton />
-			    <NaverLoginButton />
 			  </div>
 
               {!isLogin && (

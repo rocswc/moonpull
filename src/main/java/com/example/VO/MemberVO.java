@@ -35,8 +35,8 @@ public class MemberVO {
     @Column(name = "password_hash", length = 255)
     private String passwordhash; // 비밀번호 해시값 (소셜 로그인 시 NULL 가능)
 
-    @Column(nullable = false, unique = true, length = 10)
-    private String nickname; // 닉네임 (필수, 중복 불가, 최대 10자)
+    @Column(nullable = false, unique = true, length = 30)
+    private String nickname; // 닉네임 (필수, 중복 불가, 최대 30자)
 
     @Column(nullable = false, length = 30)
     private String roles; // 권한 정보 (예: MENTEE, MENTOR, ADMIN)

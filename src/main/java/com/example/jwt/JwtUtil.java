@@ -2,13 +2,17 @@ package com.example.jwt;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import io.jsonwebtoken.Jwts;
+import com.example.VO.MemberVO;
+
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 
 @Component // Spring에서 Bean으로 등록되어 DI 대상이 됨
 public class JwtUtil {
@@ -87,5 +91,11 @@ public class JwtUtil {
                 .signWith(secretKey)
                 .compact();
     }
- }
+    public String generateToken(MemberVO user) {
+        String username = user.getSocialId() != null ? user.getSocialId() : user.getLoginid();
+        String nickname = user.getNickname();
+        String role = user.getRoles(); // 예: ROLE_MENTOR
 
+        return createJwt(username, nickname, role, 1000L * 60 * 60 * 24); // 1일짜리 JWT
+ }
+}

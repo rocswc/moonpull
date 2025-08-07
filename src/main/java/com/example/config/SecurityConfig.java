@@ -63,7 +63,8 @@ public class SecurityConfig {
                "http://localhost:3000",
                "http://localhost:8888",
                "http://192.168.56.1:8888",
-               "http://192.168.0.27:8888"
+               "http://192.168.0.27:8888",
+               "https://ec9d9848c01e.ngrok-free.app"  //개발용 네이버 배포할때는 삭제 할 예정 suhan 수한 25-08-17 13:04
            ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // 필요하면 명시적으로: List.of("Content-Type","X-XSRF-TOKEN","Authorization")
@@ -97,6 +98,8 @@ public class SecurityConfig {
             // 인가 규칙
             .authorizeHttpRequests(auth -> auth
                 // 프리플라이트
+            		.requestMatchers("/favicon.ico").permitAll()// 수한 25-08-17 13:04
+            		.requestMatchers("/auth/social-join").permitAll() // 수한 25-08-17 14:52
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/admin/spam-stats").permitAll()
                 // 공개 엔드포인트
@@ -118,15 +121,20 @@ public class SecurityConfig {
                 
                 .requestMatchers(HttpMethod.GET, "/users/all").permitAll()
                 
-                
+                   .requestMatchers("/api/chat/**").permitAll()
+                   .requestMatchers("/api/teacher/**").permitAll()
+                   
+                   
                    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")       
                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
                    .requestMatchers("/admin/**").permitAll()
+                   .requestMatchers("/auth/**").permitAll() // 수한 25-08-17 15:03
                  //.requestMatchers("/admin/**").hasRole("ADMIN")
                  //.requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
                    .requestMatchers("/mentee/**").permitAll()        
                    //.requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
                    .requestMatchers("/payments/**").permitAll()
+                   .requestMatchers("/auth/naver/callback").permitAll()
                    .requestMatchers(HttpMethod.POST, "/api/chat/log").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
                    .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated() // 프로필 수정 인증 필요
@@ -151,6 +159,7 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             );
+        
 
         return http.build();
     }
