@@ -30,11 +30,6 @@ public interface MentorRepository {
 	    void revokeMentor(@Param("userId") int userId);
 	    
 	    Integer getUserIdByLoginId(@Param("loginId") String loginId);
-	    // 🚫 블랙리스트 등록
-	    void banUser(@Param("reportId") int reportId);
-
-	    // ✅ 블랙리스트 해제
-	    void unbanUser(@Param("reportId") int reportId);
 
 	    // 🔎 블랙리스트 전체 조회
 	    List<MemberVO> getBlacklistedUsers();

@@ -69,6 +69,8 @@ public class PaymentController {
         return response;
     }
     
+    
+    
 
     @PostMapping("/auto_payment")
     public void processAutoPayment(@RequestBody PaymentDTO payment) {

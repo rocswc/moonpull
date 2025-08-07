@@ -27,4 +27,30 @@
     	)
 	</insert>
 	
+	<update id="cancelSubscriptionById" parameterType="int">
+  UPDATE subscribe
+  SET status = 'ESCAPE'
+  WHERE subscription_id = #{subscribeId}
+</update>
+
+<!-- 결제 상태 CANCELED로 변경 -->
+<update id="cancelPaymentByMemberId" parameterType="int">
+  UPDATE payment
+  SET payment_status = 'CANCELED'
+  WHERE member_id = #{memberId}
+  AND payment_status = 'DONE'
+</update>
+
+
+
+<select id="getPlanDistribution" resultType="map">
+  SELECT 
+    plan_type AS plan,
+    COUNT(*) AS count
+  FROM subscribe
+  WHERE plan_type IS NOT NULL
+  GROUP BY plan_type
+</select>
+
+	
 </mapper>
