@@ -24,3 +24,4 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         response.getWriter().write("접근 권한이 없습니다.");
     }
 }
+

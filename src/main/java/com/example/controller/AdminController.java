@@ -4,6 +4,7 @@ import com.example.DAO.MentorRepository;
 import com.example.DAO.UserRepository;
 import com.example.VO.MemberVO;
 import com.example.VO.MentorVO;
+import com.example.service.PaymentService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,12 +18,18 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
+	
+	
+	
 
     @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private MentorRepository mentorRepository;
+    
+    @Autowired
+    private PaymentService paymentService;
 
     // ✅ 전체 사용자 목록 조회
     @GetMapping("/users")
@@ -70,31 +77,7 @@ public class AdminController {
     }
     
     
- // ✅ loginId로 사용자 차단
-    @PostMapping("/ban/login/{loginId}")
-    public String banUserByLoginId(@PathVariable String loginId) {
-    	System.out.println("➡️ ban 요청 loginId: " + loginId);
-        Integer userId = mentorRepository.getUserIdByLoginId(loginId);
-        System.out.println("➡️ 매핑된 userId: " + userId);
-        if (userId == null) {
-            return "해당 loginId 사용자를 찾을 수 없습니다.";
-        }
-        mentorRepository.banUser(userId);
-        return "loginId로 블랙리스트 등록 완료";
-    }
-
-    // ✅ loginId로 사용자 차단 해제
-    @PostMapping("/unban/login/{loginId}")
-    public String unbanUserByLoginId(@PathVariable String loginId) {
-    	 System.out.println("➡️ unban 요청 loginId: " + loginId);
-        Integer userId = mentorRepository.getUserIdByLoginId(loginId);
-        System.out.println("➡️ 매핑된 userId: " + userId);
-        if (userId == null) {
-            return "해당 loginId 사용자를 찾을 수 없습니다.";
-        }
-        mentorRepository.unbanUser(userId);
-        return "loginId로 블랙리스트 해제 완료";
-    }
+ 
 
     @GetMapping("/stats")
     public ResponseEntity<?> getAdminStats() {
@@ -144,6 +127,37 @@ public class AdminController {
     @GetMapping("/payments/daily-revenue")
     public List<Map<String, Object>> getDailyRevenue() {
         return mentorRepository.getDailyRevenue();
+    }
+
+    
+    @GetMapping("/payments/recent")
+    public List<Map<String, Object>> getRecentPaidUsers() {
+        return mentorRepository.getRecentPaidUsers();
+    }
+    
+    @PostMapping("/subscription/cancel-direct")
+    public ResponseEntity<String> cancelDirect(
+        @RequestBody Map<String, Object> payload) {
+
+        int subscribeId = (int) payload.get("subscribeId");
+        int memberId = (int) payload.get("memberId");
+
+        System.out.println("✅ cancel-direct 호출됨: subscribeId=" + subscribeId + ", memberId=" + memberId);
+        try {
+            paymentService.cancelSubscriptionAndPayment(subscribeId, memberId);
+            return ResponseEntity.ok("구독 및 결제 취소 완료");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("취소 실패: " + e.getMessage());
+        }
+    }
+
+    
+    
+    @GetMapping("/subscriptions/plan-distribution")
+    public ResponseEntity<List<Map<String, Object>>> getPlanDistribution() {
+        List<Map<String, Object>> result = paymentService.getPlanDistribution();
+        return ResponseEntity.ok(result);
     }
 
 }
