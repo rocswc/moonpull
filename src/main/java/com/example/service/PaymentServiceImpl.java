@@ -8,6 +8,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.core5.http.ContentType;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
+
+import com.example.DAO.MentorRepository;
 import com.example.DAO.PaymentRepository;
 import com.example.config.TossConfig;
 import com.example.dto.PaymentDTO;
@@ -31,6 +34,8 @@ public class PaymentServiceImpl implements PaymentService {
 	
     @Autowired
     private PaymentRepository paymentRepository;
+    
+   
     
     @Autowired
     private ObjectMapper objectMapper;
@@ -180,5 +185,18 @@ public class PaymentServiceImpl implements PaymentService {
 	    	      
     }
     
+    
+    @Transactional
+    public void cancelSubscriptionAndPayment(int subscribeId, int memberId) {
+    	 System.out.println("➡️ PaymentService 호출됨 - subscribeId: " + subscribeId + ", memberId: " + memberId);
+    	 paymentRepository.cancelSubscriptionById(subscribeId);
+    	 paymentRepository.cancelPaymentByMemberId(memberId);
+        System.out.println("➡️ DB 업데이트 완료 (subscribe, payment)");
+    }
+    
+    
+    public List<Map<String, Object>> getPlanDistribution() {
+        return paymentRepository.getPlanDistribution();
+    }
     
 }

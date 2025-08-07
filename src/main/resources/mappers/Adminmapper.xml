@@ -41,7 +41,6 @@
       m.password_hash AS passwordhash,
       m.nickname,
       m.roles,
-     <!-- m.national_id AS nationalid,-->
       m.birthday,
       m.gender,
       m.phone_number AS phonenumber,
@@ -106,29 +105,11 @@
     SELECT * FROM member WHERE is_banned = true
   </select>
 
- <update id="banUser" parameterType="int">
-  UPDATE member
-  SET is_banned = true
-  WHERE user_id = (
-    SELECT target_user_id
-    FROM report
-    WHERE report_id = #{reportId}
-  );
-</update>
+  <select id="getUserIdByLoginId" resultType="int" parameterType="String">
+    SELECT user_id FROM member 
+    WHERE LOWER(TRIM(login_id)) = LOWER(#{loginId})
+  </select>
 
-<update id="unbanUser" parameterType="int">
-  UPDATE member
-  SET is_banned = false
-  WHERE user_id = (
-    SELECT target_user_id
-    FROM report
-    WHERE report_id = #{reportId}
-  );
-</update>
-<select id="getUserIdByLoginId" resultType="int" parameterType="String">
-  SELECT user_id FROM member 
-  WHERE LOWER(TRIM(login_id)) = LOWER(#{loginId})
-</select>
   <!-- ✅ 사용자 통계 -->
   <select id="getUserCount" resultType="int">
     SELECT COUNT(*) FROM member
@@ -139,8 +120,7 @@
     FROM member
     WHERE last_login IS NULL OR last_login &lt; NOW() - INTERVAL 2 DAY
   </select>
-  
-  
+
   <insert id="insertChatMessage" parameterType="ChatMessage">
     INSERT INTO chat_message (
         chatroom_id,
@@ -155,47 +135,155 @@
         #{timestamp},
         #{isRead}
     )
-</insert>
+  </insert>
 
-<select id="getTotalAmount" resultType="long">
-  SELECT SUM(amount)  AS totalAmount FROM payment 
-</select>
+  <!-- ✅ 결제 통계 -->
+  <select id="getTotalAmount" resultType="long">
+    SELECT SUM(amount)  AS totalAmount FROM payment 
+  </select>
 
+  <select id="getTotalPaymentCount" resultType="int">
+    SELECT COUNT(*) 
+    FROM payment 
+    WHERE payment_status = 'DONE'
+  </select>
 
-<!-- ✅ 완료된(DONE) 결제 건수 조회 -->
-<select id="getTotalPaymentCount" resultType="int">
-  SELECT COUNT(*) 
-  FROM payment 
-  WHERE payment_status = 'DONE'
-</select>
+  <select id="getSubscribedUserCount" resultType="int">
+    SELECT COUNT(*) 
+    FROM subscribe 
+    WHERE plan_type IS NOT NULL
+  </select>
 
-<select id="getSubscribedUserCount" resultType="int">
-  SELECT COUNT(*) 
-  FROM subscribe 
-  WHERE plan_type IS NOT NULL
-</select>
+  <select id="getSubscriptionConversionRate" resultType="double">
+    SELECT 
+      ROUND(
+        (SELECT COUNT(DISTINCT s.member_id) 
+         FROM subscribe s 
+         WHERE s.plan_type IS NOT NULL) 
+        /
+        (SELECT COUNT(*) FROM member) * 100, 1
+      ) AS conversionRate
+  </select>
 
+  <select id="getDailyRevenue" resultType="map">
+    SELECT 
+      DATE(paid_at) AS pay_date,
+      SUM(amount) AS daily_revenue
+    FROM payment
+    WHERE payment_status = 'DONE'
+    GROUP BY DATE(paid_at)
+    ORDER BY pay_date ASC
+  </select>
 
-<!-- ✅ 전환율 계산: 구독자 수 / 전체 사용자 수 * 100 -->
-<select id="getSubscriptionConversionRate" resultType="double">
-  SELECT 
-    ROUND(
-      (SELECT COUNT(DISTINCT s.member_id) 
-       FROM subscribe s 
-       WHERE s.plan_type IS NOT NULL) 
-      /
-      (SELECT COUNT(*) FROM member) * 100, 1
-    ) AS conversionRate
-</select>
+  <select id="getRecentPaidUsers" resultType="map">
+    SELECT 
+      recent.member_id,
+      recent.subscribe_id,
+      recent.name,
+      recent.login_id,
+      recent.phone_number,
+      recent.email,
+      recent.paid_at,
+      recent.amount,
+      recent.plan_type,
+      recent.started_at,
+      recent.expires_at
+    FROM (
+      SELECT 
+        m.user_id AS member_id,
+        s.subscription_id AS subscribe_id,
+        m.name,
+        m.login_id,
+        m.phone_number,
+        m.email,
+        p.paid_at,
+        p.amount,
+        s.plan_type,
+        s.started_at,
+        s.expires_at,
+        ROW_NUMBER() OVER (PARTITION BY p.member_id ORDER BY p.paid_at DESC) AS rn
+      FROM member m
+      JOIN payment p ON m.user_id = p.member_id
+      LEFT JOIN subscribe s ON m.user_id = s.member_id
+      WHERE p.payment_status = 'DONE'
+    ) recent
+    WHERE recent.rn = 1
+    ORDER BY recent.paid_at DESC
+  </select>
 
-<select id="getDailyRevenue" resultType="map">
-  SELECT 
-    DATE(paid_at) AS pay_date,
-    SUM(amount) AS daily_revenue
-  FROM payment
-  WHERE payment_status = 'DONE'
-  GROUP BY DATE(paid_at)
-  ORDER BY pay_date ASC
-</select>
+  <!-- ✅ 정지/해제 로그 삽입 -->
+  <insert id="insertBlacklistLog" parameterType="map">
+    INSERT INTO blacklist_log (
+      user_id, banned_by, reason_code, reason_detail,
+      duration_days, action
+    ) VALUES (
+      #{userId},
+      #{bannedBy},
+      #{reasonCode},
+      #{reasonDetail},
+      #{durationDays},
+      'BAN'
+    )
+  </insert>
+
+  <insert id="insertUnbanLog" parameterType="map">
+    INSERT INTO blacklist_log (
+      user_id, banned_by, action
+    ) VALUES (
+      #{userId},
+      #{bannedBy},
+      'UNBAN'
+    )
+  </insert>
+
+  <!-- ✅ 블랙리스트 처리 -->
+  <update id="banUserByUserId" parameterType="int">
+    UPDATE member SET is_banned = true WHERE user_id = #{userId}
+  </update>
+
+  <update id="unbanUserByUserId" parameterType="int">
+    UPDATE member SET is_banned = false WHERE user_id = #{userId}
+  </update>
+
+  <!-- ✅ 블랙리스트 상세 조회 -->
+  <select id="getBlacklistedUsersDetailed" resultType="map">
+    SELECT
+      m.user_id AS userId,
+      m.login_id AS loginId,
+      m.nickname,
+      m.email,
+      m.is_banned AS isBanned,
+
+      r.report_id AS reportId,
+      r.created_at AS reportTime,
+      r.reason AS reportReason,
+      r.status AS reportStatus,
+
+      cm.content AS chatContent,
+      cm.timestamp AS chatTimestamp,
+      cm.chatroom_id AS chatroomId,
+
+      bl.reason_code AS banReasonCode,
+      bl.reason_detail AS banReasonDetail,
+      bl.duration_days AS banDays,
+      bl.created_at AS banStartDate,
+      DATE_ADD(bl.created_at, INTERVAL bl.duration_days DAY) AS banExpireDate,
+
+      CASE 
+        WHEN mt.user_id IS NOT NULL THEN 'MENTOR'
+        WHEN me.user_id IS NOT NULL THEN 'MENTEE'
+        ELSE 'UNKNOWN'
+      END AS roleType
+
+    FROM report r
+    JOIN member m ON r.target_user_id = m.user_id
+    LEFT JOIN blacklist_log bl ON bl.user_id = m.user_id AND bl.action = 'BAN'
+    LEFT JOIN chat_message cm ON r.chat_message_id = cm.message_id
+    LEFT JOIN chatroom cr ON cm.chatroom_id = cr.chatroom_id
+    LEFT JOIN mentor mt ON m.user_id = mt.user_id AND mt.status = 'APPROVED'
+    LEFT JOIN mentee me ON m.user_id = me.user_id
+    WHERE m.is_banned = TRUE
+    ORDER BY bl.created_at DESC
+  </select>
 
 </mapper>
