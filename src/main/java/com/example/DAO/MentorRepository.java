@@ -54,4 +54,8 @@ public interface MentorRepository {
 	    double getSubscriptionConversionRate();
 	    
 	    List<Map<String, Object>> getDailyRevenue();
+	    
+	    List<Map<String, Object>> getRecentPaidUsers();
+	    
+	   
 }
