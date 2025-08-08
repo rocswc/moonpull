@@ -34,18 +34,18 @@
 </select>
 
  
- <insert id="insertReport" parameterType="ReportVO">
+<insert id="insertReport" parameterType="ReportVO">
   INSERT INTO report (
-    reporter_id
-    <if test="targetUserId != null">, target_user_id</if>
-    <if test="targetMentorId != null">, target_mentor_id</if>
-    , reason
+    reporter_id,
+    target_user_id,
+    reason,
+    created_at
   )
   VALUES (
-    #{reporterId}
-    <if test="targetUserId != null">, #{targetUserId}</if>
-    <if test="targetMentorId != null">, #{targetMentorId}</if>
-    , #{reason}
+    #{reporterId},
+    #{targetUserId},
+    #{reason},
+    NOW()
   )
 </insert>
 
