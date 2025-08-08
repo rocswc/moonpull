@@ -14,6 +14,9 @@ const SuccessPage = () => {
   const plan_type = urlParams.get("planName");
   const customerKey = urlParams.get("customerKey");
   const authKey = urlParams.get("authKey");
+  const name = urlParams.get("name");
+  const email = urlParams.get("email");
+  const member_id = urlParams.get("member_id");
 
   async function subscriptionPayment() {
     console.log(customerKey);
@@ -24,12 +27,12 @@ const SuccessPage = () => {
       headers: {
         "Content-Type": "application/json"
       },
-      credentials: 'include', 
       body: JSON.stringify({
         customerKey,
         authKey,
         amount,
-        plan_type
+        plan_type,
+        member_id,
       })
     });
 
@@ -51,20 +54,19 @@ const SuccessPage = () => {
   }
 
   async function confirmPayment() {
-    console.log(payment_key);
-    console.log(order_id);
-    console.log(amount);
     const response = await fetch("http://localhost:8080/payments/confirm", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      credentials: 'include',
       body: JSON.stringify({
         payment_key,
         order_id,
         amount,
-        plan_type
+        plan_type,
+        name,
+        email,
+        member_id,
       })
     });
 

@@ -2,6 +2,7 @@ import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import axios from "axios";
 
 // ------  SDK 초기화 ------
 // @docs https://docs.tosspayments.com/sdk/v2/js#토스페이먼츠-초기화
@@ -16,9 +17,18 @@ const PaymentCheckoutPage = () => {
   const [amount, setAmount] = useState(location.state?.amount || 0);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [userId, setUserId] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
   useEffect(() => {
     async function fetchPayment() {
       try {
+        const userRes = (await axios.get("/api/user")).data.user;
+        setUserId(userRes.userId)
+        setName(userRes.name)
+        setEmail(userRes.email);
+
         const tossPayments = await loadTossPayments(clientKey);
         // 회원 결제
         // @docs https://docs.tosspayments.com/sdk/v2/js#tosspaymentspayment
@@ -42,6 +52,9 @@ const PaymentCheckoutPage = () => {
     const params = new URLSearchParams(window.location.search);
     params.set('planName', planName);
     params.set('amount', amount.toString());
+    params.set('member_id', userId);
+    params.set('name', name);
+    params.set('email', email);
     return `${window.location.origin}/payment/success?${params.toString()}`;
   };
 
@@ -56,8 +69,8 @@ const PaymentCheckoutPage = () => {
         method: "CARD", // 자동결제(빌링)는 카드만 지원합니다
         successUrl: createSuccessUrl(), // 요청이 성공하면 리다이렉트되는 URL
         failUrl: window.location.origin + "/payment/fail", // 요청이 실패하면 리다이렉트되는 URL
-        customerEmail: "kkjspdlqj@naver.com",
-        customerName: "김갑중",
+        customerEmail: email,
+        customerName: name,
       });
     } catch (error) {
       console.error("Error requesting billing auth:", error);

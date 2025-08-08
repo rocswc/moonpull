@@ -35,21 +35,15 @@ public class PaymentController {
     private PaymentService paymentService;
 
     @PostMapping("/confirm")
-    public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request,  @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request) {
     	Object result = paymentService.confirmPayment(request);
     	ResponseEntity<?> response = ResponseEntity.ok(result);
         return response;
     }
     
     @PostMapping("/create_billing_key")
-    public ResponseEntity<?> createBillingKey(@RequestBody PaymentDTO payment, @AuthenticationPrincipal CustomUserDetails user) { 
-    	//현재 user의 값이 null이 나오기 때문에 로그인정보를 가져올수 없기에 임시로 하드코딩으로 insert하고 있음
-    	//payment.setMember_id(user.getUserId());
-    	//plan_type=null,
-    	
-    	System.out.println("빌링키 테스트1234");
-    	System.out.println(payment.toString());
-    	Object result = paymentService.createBillingKey(payment);    
+    public ResponseEntity<?> createBillingKey(@RequestBody PaymentDTO payment) { 
+    	Object result = paymentService.createBillingKey(payment); 
     	ResponseEntity<?> response = ResponseEntity.ok(result);    	
         return response;
     }
