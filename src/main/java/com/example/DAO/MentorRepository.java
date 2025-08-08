@@ -52,5 +52,10 @@ public interface MentorRepository {
 	    
 	    List<Map<String, Object>> getRecentPaidUsers();
 	    
+	    void banUserByUserId(Integer userId);
+	    
+	    void banUserByUserIdWithReason(Map<String, Object> params);
+	    
+	    void insertBlacklistLog(Map<String, Object> logData);
 	   
 }
