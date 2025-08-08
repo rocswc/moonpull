@@ -17,7 +17,7 @@ const SocialJoinPage = () => {
     social_type: "",
     social_id: "",
     login_id: "",
-    password: "SOCIAL_USER",
+    password: "SOCIAL_USER", // 소셜 가입은 비번 입력 안 받음
     is_social: true,
     email: "",
     name: "",
@@ -31,22 +31,34 @@ const SocialJoinPage = () => {
     graduation_file: null as File | null,
   });
 
+  // provider 라벨 맵
+  const providerParam = (params.get("provider") || "").toUpperCase();
+  const providerLabelMap: Record<string, string> = {
+    KAKAO: "카카오",
+    GOOGLE: "구글",
+    NAVER: "네이버",
+  };
+  const providerLabel = providerLabelMap[providerParam] || "소셜";
+
   useEffect(() => {
     const provider = params.get("provider")?.toUpperCase() || "";
     const socialId = params.get("socialId") || "";
     const email = params.get("email") || "";
+    const nameFromQS = params.get("name") || "";
+
     if (!provider || !socialId) {
       alert("잘못된 접근입니다.");
       navigate("/auth/login", { replace: true });
       return;
     }
+
     setFormData((prev) => ({
       ...prev,
       social_type: provider,
       social_id: socialId,
       login_id: `${provider.toLowerCase()}_${socialId}`,
       email,
-      name: "",
+      name: nameFromQS, // 쿼리스트링 name 기본값으로
     }));
   }, [location.search, navigate]);
 
@@ -67,7 +79,6 @@ const SocialJoinPage = () => {
     setFormData((p) => ({ ...p, [name]: newValue }));
   };
 
-  // AuthPage와 동일한 UX: alert 기반, 간단 버튼
   const checkDuplicateNickname = async () => {
     const value = formData.nickname.trim();
     if (!value) {
@@ -145,7 +156,9 @@ const SocialJoinPage = () => {
                   <span className="text-primary-foreground font-bold text-xl">V</span>
                 </div>
               </div>
-              <h1 className="text-3xl font-bold">구글 회원가입</h1>
+
+              {/* 동적 제목 */}
+              <h1 className="text-3xl font-bold">{providerLabel} 회원가입</h1>
               <p className="text-muted-foreground">소셜 로그인 후 추가 정보를 입력해주세요.</p>
             </div>
 

@@ -1,12 +1,19 @@
 package com.example.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.servlet.view.RedirectView;
+
+import com.example.VO.MemberVO;
+import com.example.jwt.JwtUtil;
+import com.example.service.UserService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/auth/google")
@@ -21,54 +28,94 @@ public class GoogleCallbackController {
     @Value("${oauth.google.redirect-uri}")
     private String redirectUri;
 
+    private final JwtUtil jwtUtil;
+    private final UserService userService;
+
+    public GoogleCallbackController(JwtUtil jwtUtil, UserService userService) {
+        this.jwtUtil = jwtUtil;
+        this.userService = userService;
+    }
+
     @GetMapping("/callback")
-    public RedirectView handleGoogleCallback(@RequestParam("code") String code) throws Exception {
-        // 1. Google access_token 요청
+    public ResponseEntity<Void> handleGoogleCallback(@RequestParam("code") String code) throws Exception {
+        // 1) code -> access_token
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        String tokenRequestBody = "code=" + code +
-                "&client_id=" + clientId +
-                "&client_secret=" + clientSecret +
-                "&redirect_uri=" + redirectUri +
-                "&grant_type=authorization_code";
+        var form = new org.springframework.util.LinkedMultiValueMap<String, String>();
+        form.add("code", code);
+        form.add("client_id", clientId);
+        form.add("client_secret", clientSecret);
+        form.add("redirect_uri", redirectUri);
+        form.add("grant_type", "authorization_code");
 
-        HttpEntity<String> tokenRequest = new HttpEntity<>(tokenRequestBody, headers);
-        ResponseEntity<String> tokenResponse = restTemplate.postForEntity(
-                "https://oauth2.googleapis.com/token", tokenRequest, String.class);
+        ResponseEntity<String> tokenResponse =
+                restTemplate.postForEntity("https://oauth2.googleapis.com/token",
+                        new HttpEntity<>(form, headers), String.class);
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode tokenJson = objectMapper.readTree(tokenResponse.getBody());
-        String accessToken = tokenJson.get("access_token").asText();
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode tokenJson = mapper.readTree(tokenResponse.getBody());
+        String accessToken = tokenJson.path("access_token").asText(null);
+        if (accessToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        // 2. access_token으로 사용자 정보 요청
-        HttpHeaders userInfoHeaders = new HttpHeaders();
-        userInfoHeaders.setBearerAuth(accessToken);
-        HttpEntity<String> userInfoRequest = new HttpEntity<>(userInfoHeaders);
-
+        // 2) access_token -> userinfo
+        HttpHeaders uiHeaders = new HttpHeaders();
+        uiHeaders.setBearerAuth(accessToken);
         ResponseEntity<String> userInfoResponse = restTemplate.exchange(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
                 HttpMethod.GET,
-                userInfoRequest,
+                new HttpEntity<>(uiHeaders),
                 String.class
         );
+        JsonNode userInfo = mapper.readTree(userInfoResponse.getBody());
 
-        JsonNode userInfo = objectMapper.readTree(userInfoResponse.getBody());
+        String socialType = "GOOGLE";
+        String socialId   = userInfo.path("id").asText();
+        String email      = userInfo.path("email").asText(null);
+        String name       = userInfo.path("name").asText(null);
 
-        // 3. 필요한 정보 추출
-        String email = userInfo.get("email").asText();
-        String name = userInfo.get("name").asText();
-        String id = userInfo.get("id").asText();
+        // 3) DB에 있으면 → JWT 쿠키 심고 홈으로 302
+        if (userService.existsBySocialIdAndType(socialId, socialType)) {
+            MemberVO m = userService.getBySocial(socialType, socialId).orElseThrow();
 
-        // TODO: DB에서 확인하고 회원이면 로그인 처리, 아니면 회원가입으로 보내기
+            String jwt = jwtUtil.createJwt(
+                    m.getLoginid(),         // ★ JwtFilter가 loginid로 조회
+                    m.getNickname(),
+                    m.getRoles(),           // "MENTEE,USER" 등 CSV
+                    1000L * 60 * 60 * 24 * 7
+            );
 
-        // 4. /auth/social-join 으로 리디렉션
-        String redirectUrl = String.format(
-            "http://localhost:8888/auth/social-join?provider=GOOGLE&socialId=%s&email=%s&name=%s",
-            id, email, name
-        );
+            ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
+                    .httpOnly(true)
+                    .path("/")          // ★ 필수
+                    .domain("localhost")
+                    .sameSite("Lax")    // 로컬 http
+                    // .secure(true)     // HTTPS일 때만
+                    .maxAge(60L * 60 * 24 * 7)
+                    .build();
 
-        return new RedirectView(redirectUrl);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .location(URI.create("http://localhost:8888/"))
+                    .build();
+        }
+
+        // 4) 신규면 → /auth/social-join 로 302 (URL 인코딩)
+        String joinUrl = "http://localhost:8888/auth/social-join"
+                + "?provider=" + enc(socialType)
+                + "&socialId=" + enc(socialId)
+                + "&email="    + enc(email)
+                + "&name="     + enc(name);
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(joinUrl))
+                .build();
+    }
+
+    private static String enc(String v) {
+        return URLEncoder.encode(v == null ? "" : v, StandardCharsets.UTF_8);
     }
 }
