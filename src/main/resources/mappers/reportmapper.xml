@@ -50,15 +50,17 @@
 </insert>
 
 
-	<select id="getTopReportedUsers" resultType="ReportVO">
+	<select id="getTopReportedMentors" resultType="ReportVO">
   SELECT
-    r.target_user_id,
-    tgt.nickname AS targetNickname,
+    r.target_mentor_id AS targetUserId,
+    m.nickname AS targetNickname,
     COUNT(*) AS reportCount,
-    tgt.is_banned AS targetBanned
+    m.is_banned AS targetBanned
   FROM report r
-  JOIN member tgt ON r.target_user_id = tgt.user_id
-  GROUP BY r.target_user_id, tgt.nickname, tgt.is_banned
+  JOIN mentor mt ON r.target_mentor_id = mt.mentor_id
+  JOIN member m ON mt.user_id = m.user_id
+  WHERE r.target_mentor_id IS NOT NULL
+  GROUP BY r.target_mentor_id, m.nickname, m.is_banned
   ORDER BY reportCount DESC
   LIMIT 3
 </select>
