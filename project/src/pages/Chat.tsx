@@ -1,3 +1,4 @@
+// 📁 Chat.tsx (수정된 전체 코드)
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ interface Teacher {
 const Chat = () => {
   const { teacherId } = useParams<{ teacherId: string }>();
   const navigate = useNavigate();
-
+  const [chatId, setChatId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [teacher, setTeacher] = useState<Teacher>({
@@ -39,18 +40,15 @@ const Chat = () => {
     avatar: "?",
   });
 
+  const menteeId = 16; // 🔧 실제 로그인된 유저 ID로 교체 필요
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ✅ 멘토 정보 불러오기
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
-        const res = await fetch(`/api/teacher/${teacherId}`, {
-          credentials: "include",
-        });
-
-        if (!res.ok) throw new Error(`멘토 정보 로드 실패: ${res.status}`);
-
+        const res = await fetch(`/api/teacher/${teacherId}`, 
+		{ credentials: "include" });
+        if (!res.ok) throw new Error("멘토 정보 로드 실패");
         const data = await res.json();
         setTeacher({
           name: data.name,
@@ -61,24 +59,35 @@ const Chat = () => {
         console.error("멘토 정보 불러오기 실패", err);
       }
     };
-
     if (teacherId) fetchTeacher();
   }, [teacherId]);
 
-  // ✅ 메시지 불러오기
+  useEffect(() => {
+    const fetchChatId = async () => {
+      try {
+        const res = await fetch(`/api/mentoring/chatId?menteeId=${menteeId}&mentorId=${teacherId}`);
+        const data = await res.json();
+
+        if (!res.ok || !("chatId" in data) || data.chatId === -1) {
+          console.warn("chatId 없음 또는 잘못된 응답:", data);
+          return;
+        }
+
+        setChatId(data.chatId);
+      } catch (err) {
+        console.error("chatId 조회 실패", err);
+      }
+    };
+    if (teacherId) fetchChatId();
+  }, [teacherId]);
+
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await fetch(`/api/chat/messages?roomId=${teacherId}`, {
+        const res = await fetch(`/api/chat/messages?roomId=${chatId}`, {
           credentials: "include",
         });
-
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
         const data: ChatMessageResponse[] = await res.json();
-
         const formatted: Message[] = data.map((msg, index) => ({
           id: index + 1,
           sender: msg.senderId === "student" ? "student" : "teacher",
@@ -89,22 +98,20 @@ const Chat = () => {
             hour12: true,
           }),
         }));
-
         setMessages(formatted);
       } catch (err) {
         console.error("채팅 불러오기 실패", err);
       }
     };
-
-    if (teacherId) fetchMessages();
-  }, [teacherId]);
+    if (chatId !== null) fetchMessages();
+  }, [chatId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !teacherId) return;
+    if (!message.trim() || chatId === null) return;
 
     const timestamp = new Date().toISOString();
 
@@ -128,7 +135,7 @@ const Chat = () => {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          roomId: teacherId,
+          roomId: chatId,
           senderId: "student",
           content: message,
           timestamp,
@@ -138,7 +145,6 @@ const Chat = () => {
       console.error("메시지 저장 실패", err);
     }
 
-    // 자동 멘토 응답
     setTimeout(() => {
       const responses = [
         "좋은 질문입니다. 자세히 설명드릴게요.",

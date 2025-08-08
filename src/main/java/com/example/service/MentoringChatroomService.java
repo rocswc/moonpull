@@ -23,7 +23,7 @@ public class MentoringChatroomService {
         chatroom.setCreatedAt(LocalDateTime.now());
 
         mentoringChatroomRepository.save(chatroom);
-        int chatId = Math.toIntExact(chatroom.getChatId()); // Long -> int
+        int chatId = Math.toIntExact(chatroom.getChatId());
 
         MentoringProgress progress = mentoringProgressRepository.findByMenteeIdAndMentorId(menteeId, mentorId);
         if (progress != null) {

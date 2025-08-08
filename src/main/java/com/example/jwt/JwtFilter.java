@@ -48,40 +48,42 @@ public class JwtFilter extends OncePerRequestFilter {
         // 1. 인증 예외 경로
         String path = request.getRequestURI();
         if (
-        	    path.equals("/api/login") ||
-        	    path.equals("/api/join") ||
-        	    path.equals("/api/check-duplicate") ||
-        	    path.equals("/api/keywords/trending") ||
-        	    path.equals("/api/keywords/autocomplete") ||
-        	    path.equals("/api/profile/check-email") ||
-        	    path.equals("/api/profile/check-phone") ||
-        	    path.equals("/api/chat/log") ||
-        	    path.startsWith("/api/admin/report") || // 바꾼거    	        	    
-        	    path.startsWith("/api/admin/reports") || 
-        	    
-        	    path.startsWith("/api/chat/") ||
-        	    path.startsWith("/api/teacher/") ||
-        	    
-        	    path.startsWith("/admin/") ||
-        	    
-        	    
-        	    
-        	    
-        	    
-        	    
-        	    path.equals("/apply/mentor") ||
-        	    path.startsWith("/mentee/") ||
-        	    path.startsWith("/payments/") ||
+            path.equals("/api/login") ||
+            path.equals("/api/join") ||
+            path.equals("/api/check-duplicate") ||
+            path.equals("/api/keywords/trending") ||
+            path.equals("/api/keywords/autocomplete") ||
+            path.equals("/api/profile/check-email") ||
+            path.equals("/api/profile/check-phone") ||
+            path.equals("/api/chat/log") ||
+            path.startsWith("/api/admin/report") ||
+            path.startsWith("/api/admin/reports") ||
 
-        	    path.startsWith("/api/mentor-review/") ||
-        	    path.equals("/mentorReview/insert") ||
-        	    path.startsWith("/mentorReview/")
-        	    
-        	    
-        	) {
-        	    filterChain.doFilter(request, response);
-        	    return;
-        	}
+            path.startsWith("/api/chat/") ||
+            path.startsWith("/api/teacher/") ||
+
+            path.startsWith("/api/mentor-id") ||
+            path.startsWith("/api/chat/messages") ||
+
+            path.startsWith("/api/mentor/") ||
+            path.startsWith("/api/mentors/") ||
+
+            path.startsWith("/api/mentoring/chatId") ||
+            path.startsWith("/api/mentoring/accept") ||
+
+            path.startsWith("/admin/") ||
+            path.equals("/apply/mentor") ||
+            path.startsWith("/mentee/") ||
+            path.startsWith("/payments/") ||
+
+            path.startsWith("/api/mentor-review/") ||
+            path.equals("/mentorReview/insert") ||
+            path.startsWith("/mentorReview/")
+        ) {
+            System.out.println("✅ [JwtFilter] 인증 예외 경로 - 필터 통과: " + path);
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // 2. 쿠키에서 JWT 추출
         String token = null;
@@ -95,14 +97,14 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         if (token == null) {
-            System.out.println("JWT 쿠키가 없음");
+            System.out.println("❌ JWT 쿠키가 없음");
             filterChain.doFilter(request, response);
             return;
         }
 
         // 3. 토큰 만료 확인
         if (jwtUtil.isExpired(token)) {
-            System.out.println("JWT 토큰 만료됨");
+            System.out.println("❌ JWT 토큰 만료됨");
             filterChain.doFilter(request, response);
             return;
         }
@@ -111,11 +113,11 @@ public class JwtFilter extends OncePerRequestFilter {
         String username = jwtUtil.getUsername(token);
         String rolesString = jwtUtil.getRole(token);
 
-        System.out.println("[JwtFilter] username: " + username);
-        System.out.println("[JwtFilter] roles: " + rolesString);
+        System.out.println("[JwtFilter] ✅ username: " + username);
+        System.out.println("[JwtFilter] ✅ roles: " + rolesString);
 
         if (rolesString == null || rolesString.trim().isEmpty()) {
-            System.out.println("JWT 토큰에 roles 정보 없음");
+            System.out.println("❌ JWT 토큰에 roles 정보 없음");
             filterChain.doFilter(request, response);
             return;
         }
@@ -132,7 +134,7 @@ public class JwtFilter extends OncePerRequestFilter {
         Optional<MemberVO> optionalUser = userRepository.findByLoginid(username);
 
         if (optionalUser.isEmpty()) {
-            System.out.println("DB에 해당 loginid 사용자 없음: " + username);
+            System.out.println("❌ DB에 해당 loginid 사용자 없음: " + username);
             filterChain.doFilter(request, response);
             return;
         }
@@ -147,8 +149,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
-        System.out.println("SecurityContext 인증 완료: " + authToken);
-        System.out.println("권한 목록: " + authToken.getAuthorities());
+        System.out.println("✅ SecurityContext 인증 완료: " + authToken);
+        System.out.println("✅ 권한 목록: " + authToken.getAuthorities());
 
         // 8. 다음 필터 체인 진행
         filterChain.doFilter(request, response);
