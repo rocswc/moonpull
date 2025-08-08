@@ -32,6 +32,7 @@ public class UserController {
 	    body.put("name", user.getNickname()); 
 	    body.put("loginId", user.getUsername());
 	    body.put("nickname", user.getNickname());
+	    body.put("user", user.getMemberVO());
 	    body.put("roles", user.getAuthorities().stream()
 	            .map(GrantedAuthority::getAuthority)
 	            .collect(Collectors.toList()));

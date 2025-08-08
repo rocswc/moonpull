@@ -36,12 +36,6 @@ public class PaymentController {
 
     @PostMapping("/confirm")
     public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request,  @AuthenticationPrincipal CustomUserDetails userDetails) {
-	
-    	System.out.println("컨펌을 받아요!!!2!");
-    	Integer userId = userDetails.getUserId(); //현재 로그인한 사용자의 userId(PK)를 가져오는code
-    	System.out.println(userId);
-    	
-
     	Object result = paymentService.confirmPayment(request);
     	ResponseEntity<?> response = ResponseEntity.ok(result);
         return response;

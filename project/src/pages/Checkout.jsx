@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
 import { useLocation } from "react-router-dom";
+import axios from "axios";
+
 const generateRandomString = () => window.btoa(Math.random()).slice(0, 20);
 const clientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
 
@@ -13,6 +15,34 @@ const CheckoutPage = () => {
     currency: "KRW",
     value: location.state?.amount || 0
   });
+  const [userId, setUserId] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       const userRes = await axios.get("/api/user");
+  //       const userId = userRes.data.userId;
+
+  //       const mentorRes = await axios.get(`/api/mentor-id?userId=${userId}`);
+  //       const mentorId = mentorRes.data.mentorId;
+  //       setMentorId(mentorId);
+
+  //       // 1. 요청 받은 멘티 목록 가져오기
+  //       const reqRes = await axios.get(`/api/mentoring/requests?mentorId=${mentorId}`);
+  //       setRequests(reqRes.data);
+
+  //       // 2. 멘토링 중인 멘티 목록 가져오기
+  //       const menteeRes = await axios.get(`/api/mentoring/mentees?mentorId=${mentorId}`);
+  //       setMentees(menteeRes.data);
+  //     } catch (error) {
+  //       console.error("❌ 데이터 로딩 실패", error);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
 
   useEffect(() => {
     async function fetchPaymentWidgets() {
@@ -29,6 +59,12 @@ const CheckoutPage = () => {
       if (widgets == null) {
         return;
       }
+
+      const userRes = (await axios.get("/api/user")).data.user;
+      setUserId(userRes.userId)
+      setName(userRes.name)
+      setEmail(userRes.email);
+  
       /**
        * 위젯의 결제금액을 결제하려는 금액으로 초기화하세요.
        * renderPaymentMethods, renderAgreement, requestPayment 보다 반드시 선행되어야 합니다.
@@ -67,6 +103,10 @@ const CheckoutPage = () => {
   const createSuccessUrl = () => {
     const params = new URLSearchParams(window.location.search);
     params.set('planName', planName);
+    params.set('member_id', userId);
+    params.set('name', name);
+    params.set('email', email);
+
     return `${window.location.origin}/payment/success?${params.toString()}`;
   };
 
@@ -89,8 +129,8 @@ const CheckoutPage = () => {
                 await widgets?.requestPayment({
                   orderId: generateRandomString(),
                   orderName: planName,
-                  customerName: "김토스",
-                  customerEmail: "customer123@gmail.com",
+                  customerName: name,
+                  customerEmail: email,
                   successUrl: createSuccessUrl(),
                   failUrl: window.location.origin + "/payment/fail" + window.location.search
                 });

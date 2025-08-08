@@ -74,12 +74,13 @@ public class PaymentServiceImpl implements PaymentService {
             SubscribeDTO subscriptionData = new SubscribeDTO();
             
           //결제 테이블에 정보를 세팅(임시)
-            //paymentData.setMember_id(req.getMember_id());
-            //paymentData.setName(req.getName());
-            
-            paymentData.setMember_id(2);
-            paymentData.setName("테스트결제정보");
-            paymentData.setEmail("kkjspdlqj@naver.com");
+            paymentData.setMember_id(req.getMember_id());
+            paymentData.setName(req.getName());
+            paymentData.setEmail(req.getEmail());
+                     
+            //paymentData.setMember_id(2);
+            //paymentData.setName("테스트결제정보");
+           // paymentData.setEmail("kkjspdlqj@naver.com");
                         
             paymentData.setOrder_id(req.getOrder_id());
             paymentData.setOrder_name((String)responseMap.get("orderName"));
@@ -140,8 +141,7 @@ public class PaymentServiceImpl implements PaymentService {
             SubscribeDTO subscriptionData = new SubscribeDTO();     
             
             //현재 로그인한 id를 받아올 수 없으므로 임시 id를 하드코딩
-            //subscriptionData.setMember_id(payment.getMember_id());
-            subscriptionData.setMember_id(2);
+            subscriptionData.setMember_id(payment.getMember_id());
             subscriptionData.setPlan_type(payment.getPlan_type());         
             subscriptionData.setStatus("ACTIVE");
             subscriptionData.setAmount(payment.getAmount());
