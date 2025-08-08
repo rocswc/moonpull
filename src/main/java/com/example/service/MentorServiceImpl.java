@@ -15,7 +15,7 @@ public class MentorServiceImpl implements MentorService {
 	 @Autowired
     private MentorRepository mentorRepository;
 
-   
+     
    
 	 
     @Override
@@ -43,16 +43,7 @@ public class MentorServiceImpl implements MentorService {
         mentorRepository.revokeMentor(userId);
     }
 
-    @Override
-    public void banUser(int userId) {
-        mentorRepository.banUser(userId);
-    }
-
-    @Override
-    public void unbanUser(int userId) {
-        mentorRepository.unbanUser(userId);
-    }
-
+  
     @Override
     public List<MemberVO> getBlacklistedUsers() {
         return mentorRepository.getBlacklistedUsers();

@@ -18,9 +18,9 @@ public interface MentorService {
 
 	    void revokeMentor(int userId);
 
-	    void banUser(int userId);
+	   // void banUser(int userId);
 
-	    void unbanUser(int userId);
+	  //  void unbanUser(int userId);
 
 	    List<MemberVO> getBlacklistedUsers();
 	    void insertMentorApplication(MentorVO mentorVO);

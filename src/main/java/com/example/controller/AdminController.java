@@ -64,18 +64,7 @@ public class AdminController {
         return "멘토 신청 거부 완료";
     }
     
-    @PostMapping("/ban/{reportId}")
-    public String banUser(@PathVariable int reportId) {
-        mentorRepository.banUser(reportId);
-        return "블랙리스트 등록 완료";
-    }
-
-    @PostMapping("/unban/{reportId}")
-    public String unbanUser(@PathVariable int reportId) {
-        mentorRepository.unbanUser(reportId);
-        return "블랙리스트 해제 완료";
-    }
-    
+   
     
  
 
