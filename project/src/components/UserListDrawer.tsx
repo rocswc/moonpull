@@ -14,7 +14,7 @@ import { useChat } from "@/contexts/ChatContext";
 import axios from "axios";
 
 const UserListDrawer: React.FC = () => {
-  const { users, isUserListOpen, toggleUserList, sendChatRequest } = useChat();
+  const { users, isUserListOpen, toggleUserList, sendChatRequest, currentUser } = useChat();
 
   const onlineUsers = users.filter(user => user.isOnline);
 
@@ -32,31 +32,29 @@ const UserListDrawer: React.FC = () => {
       feedbacksGiven?: number;
       recentSubject?: string;
     }
-  const handleReport = async (mentee: Member) => {
-    const reason = window.prompt(`"${mentee.name}" 멘토를 신고하는 이유를 입력하세요:`);
+	const handleReport = async (user: User) => {
+	  const reason = window.prompt(`"${user.name}" 멘토를 신고하는 이유를 입력하세요:`);
 
-    if (!reason || reason.trim() === "") {
-      alert("신고 사유를 입력해야 합니다.");
-      return;
-    }
+	  if (!reason || reason.trim() === "") {
+	    alert("신고 사유를 입력해야 합니다.");
+	    return;
+	  }
 
-    try {
-      await axios.post("/api/admin/report", {
-        reporterId: 1, // ❗ 실제 로그인한 멘티의 ID로 교체 필요
-        targetUserId: null,
-        targetMentorId: mentee.id,
-        reason,
-      },		{
-		  withCredentials: true // 반드시 있어야 함
-		}
-	  );
+	  try {
+	    await axios.post("/api/admin/report", {
+	      reporterId: Number(currentUser.id),
+	      targetUserId: Number(user.id),
+	      reason,
+	    }, {
+	      withCredentials: true
+	    });
 
-      alert("신고가 정상적으로 접수되었습니다.");
-    } catch (error) {
-      console.error("신고 실패:", error);
-      alert("신고 처리 중 오류가 발생했습니다.");
-    }
-  };
+	    alert("신고가 정상적으로 접수되었습니다.");
+	  } catch (error) {
+	    console.error("신고 실패:", error);
+	    alert("신고 처리 중 오류가 발생했습니다.");
+	  }
+	};
 
   return (
     <Sheet open={isUserListOpen} onOpenChange={toggleUserList}>

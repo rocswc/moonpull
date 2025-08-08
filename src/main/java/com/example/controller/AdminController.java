@@ -221,6 +221,21 @@ public class AdminController {
     }
 
 
+    
+    @PostMapping("/unban-user/{userId}")
+    public ResponseEntity<String> unbanUser(@PathVariable int userId) {
+        try {
+            mentorRepository.unbanUserByUserId(userId);
+            return ResponseEntity.ok("블랙리스트 해제 완료");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                 .body("해제 실패: " + e.getMessage());
+        }
+    }
+    
+    
+    
 
 
 
