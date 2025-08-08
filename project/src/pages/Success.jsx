@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 
 const SuccessPage = () => {
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [isSubscription, setIsSubscription] = useState(false);
+  const [isFreeTrial, setIsFreeTrial] = useState(false);
   
   // URL 파라미터를 직접 파싱 (예시용)
   const urlParams = new URLSearchParams(window.location.search);
-  const navigate = useNavigate();
   const payment_key = urlParams.get("paymentKey");
   const order_id = urlParams.get("orderId");
   const amount = urlParams.get("amount");
@@ -39,7 +38,15 @@ const SuccessPage = () => {
       console.log(data);
       setPaymentData(data);
       setIsConfirmed(true);
-      setIsSubscription(true); // 구독결제 플래그 설정
+      
+      // BASIC 플랜인 경우 무료체험으로 설정
+      if (plan_type === "BASIC") {
+        setIsFreeTrial(true);
+        setIsSubscription(false);
+      } else {
+        setIsSubscription(true);
+        setIsFreeTrial(false);
+      }
     }
   }
 
@@ -66,23 +73,32 @@ const SuccessPage = () => {
       console.log(data);
       setPaymentData(data);
       setIsConfirmed(true);
-      setIsSubscription(false); // 일시불 결제
+      setIsSubscription(false);
+      setIsFreeTrial(false);
     }
   }
 
-  // 구독 시작일과 다음 결제일 계산 (예시)
+  // 구독 시작일과 다음 결제일 계산
   const getSubscriptionDates = () => {
     const today = new Date();
     const nextBilling = new Date(today);
-    nextBilling.setMonth(today.getMonth() + 1);
+    
+    if (isFreeTrial) {
+      // 무료체험의 경우 1개월 후
+      nextBilling.setMonth(today.getMonth() + 1);
+    } else {
+      // 일반 구독의 경우
+      nextBilling.setMonth(today.getMonth() + 1);
+    }
     
     return {
       startDate: today.toLocaleDateString('ko-KR'),
-      nextBillingDate: nextBilling.toLocaleDateString('ko-KR')
+      nextBillingDate: nextBilling.toLocaleDateString('ko-KR'),
+      freeTrialEndDate: isFreeTrial ? nextBilling.toLocaleDateString('ko-KR') : null
     };
   };
 
-  const { startDate, nextBillingDate } = getSubscriptionDates();
+  const { startDate, nextBillingDate, freeTrialEndDate } = getSubscriptionDates();
 
   return (
     <div className="w-full flex justify-center items-center min-h-screen bg-gray-50">
@@ -97,8 +113,90 @@ const SuccessPage = () => {
               />
             </div>
             
-            {isSubscription ? (
-              // 구독결제 성공 화면
+            {isFreeTrial ? (
+              // 무료체험 시작 화면
+              <>
+                <h2 className="text-2xl font-bold text-center mb-2">
+                  무료체험이 시작되었어요! 🎉
+                </h2>
+                <p className="text-gray-600 text-center mb-6">
+                  1개월 동안 모든 기능을 무료로 이용하실 수 있습니다.
+                </p>
+                
+                <div className="w-full space-y-3 mb-6">
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">체험 플랜</span>
+                    <span className="font-medium">BASIC (무료체험)</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">체험 시작일</span>
+                    <span className="font-medium">{startDate}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">체험 종료일</span>
+                    <span className="font-medium text-orange-600">{freeTrialEndDate}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">체험 기간</span>
+                    <span className="font-medium text-green-600">30일</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">체험 비용</span>
+                    <span className="font-medium text-green-600">무료 (0원)</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">결제 수단</span>
+                    <span className="font-medium text-sm">
+                      {paymentData?.cardCompany} {paymentData?.method}
+                      <br />
+                      ({paymentData?.cardNumber})
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">체험 상태</span>
+                    <span className="font-medium text-green-600">
+                      활성화됨
+                    </span>
+                  </div>
+                  {paymentData?.billingKey && (
+                    <div className="flex justify-between py-2">
+                      <span className="text-gray-600">자동결제 등록</span>
+                      <span className="font-medium text-green-600">
+                        등록 완료
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg mb-6 w-full border border-orange-200">
+                  <div className="text-sm text-gray-700">
+                    <p className="font-medium mb-2 text-orange-800">🎁 무료체험 안내</p>
+                    <ul className="space-y-1 text-xs text-orange-700">
+                      <li>• 30일간 모든 프리미엄 기능을 무료로 이용하실 수 있습니다</li>
+                      <li>• 체험 종료 3일 전에 이메일로 안내해드립니다</li>
+                      <li>• 언제든지 체험을 중단하거나 유료 플랜으로 전환할 수 있습니다</li>
+                      <li>• 체험 종료 후 자동으로 유료 플랜으로 전환됩니다</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 w-full">
+                  <button 
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-md border border-orange-500"
+                    onClick={() => window.location.href = "/dashboard"}
+                  >
+                    체험 시작하기
+                  </button>
+                  <button 
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors shadow-md border border-gray-300"
+                    onClick={() => window.location.href = "/subscription/manage"}
+                  >
+                    체험 관리
+                  </button>
+                </div>
+              </>
+            ) : isSubscription ? (
+              // 일반 구독결제 성공 화면
               <>
                 <h2 className="text-2xl font-bold text-center mb-2">
                   구독이 시작되었어요! 🎉
@@ -213,8 +311,8 @@ const SuccessPage = () => {
 
                 <div className="flex gap-3 w-full">
                   <button 
-                    className="flex-1 bg-blue-600 text-black py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md border border-blue-600"
-                    onClick={() => navigate("/")}
+                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md border border-blue-600"
+                    onClick={() => window.location.href = "/"}
                   >
                     다시 테스트하기
                   </button>
@@ -263,17 +361,17 @@ const SuccessPage = () => {
                   onClick={subscriptionPayment}
                   style={{ 
                     color: '#ffffff', 
-                    backgroundColor: '#059669',
-                    borderColor: '#047857'
+                    backgroundColor: plan_type === "BASIC" ? '#ea580c' : '#059669',
+                    borderColor: plan_type === "BASIC" ? '#c2410c' : '#047857'
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#047857';
+                    e.target.style.backgroundColor = plan_type === "BASIC" ? '#c2410c' : '#047857';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#059669';
+                    e.target.style.backgroundColor = plan_type === "BASIC" ? '#ea580c' : '#059669';
                   }}
                 >
-                  🔄 구독 결제 승인
+                  {plan_type === "BASIC" ? '🎁 무료체험 시작' : '🔄 구독 결제 승인'}
                 </button>
               )}
               

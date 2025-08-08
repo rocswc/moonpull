@@ -13,4 +13,7 @@ public class SubscribeDTO {
 	private Date expires_at; //구독 만료일
 	private String customer_key; //고객 자체를 식별하는 키 (한 고객이 여러 빌링키 보유 가능)
 	private String billing_key; //특정 결제수단(카드)에 대한 암호화 키
+	
+	private String name; // 고객 자체를 식별하는 키 (한 고객이 여러 빌링키 보유 가능)
+	private String email; // 특정 결제수단(카드)에 대한 암호화 키
 }

@@ -39,12 +39,9 @@ public class PaymentController {
     @PostMapping("/confirm")
     public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request, @AuthenticationPrincipal CustomUserDetails user) {
 	
-    	System.out.println(user);
-    	
-    	System.out.println(user.getUsername());
-    	System.out.println(user.getUserId()); 
-    	
-    	
+    	System.out.println("컨펌을 받아요!!@!@!");
+    	//System.out.println(user.getUsername());
+    	//System.out.println(user.getUserId()); 
     	
     	//현재 user의 값이 null이 나오기 때문에 로그인정보를 가져올수 없기에 임시로 하드코딩으로 insert하고 있음
     	//request.setName(user.getUsername());
@@ -68,8 +65,6 @@ public class PaymentController {
     	ResponseEntity<?> response = ResponseEntity.ok(result);    	
         return response;
     }
-    
-    
     
 
     @PostMapping("/auto_payment")

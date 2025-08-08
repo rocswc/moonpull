@@ -10,6 +10,7 @@ import com.example.dto.SubscribeDTO;
 public interface PaymentRepository {
 	Integer insertPayment(PaymentDTO vo);
 	Integer insertSubscription(SubscribeDTO vo);
+	List<SubscribeDTO> findSubscriptionsForToday();
 	 void cancelSubscriptionById(int subscribeId);
 	 void cancelPaymentByMemberId(int memberId);
 	 List<Map<String, Object>> getPlanDistribution();

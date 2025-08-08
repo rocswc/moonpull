@@ -77,7 +77,8 @@ const PricingSection = () => {
 
   const handleButtonClick = (plan) => {
     if (plan.name === "무료") {
-      alert("안녕");
+        navigate("/payment/paymentSubscribe", { state: { amount:12500, planName: plan.description, paymentType: 'subscription' } });
+
     } else {
       if(plan.name === "월간 플러스"){
         navigate("/payment/checkout", { state: { amount:12500, planName: plan.description, paymentType: 'onetime' } });
