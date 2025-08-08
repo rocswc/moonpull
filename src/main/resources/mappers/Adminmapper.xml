@@ -253,9 +253,7 @@
   SET is_banned = true
   WHERE user_id = #{userId}
 </update>
-  <update id="unbanUserByUserId" parameterType="int">
-    UPDATE member SET is_banned = false WHERE user_id = #{userId}
-  </update>
+ 
 
   <!-- ✅ 블랙리스트 상세 조회 -->
   <select id="getBlacklistedUsersDetailed" resultType="map">
@@ -297,5 +295,26 @@
     WHERE m.is_banned = TRUE
     ORDER BY bl.created_at DESC
   </select>
+
+<update id="unbanUsersWithExpiredBan">
+  UPDATE member
+  SET is_banned = false,
+      ban_reason = NULL,
+      ban_expire_date = NULL
+  WHERE is_banned = true
+    AND ban_expire_date IS NOT NULL
+    AND ban_expire_date &lt; NOW()
+</update>
+
+
+<update id="unbanUserByUserId">
+  UPDATE member
+  SET is_banned = false,
+      ban_reason = NULL,
+      ban_expire_date = NULL
+  WHERE user_id = #{userId}
+</update>
+
+
 
 </mapper>

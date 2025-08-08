@@ -57,5 +57,9 @@ public interface MentorRepository {
 	    void banUserByUserIdWithReason(Map<String, Object> params);
 	    
 	    void insertBlacklistLog(Map<String, Object> logData);
+	    
+	    void unbanUsersWithExpiredBan();
+	    
+	    void unbanUserByUserId(Integer userId);
 	   
 }

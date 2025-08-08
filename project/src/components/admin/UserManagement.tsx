@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, UserCheck, FileCheck, Search, Eye } from "lucide-react";
+import { Users, FileCheck, Search, Eye } from "lucide-react";
+import BanModal from "@/components/BanModal";
 
 const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState([]);
   const [certificationRequests, setCertificationRequests] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [banModalOpen, setBanModalOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -72,16 +75,25 @@ const UserManagement = () => {
     }
   };
 
-  const handleBanToggle = async (userId, isBanned) => {
+  const openBanModal = (user) => {
+    setSelectedUser(user);
+    setBanModalOpen(true);
+  };
+
+  const closeBanModal = () => {
+    setSelectedUser(null);
+    setBanModalOpen(false);
+  };
+
+  // ✅ 블랙리스트 해제 로직
+  const handleUnbanUser = async (userId) => {
     try {
-      if (isBanned) {
-        await axios.post(`/api/admin/unban/${userId}`);
-      } else {
-        await axios.post(`/api/admin/ban/${userId}`);
-      }
-      await fetchUsers();
+      await axios.post(`/api/admin/unban-user/${userId}`);
+      await fetchUsers(); // 목록 갱신
+      alert("✅ 블랙리스트 해제 완료");
     } catch (err) {
-      console.error("블랙리스트 변경 실패", err);
+      console.error("블랙리스트 해제 실패", err);
+      alert("❌ 해제 실패");
     }
   };
 
@@ -158,7 +170,15 @@ const UserManagement = () => {
                             멘토 권한 철회
                           </Button>
                         )}
-                        <Button size="sm" variant="destructive" onClick={() => handleBanToggle(user.userId, user.isBanned)}>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() =>
+                            user.isBanned
+                              ? handleUnbanUser(user.userId)
+                              : openBanModal(user)
+                          }
+                        >
                           {user.isBanned ? "블랙리스트 해제" : "블랙리스트 지정"}
                         </Button>
                       </div>
@@ -220,6 +240,8 @@ const UserManagement = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <BanModal open={banModalOpen} onClose={closeBanModal} user={selectedUser} onSuccess={fetchUsers} />
     </div>
   );
 };
