@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.example.DAO.PaymentRepository;
 import com.example.config.TossConfig;
@@ -79,9 +80,7 @@ public class PaymentServiceImpl implements PaymentService {
             paymentData.setMember_id(2);
             paymentData.setName("테스트결제정보");
             paymentData.setEmail("kkjspdlqj@naver.com");
-            
-            
-            
+                        
             paymentData.setOrder_id(req.getOrder_id());
             paymentData.setOrder_name((String)responseMap.get("orderName"));
             paymentData.setPayment_method((String)responseMap.get("method"));
@@ -165,7 +164,14 @@ public class PaymentServiceImpl implements PaymentService {
     //@Scheduled(fixedDelay = 1000) // 이전 실행 완료 후 1초 후 다시 실행(테스트용)
     @Transactional 
     public void processMonthlyRecurringPayments() {
-    	 	System.out.println("김갑중 스케줄링 테스트입니다.");
+    	
+    	
+    	System.out.println("김갑중 스케줄링 테스트입니다.");
+        String currentUsername = SecurityContextHolder.getContext()
+                .getAuthentication().getName();
+        System.out.println(currentUsername);
+        System.out.println("김갑중 스케줄링 테스트입니다.2");
+        
     	 	String orderId = UUID.randomUUID().toString(); //결제API에 보낼 결재고유id
     	 	String orderName = "문풀 프리미엄 자동결제";
     	 		
@@ -173,91 +179,36 @@ public class PaymentServiceImpl implements PaymentService {
     	 	List<SubscribeDTO> subscriptionsToCharge = paymentRepository.findSubscriptionsForToday();
 
  		 		 		
-    	 	if(subscriptionsToCharge != null) { 	 		
-        	 	//2. 각 구독자별로 결제 처리
-        	 	for (SubscribeDTO subscription : subscriptionsToCharge) {  	    	  
-        	 		try {            	  
-        	 			HttpRequest request = HttpRequest.newBuilder()		
-    	  	    	    .uri(URI.create("https://api.tosspayments.com/v1/billing/"+subscription.getBilling_key()))
-    	  	    	    .header("Authorization", "Basic dGVzdF9za196WExrS0V5cE5BcldtbzUwblgzbG1lYXhZRzVSOg==")
-    	  	    	    .header("Content-Type", "application/json")
-    	  	    	    .method("POST", HttpRequest.BodyPublishers.ofString(
-    	  	    	    		String.format("{\"customerKey\":\"%s\",\"amount\":%d,\"orderId\":\"%s\",\"orderName\":\"%s\",\"customerEmail\":\"%s\",\"customerName\":\"%s\",\"taxFreeAmount\":0}"
-    	  	    	    		,subscription.getCustomer_key(),subscription.getAmount(),orderId,orderName,subscription.getEmail(),subscription.getName())	               	    	    		
-    	  	    	    		))   	    
-    	  	    	    .build();
-        	 			HttpResponse<String> response;
-    	  		
-    	  				response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-    	  				System.out.println(response.body());
-    	                    	  				
-    	  				//결제가 완료되었으면 결제정보를 결제 테이블에 저장해야 함
-    	  				  	  				   	  				
-    	                  Thread.sleep(100); // API 호출 간격 조절 (선택사항)
-        	 		} catch (Exception e) {
-    	                  System.err.println("구독 ID " + subscription.getSubscription_id() + " 결제 실패: " + e.getMessage());
-    	                  // 개별 결제 실패 시에도 다른 결제는 계속 처리
-        	 		}
-        	 	}	
-    	 		
-    	 	}
-
-    	 	
-//            List<PaymentDTO> subscriptionsToCharge = subscriptionMapper.findSubscriptionsForToday();
-//            
-//    
-//            if (subscriptionsToCharge == null || subscriptionsToCharge.isEmpty()) {
-//                System.out.println("오늘 결제할 구독이 없습니다.");
-//                return;
-//            }
-//            
-//            System.out.println("오늘 처리할 구독 수: " + subscriptionsToCharge.size());
-//            
-//            // 2. 각 구독자별로 결제 처리
-//            for (PaymentDTO subscription : subscriptionsToCharge) {
-//                try {
-//                    processIndividualPayment(subscription);
-//                    Thread.sleep(100); // API 호출 간격 조절 (선택사항)
-//                } catch (Exception e) {
-//                    System.err.println("구독 ID " + subscription.getSubscriptionId() + " 결제 실패: " + e.getMessage());
-//                    // 개별 결제 실패 시에도 다른 결제는 계속 처리
-//                }
-//            }
-//        } catch (Exception e) {
-//            System.err.println("월간 정기결제 배치 처리 중 오류 발생: " + e.getMessage());
-//            e.printStackTrace();
-//        }
-//        
-            
+//    	 	if(subscriptionsToCharge != null) { 	 		
+//        	 	//2. 각 구독자별로 결제 처리
+//        	 	for (SubscribeDTO subscription : subscriptionsToCharge) {  	    	  
+//        	 		try {            	  
+//        	 			HttpRequest request = HttpRequest.newBuilder()		
+//    	  	    	    .uri(URI.create("https://api.tosspayments.com/v1/billing/"+subscription.getBilling_key()))
+//    	  	    	    .header("Authorization", "Basic dGVzdF9za196WExrS0V5cE5BcldtbzUwblgzbG1lYXhZRzVSOg==")
+//    	  	    	    .header("Content-Type", "application/json")
+//    	  	    	    .method("POST", HttpRequest.BodyPublishers.ofString(
+//    	  	    	    		String.format("{\"customerKey\":\"%s\",\"amount\":%d,\"orderId\":\"%s\",\"orderName\":\"%s\",\"customerEmail\":\"%s\",\"customerName\":\"%s\",\"taxFreeAmount\":0}"
+//    	  	    	    		,subscription.getCustomer_key(),subscription.getAmount(),orderId,orderName,subscription.getEmail(),subscription.getName())	               	    	    		
+//    	  	    	    		))   	    
+//    	  	    	    .build();
+//        	 			HttpResponse<String> response;
+//    	  		
+//    	  				response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+//    	  				System.out.println(response.body());
+//    	                    	  				
+//    	  				//결제가 완료되었으면 결제정보를 결제 테이블에 저장해야 함
+//    	  				  	  				   	  				
+//    	                  Thread.sleep(100); // API 호출 간격 조절 (선택사항)
+//        	 		} catch (Exception e) {
+//    	                  System.err.println("구독 ID " + subscription.getSubscription_id() + " 결제 실패: " + e.getMessage());
+//    	                  // 개별 결제 실패 시에도 다른 결제는 계속 처리
+//        	 		}
+//        	 	}	
+//    	 		
+//    	 	}        
     }
-    
-
-    
-//    //매월 1일 00시에 결제한다고 가정
-//    public void processMonthlyRecurringPayments(PaymentDTO payment) {  
-//	    HttpRequest request = HttpRequest.newBuilder()
-//	    		
-//	    		
-//	    	    .uri(URI.create("https://api.tosspayments.com/v1/billing/{billingKey}"))
-//	    	    .header("Authorization", "Basic dGVzdF9za196WExrS0V5cE5BcldtbzUwblgzbG1lYXhZRzVSOg==")
-//	    	    .header("Content-Type", "application/json")
-//	    	    .method("POST", HttpRequest.BodyPublishers.ofString("{\"customerKey\":\"x_1_Ug7haEgFWNunRMiHr\",\"amount\":4900,\"orderId\":\"OzUvizU00JRWjiRfrPq27\",\"orderName\":\"연간 프리미엄 구독(자동결제)\",\"customerEmail\":\"customer@email.com\",\"customerName\":\"박토스\",\"taxFreeAmount\":0}"))
-//	    	    .build();
-//	    	HttpResponse<String> response;
-//			try {
-//				response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-//				System.out.println(response.body());
-//				
-//						
-//			} catch (IOException | InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//	    	      
-//    }
-    
-    
-    
+     
     @Transactional
     public void cancelSubscriptionAndPayment(int subscribeId, int memberId) {
     	 System.out.println("➡️ PaymentService 호출됨 - subscribeId: " + subscribeId + ", memberId: " + memberId);
@@ -265,7 +216,6 @@ public class PaymentServiceImpl implements PaymentService {
     	 paymentRepository.cancelPaymentByMemberId(memberId);
         System.out.println("➡️ DB 업데이트 완료 (subscribe, payment)");
     }
-    
     
     public List<Map<String, Object>> getPlanDistribution() {
         return paymentRepository.getPlanDistribution();
