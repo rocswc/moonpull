@@ -28,7 +28,7 @@ public class MentoringChatroom {
     private boolean isReported = false;
 
     @Column(nullable = false)
-    private Long participant1Id; // 멘티
+    private Long participant1Id; // -`멘티
 
     @Column(nullable = false)
     private Long participant2Id; // 멘토

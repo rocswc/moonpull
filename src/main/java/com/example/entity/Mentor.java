@@ -18,7 +18,7 @@ public class Mentor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId; // ✅ 이 필드 추가
+    private Long userId; // ✅ ```이 필드 추가
 
     private String name;
     private String subject;
