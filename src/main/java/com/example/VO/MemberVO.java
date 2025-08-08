@@ -1,6 +1,8 @@
 package com.example.VO;
 
 import java.time.LocalDateTime;
+import java.util.Date;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,7 +19,7 @@ public class MemberVO {
     @Column(name = "user_id") // DB 컬럼명과 매핑
     private Integer userId; // 회원 고유 번호 (PK)
 
-    @Column(name = "login_id", nullable = false, unique = true, length = 50)
+    @Column(name = "login_id", nullable = true, unique = true, length = 50)
     private String loginid; // 로그인용 아이디 (필수, 중복 불가)
 
     @Column(name = "is_social")
@@ -57,6 +59,16 @@ public class MemberVO {
     @Builder.Default  //임시
     @Column(name = "is_banned", nullable = false)
     private Boolean isBanned = false;
+    
+    @Builder.Default
+    @Column(name = "ban_reason", nullable = true)
+    private String banReason = "";
+    
+
+    
+    @Column(name = "ban_expire_date", nullable = true)
+    private Date banExpireDate; 
+    
 
     @Column(length = 100)
     private String university; // 대학교명 (선택)
