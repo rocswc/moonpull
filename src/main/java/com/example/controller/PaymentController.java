@@ -30,24 +30,18 @@ import org.springframework.security.core.Authentication;
 	    "http://192.168.0.184:8888",
 	    "http://192.168.56.1:8888"
 	})
-public class PaymentController {
-	String testkey = "i5mowkAbLucb9K7FgxTWwON2JmFtGOpoKJH6gleRFGQ=";
-	 
+public class PaymentController { 
 	@Autowired	
     private PaymentService paymentService;
 
     @PostMapping("/confirm")
-    public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request, @AuthenticationPrincipal CustomUserDetails user) {
+    public ResponseEntity<?> confirmPayment(@RequestBody PaymentDTO request,  @AuthenticationPrincipal CustomUserDetails userDetails) {
 	
-    	System.out.println("컨펌을 받아요!!@!@!");
-    	//System.out.println(user.getUsername());
-    	//System.out.println(user.getUserId()); 
+    	System.out.println("컨펌을 받아요!!!2!");
+    	Integer userId = userDetails.getUserId(); //현재 로그인한 사용자의 userId(PK)를 가져오는code
+    	System.out.println(userId);
     	
-    	//현재 user의 값이 null이 나오기 때문에 로그인정보를 가져올수 없기에 임시로 하드코딩으로 insert하고 있음
-    	//request.setName(user.getUsername());
-    	//request.setMember_id(user.getUserId());
-    	
-    	
+
     	Object result = paymentService.confirmPayment(request);
     	ResponseEntity<?> response = ResponseEntity.ok(result);
         return response;
@@ -65,65 +59,5 @@ public class PaymentController {
     	ResponseEntity<?> response = ResponseEntity.ok(result);    	
         return response;
     }
-    
-
-    @PostMapping("/auto_payment")
-    public void processAutoPayment(@RequestBody PaymentDTO payment) {
-//        HttpRequest request = HttpRequest.newBuilder()
-//        	    .uri(URI.create("https://api.tosspayments.com/v1/billing/{billingKey}"))
-//        	    .header("Authorization", "Basic dGVzdF9za196WExrS0V5cE5BcldtbzUwblgzbG1lYXhZRzVSOg==")
-//        	    .header("Content-Type", "application/json")
-//        	    .method("POST", HttpRequest.BodyPublishers.ofString("{\"customerKey\":\"toveCXEwa_CJS_pE8w0tQ\",\"amount\":4900,\"orderId\":\"5ax9qBMJvlrfswcmqmjPn\",\"orderName\":\"토스 프라임 구독\",\"customerEmail\":\"customer@email.com\",\"customerName\":\"박토스\",\"taxFreeAmount\":0}"))
-//        	    .build();
-//        	HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-//        	System.out.println(response.body());      
-    }
-
-    
-//    	@PostMapping("/cancel-billing-key")
-//        public ResponseEntity<Map<String, Object>> cancelBillingKey(
-//            @RequestParam String billingKey,
-//            @RequestParam String customerKey
-//        ) {
-//            Map<String, Object> result = new HashMap<>();
-//            
-//            try {
-//                String encodedAuthHeader = Base64.getEncoder()
-//                    .encodeToString((SECRET_KEY1 + ":").getBytes());
-//                
-//                HttpRequest request = HttpRequest.newBuilder()
-//                    .uri(URI.create("https://api.tosspayments.com/v1/billing/authorizations/" + billingKey))
-//                    .header("Authorization", "Basic " + encodedAuthHeader)
-//                    .header("Content-Type", "application/json")
-//                    .method("DELETE", HttpRequest.BodyPublishers.ofString(
-//                        String.format("{\"customerKey\":\"%s\"}", customerKey)
-//                    ))
-//                    .build();
-//                
-//                HttpResponse<String> response = HttpClient.newHttpClient()
-//                    .send(request, HttpResponse.BodyHandlers.ofString());
-//                
-//                if (response.statusCode() == 200) {
-//                    // TODO: DB에서 빌링키 비활성화
-//                    // deactivateBillingKeyInDatabase(billingKey);
-//                    
-//                    result.put("success", true);
-//                    result.put("message", "빌링키가 성공적으로 해지되었습니다.");
-//                    
-//                    return ResponseEntity.ok(result);
-//                } else {
-//                    result.put("success", false);
-//                    result.put("message", "빌링키 해지에 실패했습니다.");
-//                    
-//                    return ResponseEntity.badRequest().body(result);
-//                }
-//                
-//            } catch (Exception e) {
-//                result.put("success", false);
-//                result.put("message", "서버 오류가 발생했습니다.");
-//                
-//                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
-//            }
-//        }	
     	
 }
