@@ -9,6 +9,7 @@
   <select id="getMentorsBySlug" resultType="com.example.dto.MentorResponseDTO">
     SELECT DISTINCT
       m.mentor_id AS id,
+      u.user_id AS userId,
       u.name AS name,
       m.introduction,
       m.score AS rating,

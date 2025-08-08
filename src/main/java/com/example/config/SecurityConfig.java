@@ -123,7 +123,7 @@ public class SecurityConfig {
                 
                    .requestMatchers("/api/chat/**").permitAll()
                    .requestMatchers("/api/teacher/**").permitAll()
-                   
+                   .requestMatchers("/api/mentors/**").permitAll() // **
                    
                    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")       
                    .requestMatchers("/api/admin/**").hasRole("ADMIN")

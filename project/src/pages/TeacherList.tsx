@@ -1,3 +1,4 @@
+// ✅ 전체 TeacherList.tsx (생략 없이 전체입니다)
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -10,6 +11,7 @@ import Navigation from "@/components/Navigation";
 
 type Teacher = {
   id: string | number;
+  userId: number; // ✅ 백엔드에서 userId로 매칭
   name: string;
   introduction: string;
   rating: number;
@@ -38,7 +40,9 @@ const TeacherList = () => {
 
     const fetchTeachers = async () => {
       try {
-        const res = await axios.get(`/api/mentors/${subject}`);
+        const res = await axios.get(`/api/mentors/${subject}`, {
+          withCredentials: true,
+        });
         setTeachers(res.data);
       } catch (error) {
         console.error("멘토 정보를 불러오지 못했습니다.", error);
@@ -64,14 +68,13 @@ const TeacherList = () => {
     );
   }
 
-  const handleMatching = (teacherId: string | number) => {
-    navigate(`/chat/${teacherId}`);
+  const handleMatching = (userId: number) => {
+    navigate(`/chat/${userId}`); // ✅ userId로 이동
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
       <Navigation />
-
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="sm" onClick={() => navigate("/matching")} className="gap-2">
@@ -115,11 +118,8 @@ const TeacherList = () => {
                       </div>
                     </div>
                   </div>
-
                   <CardTitle className="text-xl font-bold">{teacher.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {teacher.introduction}
-                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{teacher.introduction}</p>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
@@ -151,7 +151,7 @@ const TeacherList = () => {
                   </div>
 
                   <Button
-                    onClick={() => handleMatching(teacher.id)}
+                    onClick={() => handleMatching(teacher.userId)}
                     className="w-full mt-4"
                     variant="hero"
                   >
@@ -162,15 +162,6 @@ const TeacherList = () => {
             ))}
           </div>
         )}
-
-        <div className="mt-12 text-center">
-          <div className="bg-muted/50 rounded-xl p-6">
-            <h3 className="text-lg font-semibold mb-3">🔥 실시간 매칭 시스템</h3>
-            <p className="text-sm text-muted-foreground">
-              모든 멘토는 현재 온라인 상태이며, 매칭 즉시 1대1 대화를 시작할 수 있습니다
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

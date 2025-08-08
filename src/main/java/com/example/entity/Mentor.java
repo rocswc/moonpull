@@ -1,3 +1,4 @@
+// 📁 Mentor.java
 package com.example.entity;
 
 import jakarta.persistence.Entity;
@@ -18,7 +19,7 @@ public class Mentor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId; // ✅ ```이 필드 추가
+    private Long userId; // ✅ 유저 ID (member 테이블 FK)
 
     private String name;
     private String subject;
