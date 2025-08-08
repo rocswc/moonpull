@@ -37,7 +37,7 @@ import PaymentSubscribe from "./pages/PaymentSubscribe";
 import ChatInterface from"@/components/ChatInterface"    
 
 import SocialJoinPage from "./components/socialLogin/SocialJoinPage";
-import OAuthCallbackPage from "./components/socialLogin/OAuthCallbackPage";
+
 
 const queryClient = new QueryClient();
 
@@ -66,7 +66,6 @@ const App = () => (
 		      {/*  로그인/회원가입을 명확하게 나눔 */}
 		      <Route path="/auth/login" element={<AuthPage />} />
 		      <Route path="/auth/signup" element={<AuthPage />} />
-			  <Route path="/auth/naver/callback" element={<OAuthCallbackPage />} />
 			  <Route path="/auth/social-join" element={<SocialJoinPage />} />
 			  
 			  {/* 메인 페이지는 보호x */}

@@ -78,9 +78,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
             path.startsWith("/api/mentor-review/") ||
             path.equals("/mentorReview/insert") ||
-            path.startsWith("/mentorReview/")
+            path.startsWith("/mentorReview/") ||
+            
+         //  소셜 로그인 과정 인증 없이 통과
+            path.startsWith("/auth/kakao/") ||     
+            path.startsWith("/auth/google/")       
         ) {
-            System.out.println("✅ [JwtFilter] 인증 예외 경로 - 필터 통과: " + path);
+            System.out.println(" [JwtFilter] 인증 예외 경로 - 필터 통과: " + path);
             filterChain.doFilter(request, response);
             return;
         }

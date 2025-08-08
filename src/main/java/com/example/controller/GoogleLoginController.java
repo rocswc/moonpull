@@ -1,13 +1,18 @@
 package com.example.controller;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+// GoogleLoginController.java
 
-@RestController
-@RequestMapping("/auth/google")
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import jakarta.servlet.http.HttpServletResponse;
+
+@Controller
 public class GoogleLoginController {
 
     @Value("${oauth.google.client-id}")
@@ -16,18 +21,19 @@ public class GoogleLoginController {
     @Value("${oauth.google.redirect-uri}")
     private String redirectUri;
 
-    @GetMapping("/login")
-    public ResponseEntity<?> redirectToGoogleLogin() {
-        String scope = "openid%20email%20profile";
-        String responseType = "code";
+    @GetMapping("/auth/google/login")
+    public void googleLogin(HttpServletResponse response) throws IOException {
+        String redirectUriEncoded = URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
+        String scope = URLEncoder.encode("openid email profile", StandardCharsets.UTF_8);
 
-        String url = String.format(
-            "https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=%s&scope=%s",
-            clientId, redirectUri, responseType, scope
-        );
+        String url = "https://accounts.google.com/o/oauth2/v2/auth"
+                + "?response_type=code"
+                + "&client_id=" + clientId
+                + "&redirect_uri=" + redirectUriEncoded
+                + "&scope=" + scope
+                + "&access_type=offline"
+                + "&prompt=consent"; // (선택)
 
-        return ResponseEntity.status(302).header("Location", url).build();
+        response.sendRedirect(url);
     }
 }
-
-
