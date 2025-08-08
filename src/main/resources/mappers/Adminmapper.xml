@@ -223,6 +223,7 @@
       #{reasonDetail},
       #{durationDays},
       'BAN'
+     
     )
   </insert>
 
@@ -237,10 +238,21 @@
   </insert>
 
   <!-- ✅ 블랙리스트 처리 -->
-  <update id="banUserByUserId" parameterType="int">
-    UPDATE member SET is_banned = true WHERE user_id = #{userId}
-  </update>
+ <update id="banUserByUserIdWithReason" parameterType="map">
+  UPDATE member
+  SET
+    is_banned = true,
+    ban_reason = #{banReason},
+    ban_expire_date = #{banExpireDate}
+  WHERE user_id = #{userId}
+</update>
 
+
+<update id="banUserByUserId" parameterType="int">
+  UPDATE member
+  SET is_banned = true
+  WHERE user_id = #{userId}
+</update>
   <update id="unbanUserByUserId" parameterType="int">
     UPDATE member SET is_banned = false WHERE user_id = #{userId}
   </update>
