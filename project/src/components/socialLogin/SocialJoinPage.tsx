@@ -1,37 +1,19 @@
+import Navigation from "@/components/Navigation";
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Input } from "@/components/ui/input";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { toast } from "react-toastify";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { IdCard, ArrowLeft } from "lucide-react";
 import axios from "axios";
-import { Mail, IdCard } from "lucide-react";
-
-interface SocialJoinFormData {
-  social_type: string;
-  social_id: string;
-  login_id: string;
-  password: string;
-  is_social: boolean;
-  email: string;
-  name: string;
-  nickname: string;
-  phone_number: string;
-  birthday: string;
-  gender: string;
-  roles: string;
-  university: string;
-  major: string;
-  graduation_file: File | null;
-}
 
 const SocialJoinPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
 
-  const [formData, setFormData] = useState<SocialJoinFormData>({
+  const [formData, setFormData] = useState({
     social_type: "",
     social_id: "",
     login_id: "",
@@ -46,28 +28,25 @@ const SocialJoinPage = () => {
     roles: "",
     university: "",
     major: "",
-    graduation_file: null,
+    graduation_file: null as File | null,
   });
 
   useEffect(() => {
     const provider = params.get("provider")?.toUpperCase() || "";
     const socialId = params.get("socialId") || "";
     const email = params.get("email") || "";
-    const name = params.get("name") || "";
-
-    if (!provider || !socialId || !email) {
-      toast.error("잘못된 접근입니다.");
-      navigate("/auth/login");
+    if (!provider || !socialId) {
+      alert("잘못된 접근입니다.");
+      navigate("/auth/login", { replace: true });
       return;
     }
-
     setFormData((prev) => ({
       ...prev,
       social_type: provider,
       social_id: socialId,
       login_id: `${provider.toLowerCase()}_${socialId}`,
       email,
-      name,
+      name: "",
     }));
   }, [location.search, navigate]);
 
@@ -75,40 +54,48 @@ const SocialJoinPage = () => {
     const { name, value, type, files } = e.target as HTMLInputElement;
     if (type === "file") {
       setFormData((p) => ({ ...p, [name]: files && files.length > 0 ? files[0] : null }));
-    } else {
-      let newValue = value;
-      if (name === "phone_number") {
-        const onlyNums = value.replace(/\D/g, "").slice(0, 11);
-        if (onlyNums.length >= 11) {
-          newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
-        } else if (onlyNums.length >= 7) {
-          newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
-        } else if (onlyNums.length >= 4) {
-          newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3)}`;
-        } else {
-          newValue = onlyNums;
-        }
-      }
-      setFormData((p) => ({ ...p, [name]: newValue }));
+      return;
     }
+    let newValue = value;
+    if (name === "phone_number") {
+      const onlyNums = value.replace(/\D/g, "").slice(0, 11);
+      if (onlyNums.length >= 11) newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
+      else if (onlyNums.length >= 7) newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3, 7)}-${onlyNums.slice(7)}`;
+      else if (onlyNums.length >= 4) newValue = `${onlyNums.slice(0, 3)}-${onlyNums.slice(3)}`;
+      else newValue = onlyNums;
+    }
+    setFormData((p) => ({ ...p, [name]: newValue }));
   };
 
-  const checkDuplicate = async () => {
-    const value = formData.nickname;
-    if (!value) return alert("닉네임을 입력하세요.");
+  // AuthPage와 동일한 UX: alert 기반, 간단 버튼
+  const checkDuplicateNickname = async () => {
+    const value = formData.nickname.trim();
+    if (!value) {
+      alert("닉네임을 먼저 입력하세요.");
+      return;
+    }
     try {
       const res = await axios.get("/api/check-duplicate", {
         params: { type: "nickname", value },
         withCredentials: true,
       });
-      alert(res.data.exists ? "이미 사용 중입니다." : "사용 가능한 닉네임입니다.");
-    } catch {
-      alert("중복 확인 중 오류 발생");
+      alert(res.data?.exists ? "이미 사용 중인 닉네임입니다." : "사용 가능한 닉네임입니다.");
+    } catch (e) {
+      console.error(e);
+      alert("중복 확인 중 오류가 발생했습니다.");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) return alert("이름을 입력하세요.");
+    if (!formData.nickname.trim()) return alert("닉네임을 입력하세요.");
+    if (!formData.phone_number.trim()) return alert("전화번호를 입력하세요.");
+    if (!formData.birthday.trim()) return alert("생년월일을 입력하세요.");
+    if (!formData.gender) return alert("성별을 선택하세요.");
+    if (!formData.roles) return alert("역할을 선택하세요.");
+    if (!formData.email?.trim()) return alert("이메일을 입력하세요.");
+
     try {
       const joinDTO = {
         login_id: formData.login_id,
@@ -118,7 +105,7 @@ const SocialJoinPage = () => {
         social_id: formData.social_id,
         email: formData.email,
         name: formData.name,
-        nickname: formData.nickname,
+        nickname: formData.nickname.trim(),
         phone_number: formData.phone_number.replace(/-/g, ""),
         birthday: formData.birthday,
         gender: formData.gender,
@@ -129,123 +116,170 @@ const SocialJoinPage = () => {
 
       const form = new FormData();
       form.append("joinDTO", new Blob([JSON.stringify(joinDTO)], { type: "application/json" }));
-      if (formData.graduation_file) {
-        form.append("graduation_file", formData.graduation_file);
-      }
+      if (formData.graduation_file) form.append("graduation_file", formData.graduation_file);
 
-      await axios.post("/api/social-join", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-        withCredentials: true,
-      });
+      await axios.post("/api/join", form, { withCredentials: true });
 
-      toast.success("소셜 회원가입 완료!");
-      navigate("/");
-    } catch (err) {
-      toast.error("회원가입 중 오류 발생");
-      console.error(err);
+      alert("소셜 회원가입 완료!");
+      navigate("/", { replace: true });
+    } catch (error) {
+      const data =
+        (axios.isAxiosError(error) && error.response?.data) as { message?: string; error?: string } | undefined;
+      alert(data?.message || data?.error || "회원가입 중 오류 발생");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex justify-center items-center px-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader>
-          <h2 className="text-2xl font-bold text-center">소셜 회원가입</h2>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input name="email" value={formData.email} readOnly />
-            <Input name="name" value={formData.name} readOnly />
-            <div className="flex gap-2">
-              <Input
-                name="nickname"
-                placeholder="닉네임"
-                value={formData.nickname}
-                onChange={handleChange}
-                required
-              />
-              <Button type="button" onClick={checkDuplicate}>중복확인</Button>
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+          <div className="mx-auto w-full max-w-md space-y-8">
+            <div className="text-center space-y-4">
+              <Link to="/" className="inline-flex items-center space-x-2 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-4 h-4" />
+                <span>홈으로 돌아가기</span>
+              </Link>
+              <div className="flex justify-center">
+                <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-xl">V</span>
+                </div>
+              </div>
+              <h1 className="text-3xl font-bold">구글 회원가입</h1>
+              <p className="text-muted-foreground">소셜 로그인 후 추가 정보를 입력해주세요.</p>
             </div>
-            <Input
-              name="phone_number"
-              placeholder="전화번호"
-              value={formData.phone_number}
-              onChange={handleChange}
-              required
-            />
-            <div className="relative">
-              <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                name="birthday"
-                placeholder="생년월일 (예: 19990101)"
-                value={formData.birthday}
-                onChange={(e) => {
-                  const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 8);
-                  setFormData((p) => ({ ...p, birthday: onlyNums }));
-                }}
-                className="pl-10"
-                required
-              />
-            </div>
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={handleChange}
-              required
-              className="w-full border px-3 py-2 rounded-md"
-            >
-              <option value="">성별 선택</option>
-              <option value="M">남성</option>
-              <option value="F">여성</option>
-            </select>
-            <Label>역할 선택</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={formData.roles === "MENTEE" ? "default" : "outline"}
-                onClick={() => setFormData((p) => ({ ...p, roles: "MENTEE" }))}
-              >
-                멘티
-              </Button>
-              <Button
-                type="button"
-                variant={formData.roles === "MENTOR" ? "default" : "outline"}
-                onClick={() => setFormData((p) => ({ ...p, roles: "MENTOR" }))}
-              >
-                멘토
-              </Button>
-            </div>
-            {formData.roles === "MENTOR" && (
-              <>
-                <Input
-                  name="university"
-                  placeholder="대학교"
-                  value={formData.university}
-                  onChange={handleChange}
-                  required
-                />
-                <Input
-                  name="major"
-                  placeholder="전공"
-                  value={formData.major}
-                  onChange={handleChange}
-                  required
-                />
-                <Label htmlFor="graduation_file">졸업증명서</Label>
-                <Input
-                  type="file"
-                  name="graduation_file"
-                  accept=".pdf,image/*"
-                  onChange={handleChange}
-                  required
-                />
-              </>
-            )}
-            <Button type="submit" className="w-full mt-4">회원가입</Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+
+            <Card className="shadow-elegant border-0 bg-card/50 backdrop-blur-sm">
+              <CardHeader />
+              <CardContent className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+                  {formData.email ? (
+                    <Input name="email" value={formData.email} readOnly />
+                  ) : (
+                    <Input
+                      name="email"
+                      type="email"
+                      placeholder="이메일을 입력하세요"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                    />
+                  )}
+
+                  <Input
+                    id="full_name"
+                    name="full_name"
+                    placeholder="이름을 입력하세요"
+                    value={formData.name}
+                    onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                    autoComplete="off"
+                    required
+                  />
+
+                  <div className="flex gap-2">
+                    <Input
+                      name="nickname"
+                      placeholder="닉네임"
+                      value={formData.nickname}
+                      onChange={handleChange}
+                      autoComplete="off"
+                      required
+                    />
+                    <Button type="button" onClick={() => void checkDuplicateNickname()}>
+                      중복확인
+                    </Button>
+                  </div>
+
+                  <Input
+                    name="phone_number"
+                    placeholder="전화번호"
+                    value={formData.phone_number}
+                    onChange={handleChange}
+                    autoComplete="off"
+                    required
+                  />
+
+                  <div className="relative">
+                    <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      name="birthday"
+                      placeholder="생년월일 (예: 19990101)"
+                      value={formData.birthday}
+                      onChange={(e) => {
+                        const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 8);
+                        setFormData((p) => ({ ...p, birthday: onlyNums }));
+                      }}
+                      className="pl-10"
+                      autoComplete="off"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-foreground mb-1 block">성별 선택</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={formData.gender === "M" ? "default" : "outline"}
+                        onClick={() => setFormData((p) => ({ ...p, gender: "M" }))}
+                      >
+                        남성
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={formData.gender === "F" ? "default" : "outline"}
+                        onClick={() => setFormData((p) => ({ ...p, gender: "F" }))}
+                      >
+                        여성
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-foreground mb-1 block">역할 선택</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={formData.roles === "MENTEE" ? "default" : "outline"}
+                        onClick={() => setFormData((p) => ({ ...p, roles: "MENTEE" }))}
+                      >
+                        멘티
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={formData.roles === "MENTOR" ? "default" : "outline"}
+                        onClick={() => setFormData((p) => ({ ...p, roles: "MENTOR" }))}
+                      >
+                        멘토
+                      </Button>
+                    </div>
+                  </div>
+
+                  {formData.roles === "MENTOR" && (
+                    <>
+                      <Input
+                        name="university"
+                        placeholder="대학교"
+                        value={formData.university}
+                        onChange={handleChange}
+                        required
+                      />
+                      <Input name="major" placeholder="전공" value={formData.major} onChange={handleChange} required />
+                      <Label htmlFor="graduation_file">졸업증명서</Label>
+                      <Input type="file" name="graduation_file" accept=".pdf,image/*" onChange={handleChange} required />
+                    </>
+                  )}
+
+                  <Button type="submit" variant="hero" size="lg" className="w-full">
+                    회원가입
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 

@@ -15,7 +15,6 @@ public class SocialJoinRedirectController {
         @RequestParam String provider,    // "NAVER", "GOOGLE", "KAKAO"
         @RequestParam String socialId,
         @RequestParam String email,
-        @RequestParam String name,
         @RequestParam(required = false) String birthday,
         @RequestParam(required = false) String gender,
         @RequestParam(required = false) String phone
@@ -24,7 +23,7 @@ public class SocialJoinRedirectController {
             "?provider=" + provider +
             "&socialId=" + socialId +
             "&email=" + email +
-            "&name=" + name +
+            
             "&birthday=" + birthday +
             "&gender=" + gender +
             "&phone=" + phone;

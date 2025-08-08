@@ -58,6 +58,9 @@ public class JoinController {
 
             return ResponseEntity.ok().body(Map.of("message", "회원가입 성공"));
         } catch (Exception e) {
+        	
+        	 System.err.println("🚨 [JOIN ERROR] " + e.getClass().getName() + ": " + e.getMessage());
+             e.printStackTrace(); // 전체 스택트레이스
             return ResponseEntity.internalServerError().body(Map.of("error", "서버 오류: " + e.getMessage()));
         }
     }

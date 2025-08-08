@@ -42,7 +42,7 @@ public class SocialJoinController {
             1000L * 60 * 60 * 24 // 24시간
         );
 
-        // ✅ 4. JWT를 쿠키로 클라이언트에 전달 (SameSite=None 포함)
+        //  4. JWT를 쿠키로 클라이언트에 전달 (SameSite=None 포함)
         response.setHeader("Set-Cookie", String.format(
             "jwt=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=None",
             token, 60 * 60 * 24

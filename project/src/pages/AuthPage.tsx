@@ -176,7 +176,6 @@ const AuthPage = () => {
         }
 
         await axios.post("/api/join", form, {
-          headers: { "Content-Type": "multipart/form-data" },
           withCredentials: true,
         });
 
@@ -196,16 +195,23 @@ const AuthPage = () => {
 		 }
        
       }
-	  } catch (error) {
-	    let msg = "알 수 없는 오류가 발생했습니다.";
+	  } 	  catch (error) {
+	         let msg = "알 수 없는 오류가 발생했습니다.";
 
-	    if (axios.isAxiosError(error)) {
-	      const err = error as AxiosError<{ message?: string; error?: string }>;
-	      msg = err.response?.data?.message || err.response?.data?.error || msg;
-	    }
+	          if (axios.isAxiosError(error)) {
+	            const err = error as AxiosError<{ message?: string; error?: string }>;
+	            const status = err.response?.status;
 
-	    alert(msg);
-	  }
+	            if (status === 403 && err.response?.data?.message) {
+	              alert(err.response.data.message); // 정지 사유 등 알림
+	              return;
+	            }
+
+	            msg = err.response?.data?.message || err.response?.data?.error || msg;
+	          }
+
+	          alert(msg);
+	        }
   };
   
   return (
@@ -341,43 +347,53 @@ const AuthPage = () => {
 					  />
 					</div>
 
-					<select
-					  name="gender"
-					  value={formData.gender}
-					  onChange={handleInputChange}
-					  required
-					  className="w-full border border-input bg-background px-3 py-2 rounded-md text-sm"
-					>
-					  <option value="">성별 선택</option>
-					  <option value="M">남성</option>
-					  <option value="F">여성</option>
-					</select>
+					{/* 성별 선택 */}
+					<div className="space-y-3">
+					  {/* 전화번호 */}
+					  <Input
+					    name="phone_number"
+					    placeholder="전화번호"
+					    value={formData.phone_number}
+					    onChange={handleInputChange}
+					    required
+					  />
 
-                    <Input
-                      name="phone_number"
-                      placeholder="전화번호"
-                      value={formData.phone_number}
-                      onChange={handleInputChange}
-                      required
-                    />
+					  {/* 성별 선택 */}
+					  <select
+					    name="gender"
+					    value={formData.gender}
+					    onChange={handleInputChange}
+					    required
+					    className="w-full border border-input bg-background px-3 py-2 rounded-md text-sm"
+					  >
+					    <option value="">성별 선택</option>
+					    <option value="M">남성</option>
+					    <option value="F">여성</option>
+					  </select>
 
-                    <Label htmlFor="roles">역할 선택</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant={formData.roles === "MENTEE" ? "default" : "outline"}
-                        onClick={() => setFormData((p) => ({ ...p, roles: "MENTEE" }))}
-                      >
-                        멘티
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={formData.roles === "MENTOR" ? "default" : "outline"}
-                        onClick={() => setFormData((p) => ({ ...p, roles: "MENTOR" }))}
-                      >
-                        멘토
-                      </Button>
-                    </div>
+					  {/* 역할 선택 */}
+					  <div>
+					    <Label htmlFor="roles" className="text-foreground mb-1 block">
+					      역할 선택
+					    </Label>
+					    <div className="flex gap-2">
+					      <Button
+					        type="button"
+					        variant={formData.roles === "MENTEE" ? "default" : "outline"}
+					        onClick={() => setFormData((p) => ({ ...p, roles: "MENTEE" }))}
+					      >
+					        멘티
+					      </Button>
+					      <Button
+					        type="button"
+					        variant={formData.roles === "MENTOR" ? "default" : "outline"}
+					        onClick={() => setFormData((p) => ({ ...p, roles: "MENTOR" }))}
+					      >
+					        멘토
+					      </Button>
+					    </div>
+					  </div>
+					</div>
 
                     {formData.roles === "MENTOR" && (
                       <>
