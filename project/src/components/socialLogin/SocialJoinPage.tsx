@@ -7,17 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IdCard, ArrowLeft } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SocialJoinPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
+  const { login } = useAuth(); // ✅ AuthContext 로그인 함수
 
   const [formData, setFormData] = useState({
     social_type: "",
     social_id: "",
     login_id: "",
-    password: "SOCIAL_USER", // 소셜 가입은 비번 입력 안 받음
+    password: "SOCIAL_USER",
     is_social: true,
     email: "",
     name: "",
@@ -31,7 +33,7 @@ const SocialJoinPage = () => {
     graduation_file: null as File | null,
   });
 
-  // provider 라벨 맵
+  // provider 라벨 매핑
   const providerParam = (params.get("provider") || "").toUpperCase();
   const providerLabelMap: Record<string, string> = {
     KAKAO: "카카오",
@@ -40,6 +42,7 @@ const SocialJoinPage = () => {
   };
   const providerLabel = providerLabelMap[providerParam] || "소셜";
 
+  // 쿼리스트링 → 초기값 세팅
   useEffect(() => {
     const provider = params.get("provider")?.toUpperCase() || "";
     const socialId = params.get("socialId") || "";
@@ -58,10 +61,11 @@ const SocialJoinPage = () => {
       social_id: socialId,
       login_id: `${provider.toLowerCase()}_${socialId}`,
       email,
-      name: nameFromQS, // 쿼리스트링 name 기본값으로
+      name: nameFromQS,
     }));
   }, [location.search, navigate]);
 
+  // 입력 핸들러
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, files } = e.target as HTMLInputElement;
     if (type === "file") {
@@ -79,12 +83,10 @@ const SocialJoinPage = () => {
     setFormData((p) => ({ ...p, [name]: newValue }));
   };
 
+  // 닉네임 중복 확인
   const checkDuplicateNickname = async () => {
     const value = formData.nickname.trim();
-    if (!value) {
-      alert("닉네임을 먼저 입력하세요.");
-      return;
-    }
+    if (!value) return alert("닉네임을 먼저 입력하세요.");
     try {
       const res = await axios.get("/api/check-duplicate", {
         params: { type: "nickname", value },
@@ -97,15 +99,21 @@ const SocialJoinPage = () => {
     }
   };
 
+  // 폼 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 필수값 검증
     if (!formData.name.trim()) return alert("이름을 입력하세요.");
     if (!formData.nickname.trim()) return alert("닉네임을 입력하세요.");
     if (!formData.phone_number.trim()) return alert("전화번호를 입력하세요.");
     if (!formData.birthday.trim()) return alert("생년월일을 입력하세요.");
     if (!formData.gender) return alert("성별을 선택하세요.");
     if (!formData.roles) return alert("역할을 선택하세요.");
-    if (!formData.email?.trim()) return alert("이메일을 입력하세요.");
+    if (!formData.email.trim()) return alert("이메일을 입력하세요.");
+    if (formData.roles === "MENTOR" && (!formData.university.trim() || !formData.major.trim() || !formData.graduation_file)) {
+      return alert("멘토는 대학교/전공/졸업증명서가 필요합니다.");
+    }
 
     try {
       const joinDTO = {
@@ -127,13 +135,24 @@ const SocialJoinPage = () => {
 
       const form = new FormData();
       form.append("joinDTO", new Blob([JSON.stringify(joinDTO)], { type: "application/json" }));
-      if (formData.graduation_file) form.append("graduation_file", formData.graduation_file);
+      if (formData.graduation_file) {
+        form.append("graduation_file", formData.graduation_file);
+      }
 
+      // 1) 회원가입 요청
       await axios.post("/api/join", form, { withCredentials: true });
 
+      // 2) 가입 직후 AuthContext에 바로 반영 (즉시 Navigation 갱신)
+      login({
+        nickname: formData.nickname.trim(),
+        roles: formData.roles,
+      });
+
+      // 3) 이동
       alert("소셜 회원가입 완료!");
       navigate("/", { replace: true });
     } catch (error) {
+      console.error(error);
       const data =
         (axios.isAxiosError(error) && error.response?.data) as { message?: string; error?: string } | undefined;
       alert(data?.message || data?.error || "회원가입 중 오류 발생");
@@ -146,6 +165,7 @@ const SocialJoinPage = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <div className="mx-auto w-full max-w-md space-y-8">
+            {/* 헤더 */}
             <div className="text-center space-y-4">
               <Link to="/" className="inline-flex items-center space-x-2 text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="w-4 h-4" />
@@ -156,12 +176,11 @@ const SocialJoinPage = () => {
                   <span className="text-primary-foreground font-bold text-xl">V</span>
                 </div>
               </div>
-
-              {/* 동적 제목 */}
               <h1 className="text-3xl font-bold">{providerLabel} 회원가입</h1>
               <p className="text-muted-foreground">소셜 로그인 후 추가 정보를 입력해주세요.</p>
             </div>
 
+            {/* 카드 */}
             <Card className="shadow-elegant border-0 bg-card/50 backdrop-blur-sm">
               <CardHeader />
               <CardContent className="space-y-6">
@@ -180,12 +199,10 @@ const SocialJoinPage = () => {
                   )}
 
                   <Input
-                    id="full_name"
-                    name="full_name"
-                    placeholder="이름을 입력하세요"
+                    name="name"
+                    placeholder="이름"
                     value={formData.name}
-                    onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                    autoComplete="off"
+                    onChange={handleChange}
                     required
                   />
 
@@ -195,10 +212,9 @@ const SocialJoinPage = () => {
                       placeholder="닉네임"
                       value={formData.nickname}
                       onChange={handleChange}
-                      autoComplete="off"
                       required
                     />
-                    <Button type="button" onClick={() => void checkDuplicateNickname()}>
+                    <Button type="button" onClick={checkDuplicateNickname}>
                       중복확인
                     </Button>
                   </div>
@@ -208,7 +224,6 @@ const SocialJoinPage = () => {
                     placeholder="전화번호"
                     value={formData.phone_number}
                     onChange={handleChange}
-                    autoComplete="off"
                     required
                   />
 
@@ -218,18 +233,20 @@ const SocialJoinPage = () => {
                       name="birthday"
                       placeholder="생년월일 (예: 19990101)"
                       value={formData.birthday}
-                      onChange={(e) => {
-                        const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 8);
-                        setFormData((p) => ({ ...p, birthday: onlyNums }));
-                      }}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          birthday: e.target.value.replace(/\D/g, "").slice(0, 8),
+                        }))
+                      }
                       className="pl-10"
-                      autoComplete="off"
                       required
                     />
                   </div>
 
+                  {/* 성별 선택 */}
                   <div>
-                    <Label className="text-foreground mb-1 block">성별 선택</Label>
+                    <Label className="mb-1 block">성별 선택</Label>
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -248,8 +265,9 @@ const SocialJoinPage = () => {
                     </div>
                   </div>
 
+                  {/* 역할 선택 */}
                   <div>
-                    <Label className="text-foreground mb-1 block">역할 선택</Label>
+                    <Label className="mb-1 block">역할 선택</Label>
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -268,6 +286,7 @@ const SocialJoinPage = () => {
                     </div>
                   </div>
 
+                  {/* 멘토 전용 */}
                   {formData.roles === "MENTOR" && (
                     <>
                       <Input
@@ -277,9 +296,21 @@ const SocialJoinPage = () => {
                         onChange={handleChange}
                         required
                       />
-                      <Input name="major" placeholder="전공" value={formData.major} onChange={handleChange} required />
+                      <Input
+                        name="major"
+                        placeholder="전공"
+                        value={formData.major}
+                        onChange={handleChange}
+                        required
+                      />
                       <Label htmlFor="graduation_file">졸업증명서</Label>
-                      <Input type="file" name="graduation_file" accept=".pdf,image/*" onChange={handleChange} required />
+                      <Input
+                        type="file"
+                        name="graduation_file"
+                        accept=".pdf,image/*"
+                        onChange={handleChange}
+                        required
+                      />
                     </>
                   )}
 
