@@ -15,6 +15,8 @@ const SocialJoinPage = () => {
   const params = new URLSearchParams(location.search);
   const { login } = useAuth(); // ✅ AuthContext 로그인 함수
 
+  const [submitting, setSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     social_type: "",
     social_id: "",
@@ -102,6 +104,7 @@ const SocialJoinPage = () => {
   // 폼 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
 
     // 필수값 검증
     if (!formData.name.trim()) return alert("이름을 입력하세요.");
@@ -111,14 +114,20 @@ const SocialJoinPage = () => {
     if (!formData.gender) return alert("성별을 선택하세요.");
     if (!formData.roles) return alert("역할을 선택하세요.");
     if (!formData.email.trim()) return alert("이메일을 입력하세요.");
-    if (formData.roles === "MENTOR" && (!formData.university.trim() || !formData.major.trim() || !formData.graduation_file)) {
+    if (
+      formData.roles === "MENTOR" &&
+      (!formData.university.trim() || !formData.major.trim() || !formData.graduation_file)
+    ) {
       return alert("멘토는 대학교/전공/졸업증명서가 필요합니다.");
     }
 
     try {
+      setSubmitting(true);
+
+      // ✅ 서버 컨트롤러가 @RequestPart("joinDTO")로 받으므로 Blob(JSON)로 담아 전송
       const joinDTO = {
         login_id: formData.login_id,
-        password: formData.password,
+        password: formData.password, // "SOCIAL_USER"
         is_social: formData.is_social,
         social_type: formData.social_type,
         social_id: formData.social_id,
@@ -135,20 +144,24 @@ const SocialJoinPage = () => {
 
       const form = new FormData();
       form.append("joinDTO", new Blob([JSON.stringify(joinDTO)], { type: "application/json" }));
-      if (formData.graduation_file) {
+      if (formData.roles === "MENTOR" && formData.graduation_file) {
         form.append("graduation_file", formData.graduation_file);
       }
 
-      // 1) 회원가입 요청
+      // 1) 회원가입
       await axios.post("/api/join", form, { withCredentials: true });
 
-      // 2) 가입 직후 AuthContext에 바로 반영 (즉시 Navigation 갱신)
-      login({
-        nickname: formData.nickname.trim(),
-        roles: formData.roles,
-      });
+      // 2) 가입 직후 자동 로그인 (쿠키(jwt) 확보)
+      await axios.post(
+        "/api/login",
+        { loginId: formData.login_id, password: formData.password },
+        { withCredentials: true }
+      );
 
-      // 3) 이동
+      // 3) 서버에서 내 정보 가져와 컨텍스트 세팅
+      const me = await axios.get("/api/user", { withCredentials: true });
+      login(me.data);
+
       alert("소셜 회원가입 완료!");
       navigate("/", { replace: true });
     } catch (error) {
@@ -156,6 +169,8 @@ const SocialJoinPage = () => {
       const data =
         (axios.isAxiosError(error) && error.response?.data) as { message?: string; error?: string } | undefined;
       alert(data?.message || data?.error || "회원가입 중 오류 발생");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -314,8 +329,8 @@ const SocialJoinPage = () => {
                     </>
                   )}
 
-                  <Button type="submit" variant="hero" size="lg" className="w-full">
-                    회원가입
+                  <Button type="submit" variant="hero" size="lg" className="w-full" disabled={submitting}>
+                    {submitting ? "처리 중..." : "회원가입"}
                   </Button>
                 </form>
               </CardContent>

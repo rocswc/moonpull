@@ -182,17 +182,13 @@ const AuthPage = () => {
         alert("회원가입이 완료되었습니다.");
         resetToLogin();
       } else {
-        const res = await axios.post("/api/login", {
-          loginId: formData.login_id,
-          password: formData.password,
-        }, { withCredentials: true });
-		if (res.data.token) {
-		   localStorage.setItem("token", res.data.token);
-		   login(res.data); // AuthContext의 로그인 처리 함수
-		   navigate("/");
-		 } else {
-		   alert("토큰이 응답에 포함되지 않았습니다.");
-		 }
+		const res = await axios.post("/api/login", {
+		  loginId: formData.login_id,
+		  password: formData.password,
+		}, { withCredentials: true });
+
+		login(res.data);   // 서버가 내려준 loginId/nickname/roles만 사용
+		navigate("/");
        
       }
 	  } 	  catch (error) {

@@ -77,24 +77,20 @@ public class GoogleCallbackController {
         String email      = userInfo.path("email").asText(null);
         String name       = userInfo.path("name").asText(null);
 
-        // 3) DB에 있으면 → JWT 쿠키 심고 홈으로 302
+     // 3) DB에 있으면 → JWT 쿠키 심고 홈으로 302
         if (userService.existsBySocialIdAndType(socialId, socialType)) {
             MemberVO m = userService.getBySocial(socialType, socialId).orElseThrow();
 
-            String jwt = jwtUtil.createJwt(
-                    m.getLoginid(),         // ★ JwtFilter가 loginid로 조회
-                    m.getNickname(),
-                    m.getRoles(),           // "MENTEE,USER" 등 CSV
-                    1000L * 60 * 60 * 24 * 7
-            );
+            // ✅ PK가 subject로 들어가게 발급
+            String jwt = jwtUtil.generateToken(m);
 
+            // ✅ 로컬(HTTP) 기준: SameSite=Lax, Secure=false
             ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
                     .httpOnly(true)
-                    .path("/")          // ★ 필수
-                    .domain("localhost")
-                    .sameSite("Lax")    // 로컬 http
-                    // .secure(true)     // HTTPS일 때만
-                    .maxAge(60L * 60 * 24 * 7)
+                    .sameSite("Lax")
+                    .secure(false)
+                    .path("/")
+                    .maxAge(60L * 60 * 24 * 7) // 7일
                     .build();
 
             return ResponseEntity.status(HttpStatus.FOUND)
