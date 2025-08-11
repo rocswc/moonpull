@@ -20,8 +20,8 @@ public class ChatMessageController {
         System.out.println("💬 저장 요청: " + message); // 로그 찍기
         return chatMessageRepository.save(message);
     }
-
-    // 메시지 조회 (채팅방 기준)
+      
+    // 메시지 조회 (채 팅방 기준)
     @GetMapping
     public List<ChatMessage> getMessagesByRoom(@RequestParam Long roomId) {
         return chatMessageRepository.findByRoomId(roomId);
