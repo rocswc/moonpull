@@ -35,7 +35,8 @@ public class ChatMessageController {
         return saved;
     }
 
-    /** 메시지 조회 (채팅방 기준) */
+
+
     @GetMapping
     public List<ChatMessage> getMessagesByRoom(@RequestParam Long roomId) {
         System.out.println("📥 [채팅방 메시지 조회] roomId=" + roomId);
