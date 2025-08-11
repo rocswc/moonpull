@@ -103,7 +103,7 @@ const SocialJoinPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 필수값 검증
+    // 필수값 검증 (네 코드 그대로 유지)
     if (!formData.name.trim()) return alert("이름을 입력하세요.");
     if (!formData.nickname.trim()) return alert("닉네임을 입력하세요.");
     if (!formData.phone_number.trim()) return alert("전화번호를 입력하세요.");
@@ -111,44 +111,47 @@ const SocialJoinPage = () => {
     if (!formData.gender) return alert("성별을 선택하세요.");
     if (!formData.roles) return alert("역할을 선택하세요.");
     if (!formData.email.trim()) return alert("이메일을 입력하세요.");
-    if (formData.roles === "MENTOR" && (!formData.university.trim() || !formData.major.trim() || !formData.graduation_file)) {
+    if (
+      formData.roles === "MENTOR" &&
+      (!formData.university.trim() || !formData.major.trim() || !formData.graduation_file)
+    ) {
       return alert("멘토는 대학교/전공/졸업증명서가 필요합니다.");
     }
 
     try {
-      const joinDTO = {
-        login_id: formData.login_id,
-        password: formData.password,
-        is_social: formData.is_social,
-        social_type: formData.social_type,
-        social_id: formData.social_id,
-        email: formData.email,
-        name: formData.name,
-        nickname: formData.nickname.trim(),
-        phone_number: formData.phone_number.replace(/-/g, ""),
-        birthday: formData.birthday,
-        gender: formData.gender,
-        roles: formData.roles,
-        university: formData.university,
-        major: formData.major,
-      };
+		// 백엔드가 요구하는 파트명: "joinDTO"
+		const joinDTO = {
+		  login_id: formData.login_id,
+		  password: formData.password,          // "SOCIAL_USER"
+		  is_social: formData.is_social,        // true
+		  social_type: formData.social_type,    // "GOOGLE" | "KAKAO" ...
+		  social_id: formData.social_id,
+		  email: formData.email,
+		  name: formData.name,
+		  nickname: formData.nickname.trim(),
+		  phone_number: formData.phone_number.replace(/-/g, ""),
+		  birthday: formData.birthday,          // "YYYYMMDD"
+		  gender: formData.gender,              // "M" | "F"
+		  roles: formData.roles,                // "MENTEE" | "MENTOR"
+		  university: formData.university,      // 멘토만 사용
+		  major: formData.major,                // 멘토만 사용
+		};
 
-      const form = new FormData();
-      form.append("joinDTO", new Blob([JSON.stringify(joinDTO)], { type: "application/json" }));
-      if (formData.graduation_file) {
-        form.append("graduation_file", formData.graduation_file);
-      }
+		// ★ 반드시 joinDTO라는 이름으로 JSON Blob을 붙입니다.
+		form.append(
+		  "joinDTO",
+		  new Blob([JSON.stringify(joinDTO)], { type: "application/json" })
+		);
 
-      // 1) 회원가입 요청
-      await axios.post("/api/join", form, { withCredentials: true });
+		// 파일은 별도 파트로 동일 이름 사용
+		if (formData.roles === "MENTOR" && formData.graduation_file) {
+		  form.append("graduation_file", formData.graduation_file);
+		}
 
-      // 2) 가입 직후 AuthContext에 바로 반영 (즉시 Navigation 갱신)
-      login({
-        nickname: formData.nickname.trim(),
-        roles: formData.roles,
-      });
+		// 전송 (Content-Type은 직접 설정 금지: 브라우저가 boundary 포함해서 넣습니다)
+		await axios.post("/api/join", form, { withCredentials: true });
+      login(me.data);
 
-      // 3) 이동
       alert("소셜 회원가입 완료!");
       navigate("/", { replace: true });
     } catch (error) {
