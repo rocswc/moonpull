@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Minimize2, X, Send, Phone, Video, GripVertical, Flag } from "lucide-react";
-import { useChat, ChatRoom, User } from "@/contexts/ChatContext";
+import { Badge } from "@/components/ui/badge";
+import { Minimize2, X, Send, Phone, Video, GripVertical } from "lucide-react";
+import { useChat, ChatRoom } from "@/contexts/ChatContext";
 
 interface ChatWindowProps {
   room: ChatRoom;
@@ -16,9 +17,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
     minimizeChat,
     closeChat,
     markAsRead,
-    currentUser,
-    reportUser, // ✅ ChatContext에서 가져옴
-    users         // ✅ users에서 상대방 직접 탐색 가능
+    currentUser // ✅ 여기 추가
   } = useChat();
 
   const [message, setMessage] = useState('');
@@ -28,13 +27,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatWindowRef = useRef<HTMLDivElement>(null);
 
-  const target = room.participants.find((p) => p.id !== currentUser?.id);
-  const realTarget = users.find((u) => u.id === target?.id);
+  const otherParticipant = room.participants.find(p => p.id !== currentUser.id) || room.participants[0];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.messages]);
 
+  
   useEffect(() => {
     if (!room.isMinimized && room.unreadCount > 0) {
       markAsRead(room.id);
@@ -44,13 +43,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const handleSendMessage = async () => {
     if (message.trim()) {
       sendMessage(room.id, message);
+
       try {
         await fetch("/api/chat/log", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             roomId: room.id,
-            senderId: currentUser?.id,
+            senderId: currentUser.id, // ✅ 오류 수정됨
             content: message.trim(),
             timestamp: new Date().toISOString(),
             type: "text",
@@ -60,6 +60,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
       } catch (err) {
         console.error("❌ 채팅 로그 전송 실패:", err);
       }
+
       setMessage('');
     }
   };
@@ -98,7 +99,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
     }
   }, [isDragging, dragOffset]);
 
-  if (!realTarget) return null;
+  if (room.isMinimized) {
+    return (
+      <div ref={chatWindowRef} className="fixed bottom-4 w-60 z-50 animate-fade-in" style={{ left: `${position.x}px` }}>
+        <Card className="shadow-elegant cursor-pointer hover:shadow-glow transition-shadow" onClick={() => minimizeChat(room.id)}>
+          <CardHeader className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-primary to-primary-glow text-white">
+                      {otherParticipant.avatar}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium">{otherParticipant.name}</h4>
+                  {room.unreadCount > 0 && (
+                    <Badge variant="destructive" className="text-xs h-4 px-1">{room.unreadCount}</Badge>
+                  )}
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); closeChat(room.id); }} className="h-6 w-6 p-0">
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div ref={chatWindowRef} className="fixed w-80 h-96 z-50 animate-scale-in" style={{ left: `${position.x}px`, top: `${position.y}px` }}>
@@ -110,20 +141,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
               <div className="relative">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-primary to-primary-glow text-white">
-                    {realTarget.avatar}
+                    {otherParticipant.avatar}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
               </div>
               <div>
-                <h4 className="text-sm font-medium">{realTarget.name}</h4>
+                <h4 className="text-sm font-medium">{otherParticipant.name}</h4>
                 <span className="text-xs text-green-600">온라인</span>
               </div>
             </div>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Phone className="h-3 w-3" /></Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Video className="h-3 w-3" /></Button>
-              <Button variant="destructive" size="sm" className="h-6 w-6 p-0" onClick={() => reportUser(realTarget)}><Flag className="h-3 w-3" /></Button>
               <Button variant="ghost" size="sm" onClick={() => minimizeChat(room.id)} className="h-6 w-6 p-0"><Minimize2 className="h-3 w-3" /></Button>
               <Button variant="ghost" size="sm" onClick={() => closeChat(room.id)} className="h-6 w-6 p-0"><X className="h-3 w-3" /></Button>
             </div>
@@ -138,30 +168,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
               </div>
             ) : (
               room.messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.senderId === currentUser?.id ? 'justify-end' : 'justify-start'}`}>
+                <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
                   <div className="flex items-end gap-1 max-w-[70%]">
-                    {msg.senderId !== currentUser?.id && (
+                    {msg.senderId !== currentUser.id && (
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-xs bg-gradient-to-br from-primary to-primary-glow text-white">
-                          {realTarget.avatar}
+                          {otherParticipant.avatar}
                         </AvatarFallback>
                       </Avatar>
                     )}
                     <div className="space-y-1">
                       <div className={`px-2 py-1 rounded-lg text-xs ${
-                        msg.senderId === currentUser?.id
+                        msg.senderId === currentUser.id
                           ? 'bg-primary text-primary-foreground ml-auto'
                           : 'bg-muted text-foreground'
                       }`}>
                         <p>{msg.content}</p>
                       </div>
                       <p className={`text-xs text-muted-foreground ${
-                        msg.senderId === currentUser?.id ? 'text-right' : 'text-left'
+                        msg.senderId === currentUser.id ? 'text-right' : 'text-left'
                       }`}>
-                        {new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                        {msg.timestamp.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
                       </p>
                     </div>
-                    {msg.senderId === currentUser?.id && (
+                    {msg.senderId === currentUser.id && (
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-xs bg-secondary">나</AvatarFallback>
                       </Avatar>

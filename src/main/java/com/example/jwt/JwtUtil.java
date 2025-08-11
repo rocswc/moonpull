@@ -19,6 +19,11 @@ public class JwtUtil {
 
     private final SecretKey secretKey;
 
+    // HS256 키는 JWT 토큰의 위조를 방지하기 위해 사용되는 서명 키
+    // HS256은 HMAC-SHA256 알고리즘을 의미하며, 다음과 같은 목적과 특징을 가진다.
+    // JWT는 JWT는 다음 3부분으로 구성 : 헤더(Header).페이로드(Payload).서명(Signature)
+    
+    
     // 생성자에서 application.properties의 시크릿 값을 읽어 HS256 키로 변환
     public JwtUtil(@Value("${spring.jwt.secret}") String secret) {
         this.secretKey = new SecretKeySpec(
@@ -27,28 +32,13 @@ public class JwtUtil {
         );
     }
 
-    // ✅ subject(PK) 추출
-    public String getSubject(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .getSubject();
-        } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("getSubject 토큰 파싱 오류: " + e.getMessage());
-            return null;
-        }
-    }
-
     // JWT에서 "username" 클레임 추출
     public String getUsername(String token) {
         try {
             return Jwts.parser()
-                    .verifyWith(secretKey)
+                    .verifyWith(secretKey) // 비밀 키로 서명 검증
                     .build()
-                    .parseSignedClaims(token)
+                    .parseSignedClaims(token) // 유효한 서명인지 확인
                     .getPayload()
                     .get("username", String.class);
         } catch (JwtException | IllegalArgumentException e) {
@@ -56,8 +46,9 @@ public class JwtUtil {
             return null;
         }
     }
+    
 
-    // JWT에서 "roles" 클레임 추출 (예: ROLE_USER,ROLE_ADMIN 또는 USER,ADMIN)
+    // JWT에서 "roles" 클레임 추출 (예: ROLE_USER,ROLE_ADMIN)
     public String getRole(String token) {
         try {
             return Jwts.parser()
@@ -81,42 +72,30 @@ public class JwtUtil {
                     .parseSignedClaims(token)
                     .getPayload()
                     .getExpiration()
-                    .before(new Date());
+                    .before(new Date()); // 현재 시간보다 이전이면 만료
         } catch (JwtException | IllegalArgumentException e) {
             System.out.println("isExpired 토큰 파싱 오류: " + e.getMessage());
-            return true;
+            return true; // 오류 발생 시 만료된 것으로 처리
         }
     }
 
-    //  기존 시그니처 유지 (subject는 못 넣음 — 레거시 용도로 그대로 둠)
+    // JWT 생성 메서드: username, roles, 만료 시간(ms 단위) 입력
     public String createJwt(String username, String nickname, String role, Long expiredMs) {
         return Jwts.builder()
                 .claim("username", username)
                 .claim("nickname", nickname)
-                .claim("roles", role.replace("ROLE_", "")) // USER,ADMIN 형태로 저장
+                .claim("roles", role.replace("ROLE_", ""))
+
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiredMs))
                 .signWith(secretKey)
                 .compact();
     }
-
-    // ✅ PK 기반 발급 경로: subject=PK를 넣고, 기존 클레임도 그대로 유지
     public String generateToken(MemberVO user) {
         String username = user.getSocialId() != null ? user.getSocialId() : user.getLoginid();
         String nickname = user.getNickname();
-        String role = user.getRoles(); // 예: ROLE_MENTOR 또는 ROLE_USER 등
+        String role = user.getRoles(); // 예: ROLE_MENTOR
 
-        String subjectUserId = String.valueOf(user.getUserId()); // PK를 subject에 저장 (getUserId() 이름 확인)
-
-        long expiredMs = 1000L * 60 * 60 * 24; // 1일
-        return Jwts.builder()
-                .subject(subjectUserId) // ✅ subject = PK
-                .claim("username", username)
-                .claim("nickname", nickname)
-                .claim("roles", role.replace("ROLE_", "")) // USER,ADMIN 형태로 저장
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiredMs))
-                .signWith(secretKey)
-                .compact();
-    }
+        return createJwt(username, nickname, role, 1000L * 60 * 60 * 24); // 1일짜리 JWT
+ }
 }

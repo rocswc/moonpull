@@ -47,16 +47,18 @@ public class KakaoCallbackController {
             if (userService.existsBySocialIdAndType(socialId, socialType)) {
                 MemberVO m = userService.getBySocial(socialType, socialId).orElseThrow();
 
-                // ✅ PK가 subject로 들어가게 발급
-                String jwt = jwtUtil.generateToken(m);
+                String jwt = jwtUtil.createJwt(
+                        m.getLoginid(), m.getNickname(), m.getRoles(),
+                        1000L * 60 * 60 * 24 * 7
+                );
 
-                // ✅ 로컬(HTTP) 기준: SameSite=Lax, Secure=false
                 ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
                         .httpOnly(true)
-                        .sameSite("Lax")
-                        .secure(false)
                         .path("/")
-                        .maxAge(60L * 60 * 24 * 7) // 7일
+                        .domain("localhost")
+                        .sameSite("Lax")
+                        // .secure(true) // HTTPS일 때만
+                        .maxAge(60L * 60 * 24 * 7)
                         .build();
 
                 return ResponseEntity.status(HttpStatus.FOUND)

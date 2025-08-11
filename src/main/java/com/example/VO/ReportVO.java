@@ -27,9 +27,8 @@ public class ReportVO {
     private Boolean appealRequested;  // ✅ 이의제기 여부
 
     // 편의를 위한 추가 필드
-    private Long  reportCount;
+    private Integer reportCount;
     private String reporterNickname;
     private String targetNickname;
     private boolean targetBanned;
-    private String targetLoginId;
 }

@@ -104,36 +104,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   useEffect(() => {
-	const fetchUsers = async () => {
-	   try {
-	     const res = await fetch("https://192.168.56.1:8080/users/all");
-	     const data = await res.json();
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/users/all");
+        const data = await res.json();
 
-		 const converted: User[] = data
-		   .filter((user: any) => typeof user.userId === "number" && user.userId > 0)
-		   .map((user: any) => {
-		     if (typeof user.userId !== "number" || user.userId <= 0) {
-		       console.warn("❗ 유효하지 않은 userId 탐지됨:", user);
-		       return null;
-		     }
+        const converted: User[] = data.map((user: any) => ({
+          id: user.userId.toString(),
+          name: user.name,
+          avatar: user.name?.charAt(0) || "👤",
+          isOnline: true,
+          subject: user.major || undefined,
+          mentorId: user.roles === "MENTOR" ? user.userId : undefined
+        }));
 
-		     return {
-		       id: user.userId.toString(),
-		       name: user.name,
-		       avatar: user.name?.charAt(0) || "👤",
-		       isOnline: true,
-		       subject: user.major || undefined,
-		       mentorId: user.roles === "MENTOR" ? user.userId : undefined
-		     };
-		   })
-		   .filter((u: User | null): u is User => u !== null);
-	     setUsers(converted);
-	   } catch (err) {
-	     console.error("유저 불러오기 실패", err);
-	   }
-	 };
+        setUsers(converted);
+      } catch (err) {
+        console.error("유저 불러오기 실패", err);
+      }
+    };
 
-	 fetchUsers();
+    fetchUsers();
   }, []);
 
   if (currentUser === null) return <div>로그인 정보를 불러오는 중입니다...</div>;
@@ -230,9 +221,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    console.log("👤 현재 로그인 유저:", currentUser);
-    console.log("🎯 신고 대상 유저:", targetUser);
-
     const reason = window.prompt(`"${targetUser.name}"님을 신고하는 이유를 입력하세요:`);
 
     if (!reason || reason.trim() === "") {
@@ -241,37 +229,23 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      // 👇 로그와 강제 검증 추가
-      if (!targetUser.id) {
-        console.warn("❗ targetUser.id가 존재하지 않음:", targetUser);
-        alert("신고 대상의 ID가 유효하지 않습니다.");
-        return;
-      }
-
-      const userIdNum = parseInt(targetUser.id, 10);
-
-      if (isNaN(userIdNum) || userIdNum <= 0) {
-        console.warn("❗ 잘못된 유저 ID 감지됨:", targetUser.id, "->", userIdNum);
-        alert("신고 대상의 ID가 유효하지 않습니다.");
-        return;
-      }
-
       const reportData: {
         reason: string;
-        targetUserId: number;
+        targetUserId?: string;
         targetMentorId?: number;
       } = {
-        reason: reason.trim(),
-        targetUserId: userIdNum
+        reason
       };
+
+      if (targetUser.id && targetUser.id !== "0") {
+        reportData.targetUserId = targetUser.id;
+      }
 
       if (targetUser.mentorId !== undefined) {
         reportData.targetMentorId = targetUser.mentorId;
       }
 
-      console.log("📤 최종 전송될 신고 데이터:", reportData);
-
-      const res = await fetch("/api/admin/report", {
+      await fetch("/api/admin/report", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -280,22 +254,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify(reportData)
       });
 
-      console.log("📥 서버 응답 상태:", res.status);
-      const text = await res.text();
-      console.log("📥 응답 바디:", text);
-
-      if (res.status === 200) {
-        alert("신고가 정상적으로 접수되었습니다.");
-      } else {
-        alert("신고 실패! 상태 코드: " + res.status);
-      }
+      alert("신고가 정상적으로 접수되었습니다.");
     } catch (err) {
-      console.error("❌ 신고 요청 중 오류:", err);
+      console.error("신고 실패", err);
       alert("신고 처리 중 오류가 발생했습니다.");
     }
   };
-
-
 
   return (
     <ChatContext.Provider

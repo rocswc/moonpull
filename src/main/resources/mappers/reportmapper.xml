@@ -7,29 +7,31 @@
 
 <mapper namespace="com.example.DAO.ReportRepository">
 
- <select id="getAllReports" resultType="ReportVO">
+  <select id="getAllReports" resultType="ReportVO">
   SELECT
-    r.report_id      AS reportId,
-    r.reporter_id    AS reporterId,
+    r.report_id AS reportId,
+    r.reporter_id AS reporterId,
     r.target_user_id AS targetUserId,
+    r.target_mentor_id AS targetMentorId,
     r.reason,
     r.status,
-    r.created_at     AS createdAt,
-    rep.nickname     AS reporterNickname,
-    tgt.nickname     AS targetNickname,
-    tgt.login_id     AS targetLoginId, 
-    tgt.is_banned    AS targetBanned,
+    r.created_at AS createdAt,
+
+    rep.nickname AS reporterNickname,
+    tgt.nickname AS targetNickname,
+    tgt.is_banned AS targetBanned,
+
     (
       SELECT COUNT(*)
       FROM report
       WHERE target_user_id = r.target_user_id
     ) AS reportCount
+
   FROM report r
-  JOIN member rep      ON r.reporter_id    = rep.user_id
-  LEFT JOIN member tgt ON r.target_user_id = tgt.user_id
+  JOIN member rep ON r.reporter_id = rep.user_id
+  LEFT JOIN member tgt ON r.target_user_id = tgt.user_id  <!-- ✅ LEFT JOIN으로 변경 -->
   ORDER BY r.created_at DESC
 </select>
-
 
  
 <insert id="insertReport" parameterType="ReportVO">
@@ -48,16 +50,17 @@
 </insert>
 
 
-	<select id="getTopReportedUsers" resultType="ReportVO">
- SELECT
-    r.target_user_id AS targetUserId,
-    m.nickname       AS targetNickname,
-    COUNT(DISTINCT r.reporter_id) AS reportCount,
-    m.is_banned      AS targetBanned
+	<select id="getTopReportedMentors" resultType="ReportVO">
+  SELECT
+    r.target_mentor_id AS targetUserId,
+    m.nickname AS targetNickname,
+    COUNT(*) AS reportCount,
+    m.is_banned AS targetBanned
   FROM report r
-  JOIN member m ON m.user_id = r.target_user_id
-  WHERE r.target_user_id IS NOT NULL
-  GROUP BY r.target_user_id, m.nickname, m.is_banned
+  JOIN mentor mt ON r.target_mentor_id = mt.mentor_id
+  JOIN member m ON mt.user_id = m.user_id
+  WHERE r.target_mentor_id IS NOT NULL
+  GROUP BY r.target_mentor_id, m.nickname, m.is_banned
   ORDER BY reportCount DESC
   LIMIT 3
 </select>

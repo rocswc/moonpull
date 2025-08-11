@@ -51,15 +51,6 @@ public class ReportController {
     
     @GetMapping("/admin/reports/top")
     public List<ReportVO> getTopReportedUsers() {
-        System.out.println("▶ GET /api/admin/reports/top");
-        List<ReportVO> list = reportRepository.getTopReportedUsers();
-        System.out.println("◀ size=" + list.size());
-        list.forEach(v -> System.out.println(
-            "uid=" + v.getTargetUserId()
-            + ", nick=" + v.getTargetNickname()
-            + ", cnt=" + v.getReportCount()
-            + ", banned=" + v.isTargetBanned()
-        ));
-        return list;
+        return reportRepository.getTopReportedUsers();
     }
 }

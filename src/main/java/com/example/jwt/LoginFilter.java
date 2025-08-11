@@ -106,56 +106,55 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	    String nickname = customUserDetails.getNickname();
 	    userRepository.updateLastLogin(username);
 
-	    // 1) roles 문자열 생성 (ROLE_ 접두 유지해도 됨: generateToken에서 제거함)
-	    String roles = authentication.getAuthorities().stream()
-	            .map(GrantedAuthority::getAuthority)
-	            .collect(Collectors.joining(","));
+	    var authorities = authentication.getAuthorities();
+	    String roles = authorities.stream()
+	        .map(auth -> {
+	            String role = auth.getAuthority();
+	            return role.startsWith("ROLE_") ? role : "ROLE_" + role;
+	        })
+	        .collect(Collectors.joining(","));
 
-	    // 2) PK 포함된 토큰 발급을 위해 MemberVO 조회
-	    MemberVO member = userRepository.findByLoginid(username)
-	            .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다: " + username));
+	    String token = jwtUtil.createJwt(username, nickname, roles, 24 * 60 * 60 * 1000L);
 
-	    // 3) 토큰의 roles 클레임이 현재 권한과 일치하도록 셋팅 (DB에 저장되는 건 아님)
-	    member.setRoles(roles);
-
-	    // 4) ✅ subject=PK 로 발급
-	    String token = jwtUtil.generateToken(member);
-
-	    // 5) 쿠키 플래그 실제 적용
 	    boolean isHttps = request.isSecure()
-	            || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+	        || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
 
 	    String sameSite = "Lax";
 	    String origin = request.getHeader("Origin");
 	    if (origin != null) {
 	        try {
 	            java.net.URI o = java.net.URI.create(origin);
-	            boolean crossSite =
-	                    !(o.getHost() != null && o.getHost().equalsIgnoreCase(request.getServerName()))
-	                 || !(o.getScheme() != null && o.getScheme().equalsIgnoreCase(request.getScheme()));
+	            String originHost = o.getHost();
+	            String originScheme = o.getScheme();
+	            String reqHost = request.getServerName();
+	            String reqScheme = request.getScheme();
+
+	            boolean crossSite = !(originHost != null && originHost.equalsIgnoreCase(reqHost))
+	                    || !(originScheme != null && originScheme.equalsIgnoreCase(reqScheme));
 	            if (crossSite) sameSite = "None";
 	        } catch (Exception ignore) {}
 	    }
+
 	    boolean secureFlag = isHttps || "None".equals(sameSite);
 
 	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
-	            .httpOnly(true)
-	            .secure(secureFlag)     // ← 계산한 값 사용
-	            .sameSite(sameSite)     // ← 계산한 값 사용
-	            .path("/")
-	            .maxAge(24 * 60 * 60)
-	            .build();
+	        .httpOnly(true)
+	        .secure(false)
+	        .sameSite("Lax")
+	        .path("/")
+	        .maxAge(24 * 60 * 60)
+	        .build();
 
-	    response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
+	    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
 	    response.setContentType("application/json; charset=UTF-8");
 	    response.getWriter().write(new ObjectMapper().writeValueAsString(Map.of(
-	            "token", token,
-	            "loginId", username,
-	            "nickname", nickname,
-	            "roles", authentication.getAuthorities().stream()
-	                    .map(GrantedAuthority::getAuthority)
-	                    .collect(Collectors.toList())
+	        "token", token,
+	        "loginId", username,
+	        "nickname", nickname,
+	        "roles", authorities.stream()
+	            .map(GrantedAuthority::getAuthority)
+	            .collect(Collectors.toList())
 	    )));
 	}
 

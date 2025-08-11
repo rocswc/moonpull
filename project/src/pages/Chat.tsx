@@ -1,4 +1,3 @@
-// 📁 Chat.tsx (수정된 전체 코드)
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -40,54 +39,70 @@ const Chat = () => {
     avatar: "?",
   });
 
-  const menteeId = 16; // 🔧 실제 로그인된 유저 ID로 교체 필요
+  const menteeId = 16; // 실제 로그인 유저 ID로 교체 필요
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 1. 멘토 정보 조회
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
-        const res = await fetch(`/api/teacher/${teacherId}`, 
-		{ credentials: "include" });
+        console.log("🎯 teacherId param:", teacherId);
+        console.log("📡 Fetching mentor info from:", `/api/mentor/${teacherId}`);
+
+        const res = await fetch(`/api/mentor/${teacherId}`, { credentials: "include" });
         if (!res.ok) throw new Error("멘토 정보 로드 실패");
+
         const data = await res.json();
+        console.log("👨‍🏫 mentor response data:", data);
+
         setTeacher({
           name: data.name,
           subject: data.subject,
-          avatar: data.name?.charAt(0) || "?",
+          avatar: data.avatar || data.name?.charAt(0) || "?",
         });
       } catch (err) {
-        console.error("멘토 정보 불러오기 실패", err);
+        console.error("❌ [오류] 멘토 정보 로드 실패:", err);
       }
     };
+
     if (teacherId) fetchTeacher();
   }, [teacherId]);
 
+  // 2. chatId 조회
   useEffect(() => {
     const fetchChatId = async () => {
       try {
+        console.log(`📡 [요청] chatId 요청: menteeId=${menteeId}, mentorId=${teacherId}`);
         const res = await fetch(`/api/mentoring/chatId?menteeId=${menteeId}&mentorId=${teacherId}`);
         const data = await res.json();
 
         if (!res.ok || !("chatId" in data) || data.chatId === -1) {
-          console.warn("chatId 없음 또는 잘못된 응답:", data);
+          console.warn("⚠️ chatId 없음 또는 잘못된 응답:", data);
           return;
         }
 
+        console.log("✅ [응답] chatId:", data.chatId);
         setChatId(data.chatId);
       } catch (err) {
-        console.error("chatId 조회 실패", err);
+        console.error("❌ [오류] chatId 조회 실패:", err);
       }
     };
+
     if (teacherId) fetchChatId();
   }, [teacherId]);
 
+  // 3. 메시지 목록 조회
   useEffect(() => {
     const fetchMessages = async () => {
       try {
+        console.log("📡 [요청] 메시지 불러오기 - chatId:", chatId);
         const res = await fetch(`/api/chat/messages?roomId=${chatId}`, {
           credentials: "include",
         });
+
         const data: ChatMessageResponse[] = await res.json();
+        console.log("✅ [응답] 메시지 개수:", data.length);
+
         const formatted: Message[] = data.map((msg, index) => ({
           id: index + 1,
           sender: msg.senderId === "student" ? "student" : "teacher",
@@ -98,11 +113,13 @@ const Chat = () => {
             hour12: true,
           }),
         }));
+
         setMessages(formatted);
       } catch (err) {
-        console.error("채팅 불러오기 실패", err);
+        console.error("❌ [오류] 메시지 불러오기 실패:", err);
       }
     };
+
     if (chatId !== null) fetchMessages();
   }, [chatId]);
 
@@ -110,10 +127,12 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 4. 메시지 전송
   const handleSendMessage = async () => {
     if (!message.trim() || chatId === null) return;
 
     const timestamp = new Date().toISOString();
+    console.log("📤 [보내기] 메시지:", message);
 
     const newMessage: Message = {
       id: messages.length + 1,
@@ -130,7 +149,7 @@ const Chat = () => {
     setMessage("");
 
     try {
-      await fetch("/api/chat/messages", {
+      const response = await fetch("/api/chat/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -141,10 +160,13 @@ const Chat = () => {
           timestamp,
         }),
       });
+      if (!response.ok) throw new Error("메시지 저장 실패");
+      console.log("✅ [저장] 메시지 전송 완료");
     } catch (err) {
-      console.error("메시지 저장 실패", err);
+      console.error("❌ [오류] 메시지 저장 실패:", err);
     }
 
+    // 💬 가상 답변 (테스트용)
     setTimeout(() => {
       const responses = [
         "좋은 질문입니다. 자세히 설명드릴게요.",

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import axiosInstance from "@/lib/axiosConfig";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,88 +23,48 @@ import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-type ReportLog = {
-  reportId: number;
-  reporterId: number;
-  targetUserId: number | null;
-  reason?: string;
-  status?: string;
-  createdAt?: string;
-  reporterNickname?: string;
-  targetNickname?: string;
-  targetBanned?: boolean | number;
-  reportCount?: number;
-};
-
-type TopUser = {
-  targetUserId: number;
-  targetNickname: string;
-  reportCount: number;
-  targetBanned?: boolean | number;
-};
-
 const AnomalyDetection = () => {
   const [selectedTab, setSelectedTab] = useState("spam-detection");
-  const [reportLogs, setReportLogs] = useState<ReportLog[]>([]);
-  const [spamData, setSpamData] = useState<any[]>([]);
-  const [topUsers, setTopUsers] = useState<TopUser[]>([]);
+  const [reportLogs, setReportLogs] = useState([]);
+  const [spamData, setSpamData] = useState([]);
 
   useEffect(() => {
     fetchReports();
     fetchSpamStats();
-    fetchTopReportedUsers();
   }, []);
 
-  const withAuth = () => {
+  const fetchReports = () => {
     const token = localStorage.getItem("token");
-    const config: any = { withCredentials: true, headers: {} as Record<string, string> };
+    const config = {
+      withCredentials: true,
+      headers: {},
+    };
+
     if (token && token !== "null" && token !== "undefined") {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-  };
 
-  const fetchReports = () => {
-    axiosInstance
-      .get("/api/admin/reports", withAuth())
-      .then((res) => {
-        const normalizedData: ReportLog[] = (res.data || []).map((log: any) => ({
+    axiosInstance.get("/api/admin/reports", config)
+      .then(res => {
+        const normalizedData = res.data.map(log => ({
           ...log,
-          targetBanned: Boolean(log.targetBanned),
+          targetBanned: Boolean(log.targetBanned), // 숫자 → boolean 변환
         }));
+
         setReportLogs(normalizedData);
       })
-      .catch((err) => console.error("❌ 신고 목록 로딩 실패", err));
+      .catch(err => console.error("❌ 신고 목록 로딩 실패", err));
   };
-
-  const fetchTopReportedUsers = () => {
-    console.log("▶ fetchTopReportedUsers() 호출");
-    axiosInstance
-      .get("/api/admin/reports/top", withAuth()) // 쿠키 전송만 보장
-      .then((res) => {
-        console.log("◀ /api/admin/reports/top", res.status, res.data);
-        setTopUsers((res.data || []).map((u: any) => ({
-          ...u,
-          targetBanned: Boolean(u.targetBanned),
-        })));
-      })
-      .catch((err) => {
-        console.error("✗ /api/admin/reports/top",
-          err.response?.status, err.response?.data || err.message);
-      });
-  };
-
 
   const fetchSpamStats = () => {
-    axiosInstance
-      .get("/api/admin/spam-stats", withAuth())
-      .then((res) => {
+    axiosInstance.get("/api/admin/spam-stats")
+      .then(res => {
         const rawData = Array.isArray(res.data) ? res.data : [];
         const top3SpamMessages = rawData
           .sort((a, b) => (b?.count || 0) - (a?.count || 0))
           .slice(0, 3)
-          .map((item) => {
-            let timeMs: number | null = null;
+          .map(item => {
+            let timeMs = null;
 
             if (typeof item.time === "string" && item.time.includes("T")) {
               const parsed = dayjs(item.time);
@@ -115,59 +76,68 @@ const AnomalyDetection = () => {
               }
             }
 
+            console.log("item.time:", item.time, "timeMs:", timeMs);
+
             return {
               ...item,
-              label:
-                item?.message?.length > 12
-                  ? item.message.slice(0, 12) + "..."
-                  : item?.message || "(내용 없음)",
+              label: item?.message?.length > 12
+                ? item.message.slice(0, 12) + "..."
+                : item?.message || "(내용 없음)",
               tooltipLabel: timeMs
                 ? `[${dayjs(timeMs).tz("Asia/Seoul").format("HH:mm")}] ${item.message || "(내용 없음)"}`
                 : `--:-- ${item.message || "(내용 없음)"}`,
               _timeMs: timeMs,
             };
           });
-
         setSpamData(top3SpamMessages);
       })
-      .catch((err) => console.error("❌ 스팸 통계 로딩 실패", err));
+      .catch(err => console.error("❌ 스팸 통계 로딩 실패", err));
+  };
+
+  const handleToggleUserStatusByLoginId = async (loginId, isBanned) => {
+    if (!loginId) return;
+    try {
+      const url = isBanned ? `/api/admin/unban/login/${loginId}` : `/api/admin/ban/login/${loginId}`;
+      await axiosInstance.post(url);
+      setTimeout(() => fetchReports(), 300);
+    } catch (error) {
+      console.error(`${isBanned ? "해제" : "비활성화"} 요청 실패 (loginId)`, error);
+    }
   };
 
   const handleToggleUserStatus = async (reportId: number, isBanned: boolean) => {
     if (!reportId) return;
     try {
       const url = isBanned ? `/api/admin/unban/${reportId}` : `/api/admin/ban/${reportId}`;
-      await axiosInstance.post(url, null, withAuth());
+      await axiosInstance.post(url);
       await fetchReports();
-      await fetchTopReportedUsers();
     } catch (error) {
       console.error(`${isBanned ? "해제" : "비활성화"} 요청 실패`, error);
     }
   };
 
-  const handleToggleUserStatusByLoginId = async (loginId: string, isBanned: boolean) => {
-    if (!loginId) return;
-    try {
-      const url = isBanned ? `/api/admin/unban/login/${loginId}` : `/api/admin/ban/login/${loginId}`;
-      await axiosInstance.post(url, null, withAuth());
-      setTimeout(() => {
-        fetchReports();
-        fetchTopReportedUsers();
-      }, 300);
-    } catch (error) {
-      console.error(`${isBanned ? "해제" : "비활성화"} 요청 실패 (loginId)`, error);
-    }
+  const handleViewDetails = (id) => {
+    console.log(`상세 보기 - ID: ${id}`);
   };
 
-  const handleViewDetails = (id?: number) => {
-    console.log("🔴 상세 보기 - ID:", id);
-  };
-
-  // ✅ 서버 Top3로 바로 차트 구성
-  const topReportedUsersChart = topUsers.map((u) => ({
-    name: u.targetNickname ?? `ID:${u.targetUserId}`,
-    value: u.reportCount ?? 0,
-  }));
+  const topReportedUsers = Array.from(
+    new Map(
+      reportLogs
+        .map(log => ({
+          targetUserId: log?.targetUserId ?? "null",
+          targetNickname: log?.targetNickname ?? `ID:${log?.targetUserId ?? "null"}`,
+          reportCount: log?.reportCount ?? 0,
+        }))
+        .sort((a, b) => b.reportCount - a.reportCount)
+        .map(item => [item.targetUserId, item])
+    ).values()
+  )
+    .sort((a, b) => b.reportCount - a.reportCount)
+    .slice(0, 3)
+    .map(user => ({
+      name: user.targetNickname,
+      value: user.reportCount,
+    }));
 
   return (
     <div className="space-y-6">
@@ -181,11 +151,11 @@ const AnomalyDetection = () => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={topReportedUsersChart}>
+              <BarChart data={topReportedUsers}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value: any) => `${value}회`} />
+                <Tooltip formatter={value => `${value}회`} />
                 <Bar dataKey="value" fill="#ef4444" />
               </BarChart>
             </ResponsiveContainer>
@@ -209,10 +179,8 @@ const AnomalyDetection = () => {
                   <XAxis dataKey="label" interval={0} tick={{ fontSize: 12 }} height={50} />
                   <YAxis allowDecimals={false} />
                   <Tooltip
-                    formatter={(value: any) => [`${value}회`, "반복 횟수"]}
-                    labelFormatter={(_, payload: any) =>
-                      `메시지: ${payload?.[0]?.payload?.tooltipLabel || "N/A"}`
-                    }
+                    formatter={value => [`${value}회`, "반복 횟수"]}
+                    labelFormatter={(_, payload) => `메시지: ${payload?.[0]?.payload?.tooltipLabel || "N/A"}`}
                   />
                   <Legend />
                   <Bar dataKey="count" fill="#f59e0b" name="반복 메시지 수" />
@@ -251,10 +219,7 @@ const AnomalyDetection = () => {
                       <div>
                         <h3 className="font-medium">보낸 사람: {item.sender ?? "익명"}</h3>
                         <p className="text-sm text-muted-foreground">
-                          시간:{" "}
-                          {item._timeMs !== null
-                            ? dayjs(item._timeMs).tz("Asia/Seoul").format("HH:mm")
-                            : `--:-- (원본: ${item.time ?? "없음"})`}
+                          시간: {item._timeMs !== null ? dayjs(item._timeMs).tz("Asia/Seoul").format("HH:mm") : `--:-- (원본: ${item.time ?? "없음"})`}
                         </p>
                         <p className="text-sm text-muted-foreground">메시지: {item.message ?? "(메시지 없음)"}</p>
                         <p className="text-sm text-muted-foreground">반복 횟수: {item.count ?? 0}회</p>
@@ -263,12 +228,10 @@ const AnomalyDetection = () => {
                     <div className="flex gap-2 items-center">
                       <Button
                         size="sm"
-                        variant={item.targetBanned ? "outline" : "destructive"}
-                        onClick={() =>
-                          handleToggleUserStatusByLoginId(String(item.sender ?? ""), Boolean(item.targetBanned))
-                        }
+                        variant={item.isBanned ? "outline" : "destructive"}
+                        onClick={() => handleToggleUserStatusByLoginId(item.sender ?? "", item.targetBanned ?? false)}
                       >
-                        {item.targetBanned ? "해제" : "비활성화"}
+                        {item.isBanned ? "해제" : "비활성화"}
                       </Button>
                     </div>
                   </div>
@@ -296,19 +259,12 @@ const AnomalyDetection = () => {
                       </div>
                       <div>
                         <h3 className="font-medium">{log.targetNickname ?? "익명"}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          신고 대상 ID: {log.targetLoginId ?? "(없음)"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          신고자: {log.reporterNickname ?? "알 수 없음"}
-                        </p>
+                        <p className="text-sm text-muted-foreground">신고 대상 ID: {log.targetUserId ?? "(없음)"}</p>
+                        <p className="text-sm text-muted-foreground">신고자: {log.reporterNickname ?? "알 수 없음"}</p>
                         <p className="text-sm text-muted-foreground">사유: {log.reason ?? "사유 없음"}</p>
                         <p className="text-sm text-muted-foreground">신고 횟수: {log.reportCount ?? 0}회</p>
                         <p className="text-sm text-muted-foreground">
-                          시간:{" "}
-                          {log.createdAt
-                            ? dayjs(log.createdAt).tz("Asia/Seoul").format("HH:mm:ss")
-                            : "--:--"}
+                          시간: {log.createdAt ? dayjs(log.createdAt).tz("Asia/Seoul").format("HH:mm:ss") : "--:--"}
                         </p>
                       </div>
                     </div>
@@ -319,9 +275,7 @@ const AnomalyDetection = () => {
                       <Button
                         size="sm"
                         variant={log.targetBanned ? "outline" : "destructive"}
-                        onClick={() =>
-                          handleToggleUserStatus(Number(log.reportId ?? 0), Boolean(log.targetBanned))
-                        }
+                        onClick={() => handleToggleUserStatus(log.reportId ?? 0, log.targetBanned ?? false)}
                       >
                         {log.targetBanned ? "해제" : "비활성화"}
                       </Button>
