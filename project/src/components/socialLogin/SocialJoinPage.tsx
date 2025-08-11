@@ -15,6 +15,8 @@ const SocialJoinPage = () => {
   const params = new URLSearchParams(location.search);
   const { login } = useAuth(); // ✅ AuthContext 로그인 함수
 
+  const [submitting, setSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     social_type: "",
     social_id: "",
@@ -102,8 +104,9 @@ const SocialJoinPage = () => {
   // 폼 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
 
-    // 필수값 검증 (네 코드 그대로 유지)
+    // 필수값 검증
     if (!formData.name.trim()) return alert("이름을 입력하세요.");
     if (!formData.nickname.trim()) return alert("닉네임을 입력하세요.");
     if (!formData.phone_number.trim()) return alert("전화번호를 입력하세요.");
@@ -119,37 +122,44 @@ const SocialJoinPage = () => {
     }
 
     try {
-		// 백엔드가 요구하는 파트명: "joinDTO"
-		const joinDTO = {
-		  login_id: formData.login_id,
-		  password: formData.password,          // "SOCIAL_USER"
-		  is_social: formData.is_social,        // true
-		  social_type: formData.social_type,    // "GOOGLE" | "KAKAO" ...
-		  social_id: formData.social_id,
-		  email: formData.email,
-		  name: formData.name,
-		  nickname: formData.nickname.trim(),
-		  phone_number: formData.phone_number.replace(/-/g, ""),
-		  birthday: formData.birthday,          // "YYYYMMDD"
-		  gender: formData.gender,              // "M" | "F"
-		  roles: formData.roles,                // "MENTEE" | "MENTOR"
-		  university: formData.university,      // 멘토만 사용
-		  major: formData.major,                // 멘토만 사용
-		};
+      setSubmitting(true);
 
-		// ★ 반드시 joinDTO라는 이름으로 JSON Blob을 붙입니다.
-		form.append(
-		  "joinDTO",
-		  new Blob([JSON.stringify(joinDTO)], { type: "application/json" })
-		);
+      // ✅ 서버 컨트롤러가 @RequestPart("joinDTO")로 받으므로 Blob(JSON)로 담아 전송
+      const joinDTO = {
+        login_id: formData.login_id,
+        password: formData.password, // "SOCIAL_USER"
+        is_social: formData.is_social,
+        social_type: formData.social_type,
+        social_id: formData.social_id,
+        email: formData.email,
+        name: formData.name,
+        nickname: formData.nickname.trim(),
+        phone_number: formData.phone_number.replace(/-/g, ""),
+        birthday: formData.birthday,
+        gender: formData.gender,
+        roles: formData.roles,
+        university: formData.university,
+        major: formData.major,
+      };
 
-		// 파일은 별도 파트로 동일 이름 사용
-		if (formData.roles === "MENTOR" && formData.graduation_file) {
-		  form.append("graduation_file", formData.graduation_file);
-		}
+      const form = new FormData();
+      form.append("joinDTO", new Blob([JSON.stringify(joinDTO)], { type: "application/json" }));
+      if (formData.roles === "MENTOR" && formData.graduation_file) {
+        form.append("graduation_file", formData.graduation_file);
+      }
 
-		// 전송 (Content-Type은 직접 설정 금지: 브라우저가 boundary 포함해서 넣습니다)
-		await axios.post("/api/join", form, { withCredentials: true });
+      // 1) 회원가입
+      await axios.post("/api/join", form, { withCredentials: true });
+
+      // 2) 가입 직후 자동 로그인 (쿠키(jwt) 확보)
+      await axios.post(
+        "/api/login",
+        { loginId: formData.login_id, password: formData.password },
+        { withCredentials: true }
+      );
+
+      // 3) 서버에서 내 정보 가져와 컨텍스트 세팅
+      const me = await axios.get("/api/user", { withCredentials: true });
       login(me.data);
 
       alert("소셜 회원가입 완료!");
@@ -159,6 +169,8 @@ const SocialJoinPage = () => {
       const data =
         (axios.isAxiosError(error) && error.response?.data) as { message?: string; error?: string } | undefined;
       alert(data?.message || data?.error || "회원가입 중 오류 발생");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -317,8 +329,8 @@ const SocialJoinPage = () => {
                     </>
                   )}
 
-                  <Button type="submit" variant="hero" size="lg" className="w-full">
-                    회원가입
+                  <Button type="submit" variant="hero" size="lg" className="w-full" disabled={submitting}>
+                    {submitting ? "처리 중..." : "회원가입"}
                   </Button>
                 </form>
               </CardContent>
