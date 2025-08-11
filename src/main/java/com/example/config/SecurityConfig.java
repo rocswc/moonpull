@@ -64,8 +64,14 @@ public class SecurityConfig {
                "http://localhost:8888",
                "http://192.168.56.1:8888",
                "http://192.168.0.27:8888",
-               "https://ec9d9848c01e.ngrok-free.app"  //개발용 네이버 배포할때는 삭제 할 예정 suhan 수한 25-08-17 13:04
-           ));
+                 //개발용 네이버 배포할때는 삭제 할 예정 suhan 수한 25-08-17 13:04
+               "https://localhost:3000",
+               "https://localhost:8888",
+               "https://192.168.56.1:8888",
+               "https://192.168.0.27:8888",
+               "https://ec9d9848c01e.ngrok-free.app"
+               
+        		));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // 필요하면 명시적으로: List.of("Content-Type","X-XSRF-TOKEN","Authorization")
         config.setAllowedHeaders(List.of("*"));
@@ -106,6 +112,7 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/",
                         "/api/login",
+                        "/api/join/**", //수한 25-08-11 15:49
                         "/api/join",
                         "/api/profile/check-email",
                         "/api/profile/check-phone",                      
@@ -125,6 +132,17 @@ public class SecurityConfig {
                    .requestMatchers("/api/teacher/**").permitAll()
                    .requestMatchers("/api/mentors/**").permitAll() // **
                    
+                   .requestMatchers("/api/mentoring/chatId").permitAll() // ✅ 추가됨 2025-08-08
+                   .requestMatchers(HttpMethod.POST, "/api/mentoring/request").hasRole("MENTEE") // 멘티만 요청 가능
+                   .requestMatchers(HttpMethod.GET, "/api/mentoring/requests").hasRole("MENTOR") // 멘토만 목록 조회 가능
+                   .requestMatchers(HttpMethod.POST, "/api/mentoring/accept-request").hasRole("MENTOR") // 멘토만 수락 가능
+                   .requestMatchers("/api/mentoring/progress").authenticated() // 진행 상황은 인증 필요
+                   
+                   .requestMatchers("/error/**").permitAll()
+                   
+                   .requestMatchers("/api/mentor-id").hasAnyRole("MENTOR", "ADMIN")
+                   .requestMatchers("/api/mentor-id/**").hasAnyRole("MENTOR", "ADMIN")
+                   
                    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")       
                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
                    .requestMatchers("/admin/**").permitAll()
@@ -138,7 +156,16 @@ public class SecurityConfig {
                    .requestMatchers(HttpMethod.POST, "/api/chat/log").permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
                    .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated() // 프로필 수정 인증 필요
-                 
+                   .requestMatchers("/api/admin/reports/top").permitAll()
+                   
+                   
+                   //수한
+                   .requestMatchers("/auth/**").permitAll() // 수한 25-08-17 15:03
+                   .requestMatchers("/api/join/**").permitAll()  //수한 25-08-11 15:49
+                   .requestMatchers("/favicon.ico").permitAll()// 수한 25-08-17 13:04
+                   .requestMatchers("/auth/social-join").permitAll() // 수한 25-08-17 14:52
+                  
+                   
                    // 멘토리뷰?
                    .requestMatchers("/api/mentor-review/**").permitAll()
                    .requestMatchers("/mentor-review/**").permitAll()

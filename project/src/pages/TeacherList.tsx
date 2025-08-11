@@ -1,7 +1,6 @@
-// ✅ 전체 TeacherList.tsx (생략 없이 전체입니다)
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +10,7 @@ import Navigation from "@/components/Navigation";
 
 type Teacher = {
   id: string | number;
-  userId: number; // ✅ 백엔드에서 userId로 매칭
+  userId: number;
   name: string;
   introduction: string;
   rating: number;
@@ -38,14 +37,23 @@ const TeacherList = () => {
   useEffect(() => {
     if (!subject) return;
 
+    console.log("🎯 [useEffect] 현재 subject:", subject);
+
     const fetchTeachers = async () => {
       try {
+        console.log("📡 API 요청 시작: /api/mentors/" + subject);
         const res = await axios.get(`/api/mentors/${subject}`, {
           withCredentials: true,
         });
+        console.log("✅ API 응답 성공:", res.data);
         setTeachers(res.data);
       } catch (error) {
-        console.error("멘토 정보를 불러오지 못했습니다.", error);
+        const err = error as AxiosError;
+        console.error("❌ API 응답 실패:", err.message);
+        if (err.response) {
+          console.error("📛 응답 상태코드:", err.response.status);
+          console.error("📛 응답 본문:", err.response.data);
+        }
       } finally {
         setLoading(false);
       }
@@ -55,6 +63,7 @@ const TeacherList = () => {
   }, [subject]);
 
   if (!subjectInfo) {
+    console.warn("⚠️ 잘못된 subject 접근:", subject);
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -69,7 +78,8 @@ const TeacherList = () => {
   }
 
   const handleMatching = (userId: number) => {
-    navigate(`/chat/${userId}`); // ✅ userId로 이동
+    console.log("➡️ 매칭 클릭 - userId:", userId);
+    navigate(`/chat/${userId}`);
   };
 
   return (
@@ -142,11 +152,15 @@ const TeacherList = () => {
                   <div className="space-y-2">
                     <p className="text-sm font-medium">전문 분야</p>
                     <div className="flex flex-wrap gap-1">
-                      {teacher.specialties.map((specialty, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {specialty}
-                        </Badge>
-                      ))}
+                      {Array.isArray(teacher.specialties) && teacher.specialties.length > 0 ? (
+                        teacher.specialties.map((specialty, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {specialty}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">전문 분야 없음</span>
+                      )}
                     </div>
                   </div>
 

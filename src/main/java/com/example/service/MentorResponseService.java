@@ -13,11 +13,15 @@ public class MentorResponseService {
     private final MentorResponseDAO mentorResponseDAO;
 
     public List<MentorResponseDTO> getMentorsBySlug(String slug) {
-        List<MentorResponseDTO> mentors = mentorResponseDAO.getMentorsBySlug(slug);
+        System.out.println("🎯 [서비스 진입] slug: " + slug);
 
-        // specialties 추가로 채우기
+        List<MentorResponseDTO> mentors = mentorResponseDAO.getMentorsBySlug(slug);
+        System.out.println("🧑‍🏫 [쿼리 결과] 멘토 수: " + mentors.size());
+
         for (MentorResponseDTO mentor : mentors) {
+            System.out.println("🔍 [멘토 ID] " + mentor.getId());
             List<String> specialties = mentorResponseDAO.getSpecialtiesByMentorId(mentor.getId());
+            System.out.println("🔍 [전문 분야 조회] mentorId: " + mentor.getId() + ", specialties: " + specialties);
             mentor.setSpecialties(specialties);
         }
 
