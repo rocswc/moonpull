@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, IdCard } from "lucide-react";
+import {Eye, EyeOff, Mail, Lock, User, ArrowLeft, IdCard, Phone, Tag, Calendar, GraduationCap, BookOpen
+} from "lucide-react";
 import axios, { AxiosError } from "axios";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -269,71 +270,64 @@ const AuthPage = () => {
                 {/* 회원가입 필드 */}
                 {!isLogin && (
                   <>
-                    <div className="flex gap-2">
-                      <Input
-                        name="login_id"
-                        placeholder="아이디"
-                        value={formData.login_id}
-                        onChange={handleInputChange}
-                        required
-                      />
-                      <Button type="button" onClick={() => checkDuplicate("login_id")}>
-                        중복확인
-                      </Button>
-                    </div>
+				  <div className="flex gap-2">
+				    <div className="relative w-full">
+				      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+				      <Input name="login_id" placeholder="아이디" value={formData.login_id}
+				             onChange={handleInputChange} required className="pl-10" />
+				    </div>
+				    <Button type="button" onClick={() => checkDuplicate("login_id")}>중복확인</Button>
+				  </div>
 
-                    <div className="flex gap-2">
-                      <Input
-                        name="nickname"
-                        placeholder="닉네임"
-                        value={formData.nickname}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full"
-                      />
-                      <Button
-                        type="button"
-                        onClick={() => checkDuplicate("nickname")}
-                        className="whitespace-nowrap"
-                      >
-                        중복확인
-                      </Button>
-                    </div>
+				  <div className="flex gap-2">
+				    <div className="relative w-full">
+				      <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+				      <Input
+				        name="nickname"
+				        placeholder="닉네임"
+				        value={formData.nickname}
+				        onChange={handleInputChange}
+				        required
+				        className="pl-10"
+				      />
+				    </div>
+				    <Button type="button" onClick={() => checkDuplicate("nickname")}>중복확인</Button>
+				  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-foreground">
-                        이메일
-                      </Label>
-                      <div className="relative flex gap-2">
-                        <div className="relative w-full">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="email"
-                            name="email"
-                            type="email"
-                            placeholder="이메일을 입력하세요"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            className="pl-10"
-                            required
-                          />
-                        </div>
-                        <Button type="button" onClick={() => checkDuplicate("email")}>
-                          중복확인
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Input
-                      name="name"
-                      placeholder="이름을 입력하세요"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                    />
+					{/* 이메일 입력 */}
+					<div className="flex gap-2">
+					  <div className="relative w-full">
+					    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+					    <Input
+					      id="email"
+					      name="email"
+					      type="email"
+					      placeholder="이메일을 입력하세요"
+					      value={formData.email}
+					      onChange={handleInputChange}
+					      className="pl-10"
+					      required
+					    />
+					  </div>
+					  <Button type="button" onClick={() => checkDuplicate("email")}>
+					    중복확인
+					  </Button>
+					</div>
 
 					<div className="relative">
-					  <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+					  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+					  <Input
+					    name="name"
+					    placeholder="이름"
+					    value={formData.name}
+					    onChange={handleInputChange}
+					    required
+					    className="pl-10"
+					  />
+					</div>
+
+					<div className="relative">
+					  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 					  <Input
 					    name="birthday"
 					    placeholder="생년월일 (예: 19990101)"
@@ -347,29 +341,38 @@ const AuthPage = () => {
 					  />
 					</div>
 
-					{/* 성별 선택 */}
-					<div className="space-y-3">
-					  {/* 전화번호 */}
+					
+					<div className="relative">
+					  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 					  <Input
 					    name="phone_number"
 					    placeholder="전화번호"
 					    value={formData.phone_number}
 					    onChange={handleInputChange}
+					    className="pl-10"
 					    required
 					  />
-
+					</div>
 					  {/* 성별 선택 */}
-					  <select
-					    name="gender"
-					    value={formData.gender}
-					    onChange={handleInputChange}
-					    required
-					    className="w-full border border-input bg-background px-3 py-2 rounded-md text-sm"
-					  >
-					    <option value="">성별 선택</option>
-					    <option value="M">남성</option>
-					    <option value="F">여성</option>
-					  </select>
+					  <div>
+					    <span className="block mb-1 text-sm font-medium">성별 선택</span>
+					    <div className="flex gap-2">
+					      <Button
+					        type="button"
+					        variant={formData.gender === "M" ? "default" : "outline"}
+					        onClick={() => setFormData((p) => ({ ...p, gender: "M" }))}
+					      >
+					        남성
+					      </Button>
+					      <Button
+					        type="button"
+					        variant={formData.gender === "F" ? "default" : "outline"}
+					        onClick={() => setFormData((p) => ({ ...p, gender: "F" }))}
+					      >
+					        여성
+					      </Button>
+					    </div>
+					  </div>
 
 					  {/* 역할 선택 */}
 					  <div>
@@ -393,32 +396,67 @@ const AuthPage = () => {
 					      </Button>
 					    </div>
 					  </div>
-					</div>
+					
 
                     {formData.roles === "MENTOR" && (
                       <>
-                        <Input
-                          name="university"
-                          placeholder="대학교"
-                          value={formData.university}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        <Input
-                          name="major"
-                          placeholder="전공"
-                          value={formData.major}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        <Label htmlFor="graduation_file">졸업증명서</Label>
-                        <Input
-                          type="file"
-                          name="graduation_file"
-                          accept=".pdf,image/*"
-                          onChange={handleInputChange}
-                          required
-                        />
+					  <div className="relative">
+					    <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+					    <Input
+					      name="university"
+					      placeholder="대학교"
+					      value={formData.university}
+					      onChange={handleInputChange}
+					      className="pl-10"
+					      required
+					    />
+					  </div>
+					  <div className="relative">
+					    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+					    <Input
+					      name="major"
+					      placeholder="전공"
+					      value={formData.major}
+					      onChange={handleInputChange}
+					      className="pl-10"
+					      required
+					    />
+					  </div>
+						{formData.roles === "MENTOR" && (
+						  <div className="space-y-2">
+						    <div
+						      role="button"
+						      tabIndex={0}
+						      aria-label="졸업증명서 업로드"
+						      onClick={() => document.getElementById("graduation_file")?.click()}
+						      onKeyDown={(e) => {
+						        if (e.key === "Enter" || e.key === " ") {
+						          e.preventDefault();
+						          document.getElementById("graduation_file")?.click();
+						        }
+						      }}
+						      className="
+						        w-full border border-input rounded-md px-3 py-2 text-sm
+						        text-muted-foreground bg-background
+						        hover:border-primary cursor-pointer
+						      "
+						    >
+						      {formData.graduation_file
+						        ? (formData.graduation_file as File).name
+						        : "졸업증명서 업로드 해주세요"}
+						    </div>
+
+						    <input
+						      id="graduation_file"
+						      type="file"
+						      name="graduation_file"
+						      accept=".pdf,image/*"
+						      onChange={handleInputChange}
+						      className="hidden"
+						      required
+						    />
+						  </div>
+						)}
                       </>
                     )}
                   </>
@@ -447,9 +485,7 @@ const AuthPage = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-foreground">
-                    비밀번호
-                  </Label>
+                  
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -474,9 +510,7 @@ const AuthPage = () => {
 
                 {!isLogin && (
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-foreground">
-                      비밀번호 확인
-                    </Label>
+                    
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input

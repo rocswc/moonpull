@@ -113,44 +113,49 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 4. 사용자 정보 추출
-        String username = jwtUtil.getUsername(token);
-        String rolesString = jwtUtil.getRole(token);
+     // 4. 사용자 정보 추출 (subject=PK, roles)
+        String subject = jwtUtil.getSubject(token);          // ✅ 토큰의 sub = PK
+        String rolesString = jwtUtil.getRole(token);         // "USER,ADMIN" 또는 "ROLE_USER,ROLE_ADMIN"
 
-        System.out.println("[JwtFilter] ✅ username: " + username);
-        System.out.println("[JwtFilter] ✅ roles: " + rolesString);
-
-        if (rolesString == null || rolesString.trim().isEmpty()) {
-            System.out.println("❌ JWT 토큰에 roles 정보 없음");
+        if (subject == null || subject.isBlank()) {
+            System.out.println("❌ JWT subject(PK) 없음");
             filterChain.doFilter(request, response);
             return;
         }
 
         // 5. 권한 설정
-        List<SimpleGrantedAuthority> authorities = Arrays.stream(rolesString.split(","))
+        List<SimpleGrantedAuthority> authorities = Arrays.stream(
+                rolesString == null ? new String[0] : rolesString.split(","))
             .map(String::trim)
-            .filter(role -> !role.isEmpty())
-            .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+            .filter(r -> !r.isEmpty())
+            .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)  // USER → ROLE_USER 복원
             .map(SimpleGrantedAuthority::new)
             .toList();
 
-        // 6. DB에서 사용자 정보 조회
-        Optional<MemberVO> optionalUser = userRepository.findByLoginid(username);
-
+        // 6. DB에서 사용자 정보 조회 (✅ PK 기반)
+        Integer userId = Integer.valueOf(subject); // ✅
+        Optional<MemberVO> optionalUser = userRepository.findById(userId);
         if (optionalUser.isEmpty()) {
-            System.out.println("❌ DB에 해당 loginid 사용자 없음: " + username);
+            System.out.println("❌ DB에 해당 PK 사용자 없음: " + subject);
             filterChain.doFilter(request, response);
             return;
         }
-
         MemberVO userEntity = optionalUser.get();
 
-        // 7. CustomUserDetails 생성 및 인증 설정
+        // (선택) 토큰 roles가 비었으면 DB 기준으로 보완
+        if (authorities.isEmpty() && userEntity.getRoles() != null && !userEntity.getRoles().isBlank()) {
+            authorities = Arrays.stream(userEntity.getRoles().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
+                    .map(SimpleGrantedAuthority::new)
+                    .toList();
+        }
+
+        // 7. SecurityContext 세팅
         CustomUserDetails customUserDetails = new CustomUserDetails(userEntity, authorities);
-
-        Authentication authToken = new UsernamePasswordAuthenticationToken(
-            customUserDetails, null, authorities);
-
+        Authentication authToken =
+                new UsernamePasswordAuthenticationToken(customUserDetails, null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
         System.out.println("✅ SecurityContext 인증 완료: " + authToken);
