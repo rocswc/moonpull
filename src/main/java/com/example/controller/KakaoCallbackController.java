@@ -1,8 +1,8 @@
 package com.example.controller;
 
 import java.net.URI;
-import java.net.URLEncoder;                 // ★ 추가
-import java.nio.charset.StandardCharsets;  // ★ 추가
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -37,43 +37,39 @@ public class KakaoCallbackController {
             String accessToken = kakaoService.getAccessToken(code);
             KakaoUserDTO userInfo = kakaoService.getUserInfo(accessToken);
 
-            String socialType = "KAKAO";
-            String socialId   = String.valueOf(userInfo.getId());
-            String email      = (userInfo.getKakaoAccount()!=null) ? userInfo.getKakaoAccount().getEmail() : null;
-            String name       = (userInfo.getKakaoAccount()!=null && userInfo.getKakaoAccount().getProfile()!=null)
-                    ? userInfo.getKakaoAccount().getProfile().getNickname()
-                    : null;
+            final String socialType = "KAKAO";
+            final String socialId   = String.valueOf(userInfo.getId());
+            final String email      = (userInfo.getKakaoAccount()!=null) ? userInfo.getKakaoAccount().getEmail() : null;
 
+            // 기존 회원: JWT 쿠키 심고 홈으로 이동
             if (userService.existsBySocialIdAndType(socialId, socialType)) {
-                MemberVO m = userService.getBySocial(socialType, socialId).orElseThrow();
+                MemberVO m = userService.getBySocialIdAndType(socialId, socialType)
+                                        .orElseThrow();
 
-                String jwt = jwtUtil.createJwt(
-                        m.getLoginid(), m.getNickname(), m.getRoles(),
-                        1000L * 60 * 60 * 24 * 7
-                );
+                // ★ sub = 내부 PK(m.getId()) 로 발급되도록 구현되어 있어야 함
+                String jwt = jwtUtil.generateToken(m);
 
                 ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
                         .httpOnly(true)
+                        .secure(true)      // SameSite=None이면 HTTPS 필수
+                        .sameSite("None")
                         .path("/")
-                        .domain("localhost")
-                        .sameSite("Lax")
-                        // .secure(true) // HTTPS일 때만
                         .maxAge(60L * 60 * 24 * 7)
                         .build();
 
-                return ResponseEntity.status(HttpStatus.FOUND)
+                return ResponseEntity.status(HttpStatus.SEE_OTHER) // 303 권장
                         .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                        .location(URI.create("http://localhost:8888/"))
+                        .location(URI.create("https://localhost:8888/"))
                         .build();
             }
 
+            // 신규 회원: 소셜 가입 페이지로 이동 (name 제거)
             String joinUrl = "https://localhost:8888/auth/social-join"
                     + "?provider=" + enc(socialType)
                     + "&socialId=" + enc(socialId)
-                    + "&email="    + enc(email)
-                    + "&name="     + enc(name);
+                    + "&email="    + enc(email);
 
-            return ResponseEntity.status(HttpStatus.FOUND)
+            return ResponseEntity.status(HttpStatus.SEE_OTHER)
                     .location(URI.create(joinUrl))
                     .build();
 
@@ -83,7 +79,6 @@ public class KakaoCallbackController {
         }
     }
 
-    
     private static String enc(String v) {
         return URLEncoder.encode(v == null ? "" : v, StandardCharsets.UTF_8);
     }

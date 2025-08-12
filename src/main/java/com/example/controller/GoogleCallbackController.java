@@ -19,14 +19,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @RequestMapping("/auth/google")
 public class GoogleCallbackController {
 
-    @Value("${oauth.google.client-id}")
-    private String clientId;
-
-    @Value("${oauth.google.client-secret}")
-    private String clientSecret;
-
-    @Value("${oauth.google.redirect-uri}")
-    private String redirectUri;
+    @Value("${oauth.google.client-id}")     private String clientId;
+    @Value("${oauth.google.client-secret}") private String clientSecret;
+    @Value("${oauth.google.redirect-uri}")  private String redirectUri;
 
     private final JwtUtil jwtUtil;
     private final UserService userService;
@@ -51,8 +46,8 @@ public class GoogleCallbackController {
         form.add("grant_type", "authorization_code");
 
         ResponseEntity<String> tokenResponse =
-                restTemplate.postForEntity("https://oauth2.googleapis.com/token",
-                        new HttpEntity<>(form, headers), String.class);
+            restTemplate.postForEntity("https://oauth2.googleapis.com/token",
+                new HttpEntity<>(form, headers), String.class);
 
         ObjectMapper mapper = new ObjectMapper();
         JsonNode tokenJson = mapper.readTree(tokenResponse.getBody());
@@ -65,54 +60,50 @@ public class GoogleCallbackController {
         HttpHeaders uiHeaders = new HttpHeaders();
         uiHeaders.setBearerAuth(accessToken);
         ResponseEntity<String> userInfoResponse = restTemplate.exchange(
-                "https://www.googleapis.com/oauth2/v2/userinfo",
-                HttpMethod.GET,
-                new HttpEntity<>(uiHeaders),
-                String.class
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            HttpMethod.GET,
+            new HttpEntity<>(uiHeaders),
+            String.class
         );
         JsonNode userInfo = mapper.readTree(userInfoResponse.getBody());
 
-        String socialType = "GOOGLE";
-        String socialId   = userInfo.path("id").asText();
-        String email      = userInfo.path("email").asText(null);
-        String name       = userInfo.path("name").asText(null);
+        final String socialType = "GOOGLE";
+        final String socialId   = userInfo.path("id").asText();
+        final String email      = userInfo.path("email").asText(null);
+        final String name       = userInfo.path("name").asText(null);
 
-        // 3) DB에 있으면 → JWT 쿠키 심고 홈으로 302
+        // 3) 기존 회원: JWT 쿠키 심고 홈으로 리다이렉트
         if (userService.existsBySocialIdAndType(socialId, socialType)) {
-            MemberVO m = userService.getBySocial(socialType, socialId).orElseThrow();
+            MemberVO m = userService.getBySocialIdAndType(socialId, socialType)
+                                    .orElseThrow(); // 존재 확인했으므로 안전
 
-            String jwt = jwtUtil.createJwt(
-                    m.getLoginid(),         // ★ JwtFilter가 loginid로 조회
-                    m.getNickname(),
-                    m.getRoles(),           // "MENTEE,USER" 등 CSV
-                    1000L * 60 * 60 * 24 * 7
-            );
+            // ★ sub = 우리 DB PK 로 발급되도록 generateToken 구현
+            String jwt = jwtUtil.generateToken(m);
 
             ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
-                    .httpOnly(true)
-                    .path("/")          // ★ 필수
-                    .domain("localhost")
-                    .sameSite("Lax")    // 로컬 http
-                    // .secure(true)     // HTTPS일 때만
-                    .maxAge(60L * 60 * 24 * 7)
-                    .build();
+                .httpOnly(true)
+                .secure(true)      // SameSite=None이면 HTTPS 필수
+                .sameSite("None")
+                .path("/")
+                .maxAge(60L * 60 * 24 * 7)
+                .build();
 
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .location(URI.create("http://localhost:8888/"))
-                    .build();
+            return ResponseEntity.status(HttpStatus.SEE_OTHER) // 303 권장
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .location(URI.create("https://localhost:8888/"))
+                .build();
         }
 
-        // 4) 신규면 → /auth/social-join 로 302 (URL 인코딩)
-        String joinUrl = "http://localhost:8888/auth/social-join"
-                + "?provider=" + enc(socialType)
-                + "&socialId=" + enc(socialId)
-                + "&email="    + enc(email)
-                + "&name="     + enc(name);
+        // 4) 신규 회원: 소셜가입 페이지로 리다이렉트 (쿠키 없음)
+        String joinUrl = "https://localhost:8888/auth/social-join"
+            + "?provider=" + enc(socialType)
+            + "&socialId=" + enc(socialId)
+            + "&email="    + enc(email)
+            + "&name="     + enc(name);
 
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(joinUrl))
-                .build();
+        return ResponseEntity.status(HttpStatus.SEE_OTHER)
+            .location(URI.create(joinUrl))
+            .build();
     }
 
     private static String enc(String v) {
