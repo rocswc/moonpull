@@ -32,7 +32,7 @@ public class Member {
     @Column(name = "roles")
     private String roles;
 
-    @Column(name = "birthdate")
+    @Column(name = "birthday")
     private String birthdate;
 
     /** 전공(major) 필드 추가 */
