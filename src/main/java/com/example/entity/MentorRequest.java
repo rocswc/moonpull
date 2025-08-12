@@ -7,27 +7,23 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "matching")
+@Table(name = "mentor_request")
 @Getter
 @Setter
 public class MentorRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "matching_id")
-    private Long id; // 매칭 PK
+    private Long id;
 
     @Column(name = "mentee_id", nullable = false)
-    private Long menteeId; // mentee 테이블 PK
+    private Long menteeId; // mentee의 PK
 
     @Column(name = "mentor_id", nullable = false)
-    private Long mentorId; // mentor 테이블 PK
+    private Long mentorId; // mentor의 PK
 
-    @Column(name = "payment_id")
-    private Long paymentId;
-
-    @Column(name = "match_status", nullable = false)
-    private String status; // REQUESTED, ACCEPTED, COMPLETED
+    @Column(name = "status", nullable = false)
+    private String status;
 
     @Column(name = "started_at")
     private LocalDateTime startedAt;

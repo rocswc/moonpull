@@ -60,6 +60,7 @@ const MenteePage = () => {
   const [activeList, setActiveList] = useState<MentoringProgress[]>([]);
   const [endedList, setEndedList] = useState<MentoringProgress[]>([]);
   const { currentUser } = useChat();
+
   useEffect(() => {
     if (!currentUser) return; // 로그인 유저가 로드되지 않으면 요청 X
 
@@ -80,10 +81,35 @@ const MenteePage = () => {
       .catch((err) => {
         console.error("❌ 멘토링 현황 불러오기 실패:", err);
       });
-  }, [currentUser]); // currentUser 바뀔 때마다 실행
+  }, [currentUser]);
 
-   // 로그인 유저 정보
+  // 매칭하기 함수
+  const handleMatch = async (mentorId: number) => {
+    if (!currentUser) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
 
+    try {
+      await axios.post(
+        "/api/mentoring/request",
+        null, // body 없음
+        {
+          params: {
+            menteeId: currentUser.id,
+            mentorId: mentorId
+          },
+          withCredentials: true
+        }
+      );
+      alert("멘토 요청이 전송되었습니다!");
+    } catch (err) {
+      console.error("멘토 요청 실패:", err);
+      alert("멘토 요청 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 신고하기
   const handleReport = async (mentor: Mentor) => {
     const reason = window.prompt(`"${mentor.name}" 멘토를 신고하는 이유를 입력하세요:`);
     if (!reason || reason.trim() === "") {
@@ -141,6 +167,7 @@ const MenteePage = () => {
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <Badge variant="secondary">멘토 연결됨</Badge>
+                  <Button size="sm" onClick={() => handleMatch(mentor.id)}>매칭하기</Button>
                   <Button size="sm" variant="destructive" onClick={() => handleReport(mentor)}>신고하기</Button>
                 </div>
               </div>
@@ -178,11 +205,9 @@ const MenteePage = () => {
             ) : (
               endedList.map((item) => (
                 <div key={item.mentoring_progress_id} className="p-3 border rounded-md">
-				<p className="font-medium">
-				  {item.mentor_name} ({item.start_date?.slice(0, 7)} ~ {item.end_date !== null ? item.end_date.slice(0, 7) : "진행 중"})
-				</p>
-
-
+                  <p className="font-medium">
+                    {item.mentor_name} ({item.start_date?.slice(0, 7)} ~ {item.end_date !== null ? item.end_date.slice(0, 7) : "진행 중"})
+                  </p>
                   <Button
                     size="sm"
                     variant="destructive"
