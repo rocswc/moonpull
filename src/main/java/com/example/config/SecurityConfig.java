@@ -143,6 +143,12 @@ public class SecurityConfig {
                    .requestMatchers("/api/mentor-id").hasAnyRole("MENTOR", "ADMIN")
                    .requestMatchers("/api/mentor-id/**").hasAnyRole("MENTOR", "ADMIN")
                    
+                   
+                   .requestMatchers("/ws/**").permitAll()  
+                   .requestMatchers("/api/rt-chat/**").permitAll()
+                   
+                   
+                   
                    .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")       
                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
                    .requestMatchers("/admin/**").permitAll()
@@ -160,10 +166,11 @@ public class SecurityConfig {
                    
                    
                    //수한
-                   .requestMatchers("/auth/**").permitAll() // 수한 25-08-17 15:03
+                   .requestMatchers("/auth/**").permitAll() // 수한 25-08-07 15:03
                    .requestMatchers("/api/join/**").permitAll()  //수한 25-08-11 15:49
-                   .requestMatchers("/favicon.ico").permitAll()// 수한 25-08-17 13:04
-                   .requestMatchers("/auth/social-join").permitAll() // 수한 25-08-17 14:52
+                   .requestMatchers("/favicon.ico").permitAll()// 수한 25-08-07 13:04
+                   .requestMatchers("/auth/social-join").permitAll() // 수한 25-08-07 14:52
+                   .requestMatchers("/auth/social/finalize").permitAll() //25-08-12 17:46
                   
                    
                    // 멘토리뷰?
