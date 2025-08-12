@@ -25,7 +25,8 @@ public class MentoringProgress {
     @Column(nullable = false)
     private int mentorId;
 
-    private Integer chatId; // 처음엔 NULL일 수 있음
+    private Integer chatId; 
 
     private String connectionStatus;
 }
+
