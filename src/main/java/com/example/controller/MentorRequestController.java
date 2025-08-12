@@ -147,7 +147,7 @@ public class MentorRequestController {
         return ResponseEntity.ok(mentor.getMentorId());
     }
 
-    /** 5. 멘토링 중인 멘티 목록 조회 (404 해결용) */
+    /** 5. 멘토링 중인 멘티 목록 조회 (404 해결용) 1*/
     @GetMapping("/mentees")
     public ResponseEntity<List<Mentee>> getMentees(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userId = userDetails.getUserId().longValue();
