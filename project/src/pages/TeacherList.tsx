@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Clock, Star, Users, ArrowLeft } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import { useChat } from "@/contexts/ChatContext";
 
 type Teacher = {
   id: string | number;
-  userId: number;
+  userId: number; // mentor 테이블 PK 아님, user 테이블 PK
   name: string;
   introduction: string;
   rating: number;
@@ -22,8 +23,8 @@ type Teacher = {
 
 const subjectMap: Record<string, { name: string; icon: string }> = {
   "korean-history": { name: "한국사", icon: "📚" },
-  "korean": { name: "국어", icon: "✏️" },
-  "english": { name: "영어", icon: "🌍" },
+  korean: { name: "국어", icon: "✏️" },
+  english: { name: "영어", icon: "🌍" },
 };
 
 const TeacherList = () => {
@@ -31,27 +32,26 @@ const TeacherList = () => {
   const navigate = useNavigate();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const { currentUser } = useChat();
 
   const subjectInfo = subject ? subjectMap[subject] : null;
 
   useEffect(() => {
     if (!subject) return;
 
-    console.log("🎯 [useEffect] 현재 subject:", subject);
-
     const fetchTeachers = async () => {
       try {
-        console.log("📡 API 요청 시작: /api/mentors/" + subject);
+        console.log("📡 [TeacherList] 멘토 목록 API 요청 시작:", `/api/mentors/${subject}`);
         const res = await axios.get(`/api/mentors/${subject}`, {
           withCredentials: true,
         });
-        console.log("✅ API 응답 성공:", res.data);
+        console.log("✅ [TeacherList] 멘토 목록 API 응답:", res.data);
         setTeachers(res.data);
       } catch (error) {
         const err = error as AxiosError;
-        console.error("❌ API 응답 실패:", err.message);
+        console.error("❌ [TeacherList] 멘토 목록 API 요청 실패:", err.message);
         if (err.response) {
-          console.error("📛 응답 상태코드:", err.response.status);
+          console.error("📛 상태코드:", err.response.status);
           console.error("📛 응답 본문:", err.response.data);
         }
       } finally {
@@ -62,8 +62,53 @@ const TeacherList = () => {
     fetchTeachers();
   }, [subject]);
 
+  // ✅ 매칭 버튼 클릭 시 API 요청
+  const handleMatching = async (mentorUserId: number) => {
+    console.log("======== [handleMatching] 매칭 요청 시작 ========");
+    console.log("📌 현재 로그인 유저 정보:", currentUser);
+    console.log("📌 클릭한 멘토 userId =", mentorUserId);
+
+    if (!currentUser || !currentUser.id) {
+      console.error("🚫 로그인 유저 정보가 없습니다. 매칭 불가");
+      alert("로그인이 필요합니다.");
+      return;
+    }
+
+    const payload = {
+      menteeId: currentUser.id, // userId (백엔드에서 menteeId 변환)
+      mentorId: mentorUserId,   // userId (백엔드에서 mentorId 변환)
+    };
+    console.log("📦 전송할 DTO:", payload);
+
+    try {
+      const res = await axios.post("/api/mentoring/request", payload, {
+        withCredentials: true,
+      });
+      console.log("✅ 매칭 요청 성공:", res.data);
+
+      // 📌 requestId 표시
+      if (res.data.requestId) {
+        console.log("🎯 생성된 requestId:", res.data.requestId);
+        alert(`매칭 요청이 접수되었습니다.\nrequestId = ${res.data.requestId}`);
+      }
+
+      if (res.data.chatId) {
+        console.log("💬 채팅방 이동:", res.data.chatId);
+        navigate(`/chat/${res.data.chatId}`);
+      }
+    } catch (error) {
+      console.error("❌ 매칭 요청 실패", error);
+      if (axios.isAxiosError(error) && error.response) {
+        console.error("📛 상태코드:", error.response.status);
+        console.error("📛 응답 본문:", error.response.data);
+      }
+      alert("매칭 요청 중 오류가 발생했습니다.");
+    } finally {
+      console.log("======== [handleMatching] 매칭 요청 종료 ========");
+    }
+  };
+
   if (!subjectInfo) {
-    console.warn("⚠️ 잘못된 subject 접근:", subject);
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -76,11 +121,6 @@ const TeacherList = () => {
       </div>
     );
   }
-
-  const handleMatching = (userId: number) => {
-    console.log("➡️ 매칭 클릭 - userId:", userId);
-    navigate(`/chat/${userId}`);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
