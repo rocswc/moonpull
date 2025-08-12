@@ -37,6 +37,8 @@ import PaymentSubscribe from "./pages/PaymentSubscribe";
 import ChatInterface from"@/components/ChatInterface"    
 
 import SocialJoinPage from "./components/socialLogin/SocialJoinPage";
+import ProblemGeneratorApp from "./pages/ProblemGeneratorApp";
+import Opictest from "./pages/Opictest";
 
 
 const queryClient = new QueryClient();
@@ -93,6 +95,9 @@ const App = () => (
 		      <Route path="/payment/success" element={<PrivateRoute><Success /></PrivateRoute>} />   {/* 결제 성공 페이지 */}
 		      <Route path="/payment/fail" element={<PrivateRoute><Fail /></PrivateRoute>} />         {/* 결제 실패 페이지 */}
 			  <Route path="/payment/paymentSubscribe" element={<PaymentSubscribe />} /> {/* 결제화면 호출 페이지(구독) */}
+			  
+			  <Route path="/problemGeneratorApp" element={<ProblemGeneratorApp />} /> {/* 결제화면 호출 페이지(구독) */}
+			  <Route path="/opictest" element={<Opictest />} /> {/* 결제화면 호출 페이지(구독) */}
 			  
 		      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
 			  <Route path="*" element={<NotFound />} />

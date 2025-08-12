@@ -111,6 +111,22 @@ const Navigation = () => {
             <Globe className="w-4 h-4" />
             <span className="text-sm">한국어</span>
           </button>
+		  
+		  
+		  <button
+		              onClick={() => handleNavigation("/problemGeneratorApp")}
+		              className="text-foreground hover:text-primary transition-colors font-medium"
+		            >
+		              문제생성기
+					 
+		            </button>
+		  <button
+		              onClick={() => handleNavigation("/opictest")}
+		              className="text-foreground hover:text-primary transition-colors font-medium"
+		            >
+		              오픽테스트
+					 
+		            </button>
 
 		  <Button
 		    variant="ghost"

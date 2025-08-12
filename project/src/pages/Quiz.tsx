@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, RotateCcw, BookOpen, TrendingUp, Award, Clock, ChevronRight, Wifi, WifiOff, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw, BookOpen, TrendingUp, Award, Clock, ChevronRight, Wifi, WifiOff, AlertCircle, Hash } from "lucide-react";
+import Navigation from "@/components/Navigation";
 
 // API Base URL
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -32,9 +33,15 @@ const api = {
     }
   },
 
-  async getQuestions(subject, school, grade, mode) {
+  async getQuestions(subject, school, grade, mode, count) {
     try {
-      const params = new URLSearchParams({ subject, school, grade: grade.toString(), mode });
+      const params = new URLSearchParams({ 
+        subject, 
+        school, 
+        grade: grade.toString(), 
+        mode,
+        count: count.toString()
+      });
       const response = await fetch(`${API_BASE_URL}/questions?${params}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
@@ -79,7 +86,7 @@ const CBTQuizSystem = () => {
   const [connectionError, setConnectionError] = useState('');
   
   // State management
-  const [currentStep, setCurrentStep] = useState('connection'); // connection, subjects, schools, grades, mode, quiz, results
+  const [currentStep, setCurrentStep] = useState('connection'); // connection, subjects, schools, grades, mode, questionCount, quiz, results
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [schools, setSchools] = useState([]);
@@ -87,6 +94,7 @@ const CBTQuizSystem = () => {
   const [grades, setGrades] = useState([]);
   const [selectedGrade, setSelectedGrade] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
+  const [questionCount, setQuestionCount] = useState(null);
   
   // Quiz state
   const [questions, setQuestions] = useState([]);
@@ -99,6 +107,7 @@ const CBTQuizSystem = () => {
   const [usedQuestionIds, setUsedQuestionIds] = useState([]);
   const [currentRandomQuestion, setCurrentRandomQuestion] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [practiceQuestionsAnswered, setPracticeQuestionsAnswered] = useState(0);
 
   // Connection check on mount
   useEffect(() => {
@@ -184,17 +193,24 @@ const CBTQuizSystem = () => {
     setCurrentStep('mode');
   };
 
-  const handleModeSelect = async (mode) => {
+  const handleModeSelect = (mode) => {
     setSelectedMode(mode);
+    console.log('🎯 선택된 모드:', mode);
+    setCurrentStep('questionCount');
+  };
+
+  const handleQuestionCountSelect = async (count) => {
+    setQuestionCount(count);
     setLoading(true);
     
     try {
-      if (mode === 'exam') {
+      if (selectedMode === 'exam') {
         const questionsData = await api.getQuestions(
           selectedSubject.id, 
           selectedSchool, 
           selectedGrade, 
-          mode
+          selectedMode,
+          count
         );
         console.log('📝 시험 문제 데이터:', questionsData);
         setQuestions(questionsData);
@@ -202,6 +218,7 @@ const CBTQuizSystem = () => {
         setTimeLeft(questionsData.length * 60);
       } else {
         await loadRandomQuestion();
+        setPracticeQuestionsAnswered(0);
       }
       
       setCurrentStep('quiz');
@@ -257,6 +274,7 @@ const CBTQuizSystem = () => {
         wrong: prev.wrong + (!isCorrect ? 1 : 0)
       }));
       setShowExplanation(true);
+      setPracticeQuestionsAnswered(prev => prev + 1);
     }
   };
 
@@ -268,6 +286,12 @@ const CBTQuizSystem = () => {
         handleSubmitExam();
       }
     } else {
+      // 연습 모드에서 설정한 문제 수만큼 풀었는지 확인
+      if (practiceQuestionsAnswered >= questionCount) {
+        setCurrentStep('results');
+        return;
+      }
+      
       setCurrentAnswer(null);
       setShowExplanation(false);
       await loadRandomQuestion();
@@ -296,6 +320,7 @@ const CBTQuizSystem = () => {
     setSelectedSchool(null);
     setSelectedGrade(null);
     setSelectedMode(null);
+    setQuestionCount(null);
     setQuestions([]);
     setCurrentQuestionIndex(0);
     setSelectedAnswers([]);
@@ -306,6 +331,7 @@ const CBTQuizSystem = () => {
     setUsedQuestionIds([]);
     setCurrentRandomQuestion(null);
     setConnectionError('');
+    setPracticeQuestionsAnswered(0);
   };
 
   const formatTime = (seconds) => {
@@ -511,6 +537,44 @@ const CBTQuizSystem = () => {
     </div>
   );
 
+  const renderQuestionCountSelection = () => (
+    <div className="text-center space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-foreground">몇 문제를 풀까요?</h1>
+        <p className="text-muted-foreground">
+          {selectedMode === 'exam' ? '시험 모드' : '연습 모드'} - {selectedSchool} {selectedGrade}학년 {selectedSubject.name}
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+        {[10,20,30,50].map((count) => (
+          <Card
+            key={count}
+            className="cursor-pointer border-2 hover:border-primary hover:shadow-lg transition-all duration-200 min-h-[6rem] flex flex-col items-center justify-center p-4 group"
+            onClick={() => handleQuestionCountSelect(count)}
+          >
+            <Hash className="w-8 h-8 text-primary group-hover:scale-110 transition-transform mb-2" />
+            <CardTitle className="text-xl font-semibold">{count}문제</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {selectedMode === 'exam' ? `약 ${count}분` : '랜덤 출제'}
+            </p>
+          </Card>
+        ))}
+      </div>
+      
+      <div className="space-y-2">
+        <Button variant="outline" onClick={() => setCurrentStep('mode')}>
+          이전 단계
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          {selectedMode === 'exam' 
+            ? '시험 모드에서는 문제당 1분씩 시간이 주어집니다' 
+            : '연습 모드에서는 설정한 문제 수만큼 랜덤으로 출제됩니다'}
+        </p>
+      </div>
+    </div>
+  );
+
   const renderQuiz = () => {
     const currentQuestion = getCurrentQuestion();
     if (!currentQuestion) {
@@ -524,7 +588,7 @@ const CBTQuizSystem = () => {
 
     const progress = selectedMode === 'exam' 
       ? ((currentQuestionIndex + 1) / questions.length) * 100
-      : 0;
+      : (practiceQuestionsAnswered / questionCount) * 100;
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -534,7 +598,7 @@ const CBTQuizSystem = () => {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">{selectedSubject.name} - {selectedMode === 'exam' ? '시험 모드' : '연습 모드'}</h2>
               <p className="text-sm text-muted-foreground">
-                {selectedSchool} {selectedGrade}학년 • MongoDB 실제 데이터
+                {selectedSchool} {selectedGrade}학년 • 총 {questionCount}문제 • MongoDB 실제 데이터
               </p>
             </div>
             
@@ -554,7 +618,9 @@ const CBTQuizSystem = () => {
             
             {selectedMode === 'practice' && (
               <div className="text-right space-y-1">
-                <div className="text-sm text-muted-foreground">현재 점수</div>
+                <div className="text-sm text-muted-foreground">
+                  {practiceQuestionsAnswered} / {questionCount}
+                </div>
                 <div className="space-x-2">
                   <span className="text-green-600 font-semibold">정답 {score.correct}</span>
                   <span className="text-red-600 font-semibold">오답 {score.wrong}</span>
@@ -563,21 +629,21 @@ const CBTQuizSystem = () => {
             )}
           </div>
           
-          {selectedMode === 'exam' && (
-            <div className="w-full bg-muted rounded-full h-2">
-              <div 
-                className="bg-primary rounded-full h-2 transition-all duration-300" 
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          )}
+          <div className="w-full bg-muted rounded-full h-2">
+            <div 
+              className="bg-primary rounded-full h-2 transition-all duration-300" 
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
 
         {/* Question Card */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">
-              {selectedMode === 'exam' ? `문제 ${currentQuestionIndex + 1}` : '문제'}
+              {selectedMode === 'exam' 
+                ? `문제 ${currentQuestionIndex + 1}` 
+                : `문제 ${practiceQuestionsAnswered + 1}`}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -684,7 +750,10 @@ const CBTQuizSystem = () => {
                       </Button>
                     ) : (
                       <Button onClick={handleNextQuestion} disabled={loading}>
-                        {loading ? '다음 문제 로딩 중...' : '다음 문제'} <ChevronRight className="w-4 h-4 ml-1" />
+                        {practiceQuestionsAnswered >= questionCount 
+                          ? (loading ? '결과 확인 중...' : '결과 확인') 
+                          : (loading ? '다음 문제 로딩 중...' : '다음 문제')} 
+                        <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     )}
                   </>
@@ -711,7 +780,7 @@ const CBTQuizSystem = () => {
           <p className="text-muted-foreground">
             {selectedSubject.name} ({selectedSchool} {selectedGrade}학년)
           </p>
-          <p className="text-sm text-green-600">MongoDB 실제 데이터로 완료</p>
+          <p className="text-sm text-green-600">총 {questionCount}문제 • MongoDB 실제 데이터로 완료</p>
         </div>
 
         <Card className="p-8">
@@ -753,12 +822,14 @@ const CBTQuizSystem = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
+	<Navigation /> {/* ✅ 네비게이션 추가 */}
       <div className="container mx-auto px-4 py-8">
         {currentStep === 'connection' && renderConnectionStatus()}
         {currentStep === 'subjects' && renderSubjectSelection()}
         {currentStep === 'schools' && renderSchoolSelection()}
         {currentStep === 'grades' && renderGradeSelection()}
         {currentStep === 'mode' && renderModeSelection()}
+        {currentStep === 'questionCount' && renderQuestionCountSelection()}
         {currentStep === 'quiz' && renderQuiz()}
         {currentStep === 'results' && renderResults()}
       </div>
