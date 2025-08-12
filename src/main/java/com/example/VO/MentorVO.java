@@ -15,4 +15,6 @@ public class MentorVO {
     private String email;
     private String graduationFile;
     private Boolean isBanned;
+    private Integer studentCount;
+    private Integer score;
 }

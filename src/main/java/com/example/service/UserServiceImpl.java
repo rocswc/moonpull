@@ -1,10 +1,8 @@
 package com.example.service;
 
 import java.util.Optional;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import com.example.DAO.UserRepository;
 import com.example.VO.MemberVO;
 import com.example.dto.KakaoUserDTO;
@@ -18,23 +16,20 @@ public class UserServiceImpl implements UserService {
     public UserServiceImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
+
     @Override
     public void processKakaoLogin(KakaoUserDTO userInfo) {
-        // 카카오 사용자 정보로 회원가입 혹은 로그인 처리 로직 작성
+        // TODO: 카카오 사용자 정보로 회원가입/로그인 처리
     }
 
     @Override
     public boolean existsBySocialIdAndType(String socialId, String socialType) {
+        // 리포지토리에 existsBy... 가 없으니 find + isPresent 사용 (효율 개선 원하면 repo에 existsBy... 추가)
         return userRepository.findBySocialIdAndSocialType(socialId, socialType).isPresent();
     }
 
     @Override
-    public MemberVO findBySocialIdAndType(String socialId, String socialType) {
-        return userRepository.findBySocialIdAndSocialType(socialId, socialType)
-                .orElse(null); // 또는 예외 던져도 됨
-    }
-    @Override
-    public Optional<MemberVO> getBySocial(String socialType, String socialId) {
+    public Optional<MemberVO> getBySocialIdAndType(String socialId, String socialType) {
         return userRepository.findBySocialIdAndSocialType(socialId, socialType);
     }
 }
