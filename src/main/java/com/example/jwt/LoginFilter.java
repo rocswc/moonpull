@@ -139,8 +139,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
 	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
 	        .httpOnly(true)
-	        .secure(false)
-	        .sameSite("Lax")
+	        .secure(true)
+	        .sameSite("None")
 	        .path("/")
 	        .maxAge(24 * 60 * 60)
 	        .build();

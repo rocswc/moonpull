@@ -22,9 +22,9 @@ const ChatInterface = () => {
       id: Date.now().toString(),
       text: messageText,
       isUser: true,
-      timestamp: new Date().toLocaleTimeString('ko-KR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      timestamp: new Date().toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit'
       }),
     };
 
@@ -37,9 +37,9 @@ const ChatInterface = () => {
         id: (Date.now() + 1).toString(),
         text: `안녕하세요! "${messageText}"에 대해 도움을 드리겠습니다. 어떤 구체적인 질문이 있으신가요?`,
         isUser: false,
-        timestamp: new Date().toLocaleTimeString('ko-KR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+        timestamp: new Date().toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit'
         }),
       };
       setMessages(prev => [...prev, aiMessage]);
@@ -57,12 +57,14 @@ const ChatInterface = () => {
   return (
     <div className="flex h-screen bg-background">
       <ChatSidebar />
-      
-      <div className="flex-1 flex flex-col">
+
+      {/* 메인 컬럼: overflow-hidden 으로 내부 스크롤만 */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
           {messages.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8">
+            // 중앙 세로 정렬을 풀고 여백만 적절히 배치해 히어로를 약간 위로
+            <div className="flex-1 flex flex-col items-center p-8 pt-12">
               <div className="text-center max-w-2xl">
                 <h1 className="text-4xl font-bold text-foreground mb-4">
                   무엇을 도와드릴까요?
@@ -70,8 +72,8 @@ const ChatInterface = () => {
                 <p className="text-lg text-muted-foreground mb-8">
                   한국사, 국어, 수학, 과학 등 모든 학습 질문에 답해드립니다.
                 </p>
-                
-                <div className="grid grid-cols-2 gap-4 mb-8">
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
                   {quickActions.map((action, index) => (
                     <Card
                       key={index}
@@ -116,9 +118,16 @@ const ChatInterface = () => {
             </ScrollArea>
           )}
         </div>
-        
-        {/* Input Area */}
-        <div className="border-t border-border">
+
+        {/* Input Area: sticky + bottom-8 로 살짝 위로 띄움 */}
+        <div
+          className="
+            border-t border-border sticky bottom-8
+            bg-background/95 backdrop-blur
+            supports-[backdrop-filter]:bg-background/70
+            px-4 pb-[env(safe-area-inset-bottom)]
+          "
+        >
           <div className="max-w-4xl mx-auto">
             <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
           </div>
