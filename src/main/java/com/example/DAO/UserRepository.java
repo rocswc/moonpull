@@ -24,6 +24,7 @@ public interface UserRepository extends JpaRepository<MemberVO, Integer> {
     int updateLastLogin(String loginid);
     Optional<MemberVO> findByEmail(String email);
     Optional<MemberVO> findBySocialIdAndSocialType(String socialId, String socialType);
+    boolean existsBySocialIdAndSocialType(String socialId, String socialType);
     
     
 
