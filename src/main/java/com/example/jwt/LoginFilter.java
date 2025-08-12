@@ -121,6 +121,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         boolean isHttps = request.isSecure()
                 || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
 
+
         String sameSite = "Lax"; // 같은 사이트(동일 호스트+스킴) 기본
         String origin = request.getHeader("Origin");
         if (origin != null) {
@@ -137,13 +138,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         }
         boolean secureFlag = isHttps || "None".equals(sameSite); // HTTPS 또는 SameSite=None 이면 true
 
-        ResponseCookie cookie = ResponseCookie.from("jwt", token)
-                .httpOnly(true)
-                .secure(secureFlag)   // ✅ HTTPS 환경에서 필수
-                .sameSite(sameSite)   // ✅ same-site=Lax, cross-site=None
-                .path("/")
-                .maxAge(24 * 60 * 60)
-                .build();
+	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
+	        .httpOnly(true)
+	        .secure(true)
+	        .sameSite("None")
+	        .path("/")
+	        .maxAge(24 * 60 * 60)
+	        .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
