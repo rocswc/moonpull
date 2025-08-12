@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ChatMessage {
 
-    @Id
+    @Id   
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long messageId;
 
