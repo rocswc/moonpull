@@ -146,6 +146,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	        .maxAge(24 * 60 * 60)
 	        .build();
 
+        
+
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         // (프론트가 토큰을 안 써도 무방) 응답 JSON
