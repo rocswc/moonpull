@@ -3,7 +3,7 @@ import React from "react";
 const GoogleLoginButton = () => {
   const handleClick = () => {
     // 백엔드에서 리디렉션 처리하도록 요청
-    window.location.href = "http://localhost:8080/auth/google/login";
+    window.location.href = "https://localhost:8080/auth/google/login";
   };
 
   return (

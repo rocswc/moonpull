@@ -2,7 +2,7 @@ import React from "react";
 
 const KakaoLoginButton = () => {
   const handleClick = () => {
-    window.location.href = "http://localhost:8080/auth/kakao/login";  // 백엔드 로그인 시작 URL
+    window.location.href = "https://localhost:8080/auth/kakao/login";  // 백엔드 로그인 시작 URL
   };
 
   return (

@@ -67,7 +67,7 @@ public class KakaoCallbackController {
                         .build();
             }
 
-            String joinUrl = "http://localhost:8888/auth/social-join"
+            String joinUrl = "https://localhost:8888/auth/social-join"
                     + "?provider=" + enc(socialType)
                     + "&socialId=" + enc(socialId)
                     + "&email="    + enc(email)

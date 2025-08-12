@@ -70,11 +70,7 @@ public class JwtFilter extends OncePerRequestFilter {
             path.startsWith("/api/admin/reports") ||
             path.startsWith("/api/chat/") ||
             path.startsWith("/api/teacher/") ||
-
-
-
             path.startsWith("/api/mentor-id") ||
-
             path.startsWith("/api/chat/messages") ||
             path.startsWith("/api/mentor/") ||
             path.startsWith("/api/mentors/") ||
