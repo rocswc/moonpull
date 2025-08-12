@@ -6,16 +6,11 @@ import lombok.Data;
 
 
 @Data
-public class ChatMessage {
-
-	
+public class ChatMessage {	
 		private Long messageId;
 	    private Integer chatroomId;
 	    private Integer senderId;
 	    private String content;
 	    private LocalDateTime timestamp;
-	    private Boolean isRead;
-	
-	
-		
+	    private Boolean isRead;		
 }
