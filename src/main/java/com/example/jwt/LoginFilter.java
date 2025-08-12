@@ -29,113 +29,114 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
-	private final AuthenticationManager authenticationManager;
-	private final JwtUtil jwtUtil;
-	private final UserRepository userRepository;
-	
-	 @PersistenceContext
-	    private EntityManager entityManager;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
-	public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UserRepository userRepository) {
-		this.authenticationManager = authenticationManager;
-		this.jwtUtil = jwtUtil;
-		this.userRepository = userRepository;
-		setFilterProcessesUrl("/api/login");
-	}
+    @PersistenceContext
+    private EntityManager entityManager;
 
-	@Override
-	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
-			throws AuthenticationException {
+    public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UserRepository userRepository) {
+        this.authenticationManager = authenticationManager;
+        this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
+        setFilterProcessesUrl("/api/login");
+    }
 
-		try {
-			ObjectMapper objectMapper = new ObjectMapper();
-			LoginDTO loginRequest = objectMapper.readValue(request.getInputStream(), LoginDTO.class);
+    @Override
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+            throws AuthenticationException {
 
-			String loginid = loginRequest.getLoginId();
-			String password = loginRequest.getPassword();
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            LoginDTO loginRequest = objectMapper.readValue(request.getInputStream(), LoginDTO.class);
 
-			System.out.println("[LoginFilter] 입력 loginId: " + loginid);
-			System.out.println("[LoginFilter] 입력 password: " + password);
+            String loginid = loginRequest.getLoginId();
+            String password = loginRequest.getPassword();
 
-			
-			
-			// ✅ 정지 여부 확인
-			MemberVO member = userRepository.findByLoginid(loginid)
-					.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-			//entityManager.flush();
-			//entityManager.clear();
+            System.out.println("[LoginFilter] 입력 loginId: " + loginid);
+            System.out.println("[LoginFilter] 입력 password: " + password);
 
-			
-			System.out.println("📌 getIsBanned: " + member.getIsBanned());
-			System.out.println("📌 getBanReason: " + member.getBanReason());
-			System.out.println("📌 getBanExpireDate: " + member.getBanExpireDate());
-			if (member.getIsBanned()) {
-				Date today = new Date();
-				Date expireDate = member.getBanExpireDate();
+            // ✅ 정지 여부 확인
+            MemberVO member = userRepository.findByLoginid(loginid)
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-				if (expireDate == null || today.before(expireDate)) {
-					String reason = member.getBanReason() != null ? member.getBanReason() : "관리자에 의해 정지되었습니다.";
-					String expireInfo = expireDate != null ? " (해제일: " + expireDate + ")" : "";
-					sendBanResponse(response, "정지된 계정입니다. 사유: " + reason + expireInfo);
-					return null; // 인증 시도 중단
-					
-					
-				}
-			}
+            System.out.println("📌 getIsBanned: " + member.getIsBanned());
+            System.out.println("📌 getBanReason: " + member.getBanReason());
+            System.out.println("📌 getBanExpireDate: " + member.getBanExpireDate());
+            if (member.getIsBanned()) {
+                Date today = new Date();
+                Date expireDate = member.getBanExpireDate();
 
-			UsernamePasswordAuthenticationToken authToken =
-					new UsernamePasswordAuthenticationToken(loginid, password);
+                if (expireDate == null || today.before(expireDate)) {
+                    String reason = member.getBanReason() != null ? member.getBanReason() : "관리자에 의해 정지되었습니다.";
+                    String expireInfo = expireDate != null ? " (해제일: " + expireDate + ")" : "";
+                    sendBanResponse(response, "정지된 계정입니다. 사유: " + reason + expireInfo);
+                    return null; // 인증 시도 중단
+                }
+            }
 
-			Authentication result = authenticationManager.authenticate(authToken);
-			System.out.println("[LoginFilter] 인증 성공?: " + result.isAuthenticated());
-			return result;
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(loginid, password);
 
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw new RuntimeException("로그인 요청 JSON 파싱 실패", e);
-		}
-	}
+            Authentication result = authenticationManager.authenticate(authToken);
+            System.out.println("[LoginFilter] 인증 성공?: " + result.isAuthenticated());
+            return result;
 
-	@Override
-	protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-	        FilterChain chain, Authentication authentication)
-	        throws IOException, ServletException {
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("로그인 요청 JSON 파싱 실패", e);
+        }
+    }
 
-	    CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-	    String username = customUserDetails.getUsername();
-	    String nickname = customUserDetails.getNickname();
-	    userRepository.updateLastLogin(username);
+    @Override
+    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+            FilterChain chain, Authentication authentication)
+            throws IOException, ServletException {
 
-	    var authorities = authentication.getAuthorities();
-	    String roles = authorities.stream()
-	        .map(auth -> {
-	            String role = auth.getAuthority();
-	            return role.startsWith("ROLE_") ? role : "ROLE_" + role;
-	        })
-	        .collect(Collectors.joining(","));
+        CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
+        String username = customUserDetails.getUsername();
+        String nickname = customUserDetails.getNickname();
 
-	    String token = jwtUtil.createJwt(username, nickname, roles, 24 * 60 * 60 * 1000L);
+        // 마지막 로그인 시간 업데이트
+        userRepository.updateLastLogin(username);
 
-	    boolean isHttps = request.isSecure()
-	        || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+        var authorities = authentication.getAuthorities();
+        String roles = authorities.stream()
+                .map(auth -> {
+                    String role = auth.getAuthority();
+                    return role.startsWith("ROLE_") ? role : "ROLE_" + role;
+                })
+                .collect(Collectors.joining(","));
 
-	    String sameSite = "Lax";
-	    String origin = request.getHeader("Origin");
-	    if (origin != null) {
-	        try {
-	            java.net.URI o = java.net.URI.create(origin);
-	            String originHost = o.getHost();
-	            String originScheme = o.getScheme();
-	            String reqHost = request.getServerName();
-	            String reqScheme = request.getScheme();
+        // 🔴 기존: subject 없이 발급 → 새로고침 시 JwtFilter(subject 필요)에서 실패
+        // String token = jwtUtil.createJwt(username, nickname, roles, 24 * 60 * 60 * 1000L);
 
-	            boolean crossSite = !(originHost != null && originHost.equalsIgnoreCase(reqHost))
-	                    || !(originScheme != null && originScheme.equalsIgnoreCase(reqScheme));
-	            if (crossSite) sameSite = "None";
-	        } catch (Exception ignore) {}
-	    }
+        // ✅ 변경: PK(subject) 포함 발급
+        MemberVO member = userRepository.findByLoginid(username)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        String token = jwtUtil.generateToken(member); // subject = userId 포함
 
-	    boolean secureFlag = isHttps || "None".equals(sameSite);
+        // ===== 쿠키 속성 계산 =====
+        boolean isHttps = request.isSecure()
+                || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+
+
+        String sameSite = "Lax"; // 같은 사이트(동일 호스트+스킴) 기본
+        String origin = request.getHeader("Origin");
+        if (origin != null) {
+            try {
+                java.net.URI o = java.net.URI.create(origin);
+                String originHost = o.getHost();
+                String originScheme = o.getScheme();
+                String reqHost = request.getServerName();
+                String reqScheme = request.getScheme();
+                boolean crossSite = !(originHost != null && originHost.equalsIgnoreCase(reqHost))
+                        || !(originScheme != null && originScheme.equalsIgnoreCase(reqScheme));
+                if (crossSite) sameSite = "None";
+            } catch (Exception ignore) {}
+        }
+        boolean secureFlag = isHttps || "None".equals(sameSite); // HTTPS 또는 SameSite=None 이면 true
 
 	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
 	        .httpOnly(true)
@@ -145,35 +146,33 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 	        .maxAge(24 * 60 * 60)
 	        .build();
 
-	    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-	    response.setContentType("application/json; charset=UTF-8");
-	    response.getWriter().write(new ObjectMapper().writeValueAsString(Map.of(
-	        "token", token,
-	        "loginId", username,
-	        "nickname", nickname,
-	        "roles", authorities.stream()
-	            .map(GrantedAuthority::getAuthority)
-	            .collect(Collectors.toList())
-	    )));
-	}
+        // (프론트가 토큰을 안 써도 무방) 응답 JSON
+        response.setContentType("application/json; charset=UTF-8");
+        response.getWriter().write(new ObjectMapper().writeValueAsString(Map.of(
+                "token", token,
+                "loginId", username,
+                "nickname", nickname,
+                "roles", authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList())
+        )));
+    }
 
-	@Override
-	protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-			AuthenticationException failed)
-			throws IOException, ServletException {
+    @Override
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+            AuthenticationException failed)
+            throws IOException, ServletException {
 
-		System.out.println("로그인 실패: " + failed.getMessage());
+        System.out.println("로그인 실패: " + failed.getMessage());
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json; charset=UTF-8");
+        response.getWriter().write("{\"error\": \"인증 실패\"}");
+    }
 
-		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-		response.setContentType("application/json; charset=UTF-8");
-		response.getWriter().write("{\"error\": \"인증 실패\"}");
-	}
-
-	// 🔒 정지된 유저에 대한 응답
-	private void sendBanResponse(HttpServletResponse response, String message) throws IOException {
-		response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403
-		response.setContentType("application/json;charset=UTF-8");
-		response.getWriter().write("{\"message\": \"" + message + "\"}");
-	}
+    // 🔒 정지된 유저에 대한 응답
+    private void sendBanResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"message\": \"" + message + "\"}");
+    }
 }
