@@ -14,9 +14,28 @@ public class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id") // PK
+    @Column(name = "user_id")
     private Long userId;
 
-    private String nickname; // 이름
-    private String major;    // 전공(멘토 과목)
+    @Column(name = "login_id", nullable = false)
+    private String loginId;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @Column(name = "nickname")
+    private String nickname;
+
+    @Column(name = "roles")
+    private String roles;
+
+    @Column(name = "birthdate")
+    private String birthdate;
+
+    /** 전공(major) 필드 추가 */
+    @Column(name = "major")
+    private String major;
 }
