@@ -161,15 +161,15 @@ const SocialJoinPage = () => {
 	  // 1) 회원가입
 	  await axios.post("/api/join", form, { withCredentials: true });
 
-	  // 2) 백엔드 소셜 로그인 엔드포인트로 전체 URL 리다이렉트 (SPA 라우터 우회)
-	  // 회원가입 성공 직후
-	  const provider = (formData.social_type || "").toUpperCase();
-	  const urlMap: Record<string, string> = {
-	    KAKAO:  "https://localhost:8888/auth/kakao/login",
-	    GOOGLE: "https://localhost:8888/auth/google/login",
-	    // NAVER 쓰면 추가
-	  };
-	  window.location.replace(urlMap[provider] ?? "https://localhost:8888/auth/login");
+	  // 2) 서버가 쿠키를 세팅했다면, 내 정보 가져와서 컨텍스트 갱신
+	  try {
+	    const me = await axios.get("/api/user", { withCredentials: true }).then(r => r.data);
+	    login?.(me);                  // useAuth()에서 가져온 로그인 set 함수
+	    navigate("/", { replace: true });
+	  } catch {
+	    // 쿠키가 없다면(백엔드가 아직 쿠키 안 심는다면) 로그인 페이지로 보냄
+	    navigate("/auth/login", { replace: true });
+	  }
 	  return; // 아래 코드 실행 금지
 
       
