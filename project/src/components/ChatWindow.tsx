@@ -45,6 +45,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatWindowRef = useRef<HTMLDivElement>(null);
+  const lastMarkedRef = useRef<string | number | null>(null);
 
   const otherParticipant = useMemo(() => {
     const meId = currentUser?.id?.toString();
@@ -57,14 +58,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   }, [room.messages.length]);
 
   // 창이 열려 있고 새 메시지가 오면 읽음 처리
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    if (room.isMinimized) return;
-    if (room.messages.length === 0) return;
-    const last = room.messages[room.messages.length - 1];
-    const lastFromOther = String(last.senderId) !== String(currentUser.id);
-    if (lastFromOther) markAsRead(room.id);
-  }, [room.messages.length, room.isMinimized, currentUser?.id, room.id, markAsRead]);
+useEffect(() => {
+  if (!currentUser?.id) return;
+  if (room.isMinimized) return;
+  const len = room.messages.length;
+  if (len === 0) return;
+
+  const last = room.messages[len - 1];
+  const lastFromOther = String(last.senderId) !== String(currentUser.id);
+
+  // ✅ 같은 메시지에 대해 한 번만 읽음 처리
+  if (lastFromOther && last.id !== lastMarkedRef.current) {
+    markAsRead(room.id);
+    lastMarkedRef.current = last.id;
+  }
+}, [room.messages.length, room.isMinimized, currentUser?.id, room.id, markAsRead]);
 
   // 최소화 풀리면 읽음 처리(기존 로직 유지)
   useEffect(() => {

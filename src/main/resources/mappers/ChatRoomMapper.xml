@@ -13,26 +13,46 @@
 	    <result column="field"           property="field"/>
 	</resultMap>
 
-  <select id="findById" resultMap="ChatRoomMap">
-    SELECT * FROM chatroom WHERE chatroom_id = #{id}
-  </select>
+	<select id="findById" resultMap="ChatRoomMap">
+	  SELECT
+	    chatroom_id     AS chatroomId,
+	    participant1_id AS participant1_Id,
+	    participant2_id AS participant2_Id,
+	    created_at      AS created_at,
+	    field
+	  FROM chatroom
+	  WHERE chatroom_id = #{id}
+	</select>
+	
+	<select id="findByPair" resultMap="ChatRoomMap">
+	  SELECT
+	    chatroom_id     AS chatroomId,
+	    participant1_id AS participant1_Id,
+	    participant2_id AS participant2_Id,
+	    created_at      AS created_at,
+	    field
+	  FROM chatroom
+	  WHERE participant1_id = #{uMin} AND participant2_id = #{uMax}
+	  LIMIT 1
+	</select>
+	
+	<select id="findRoomsOf" resultMap="ChatRoomMap">
+	  SELECT
+	    chatroom_id     AS chatroomId,
+	    participant1_id AS participant1_Id,
+	    participant2_id AS participant2_Id,
+	    created_at      AS created_at,
+	    field
+	  FROM chatroom
+	  WHERE participant1_id = #{userId} OR participant2_id = #{userId}
+	  ORDER BY created_at DESC
+	</select>
 
-  <select id="findByPair" resultMap="ChatRoomMap">
-    SELECT * FROM chatroom
-    WHERE participant1_id = #{uMin} AND participant2_id = #{uMax}
-    LIMIT 1
-  </select>
+	<insert id="insert" parameterType="com.example.VO.ChatRoom"
+	        useGeneratedKeys="true" keyProperty="chatroomId" keyColumn="chatroom_id">
+	  INSERT INTO chatroom (participant1_id, participant2_id, created_at, field)
+	  VALUES (#{participant1_Id}, #{participant2_Id}, NOW(), #{field})
+	</insert>
 
-<insert id="insert" parameterType="com.example.VO.ChatRoom"
-        useGeneratedKeys="true" keyProperty="chatroomId">
-    INSERT INTO chatroom (participant1_Id, participant2_Id, created_at, field)
-    VALUES (#{participant1_Id}, #{participant2_Id}, NOW(), #{field})
-</insert>
-
-  <select id="findRoomsOf" resultMap="ChatRoomMap">
-    SELECT * FROM chatroom
-    WHERE participant1_id = #{userId} OR participant2_id = #{userId}
-    ORDER BY created_at DESC
-  </select>
 
 </mapper>
