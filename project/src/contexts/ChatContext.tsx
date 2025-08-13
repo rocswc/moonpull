@@ -6,14 +6,13 @@ import React, {
   useRef,
   useState,
   ReactNode,
+  useCallback,
 } from "react";
 import SockJS from 'sockjs-client/dist/sockjs';
 import { Client as StompClient, IMessage } from "@stomp/stompjs";
 
 
-const API_ORIGIN =
-  import.meta.env.VITE_API_ORIGIN ?? "https://192.168.56.1:8080"; // ← 너희 백엔드 주소
-
+const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "https://192.168.56.1:8080"; // ← 너희 백엔드 주소
 const token = localStorage.getItem("access_token"); // 프로젝트에 맞춰 조정
 const AUTH_HEADERS = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -35,6 +34,7 @@ export interface User {
   isOnline: boolean;
   subject?: string;
   mentorId?: number;
+  loginId?: string;  
 }
 
 export interface UIChatMessage {
@@ -71,8 +71,8 @@ interface ChatContextType {
 
   // Actions
   sendChatRequest: (toUserId: string) => Promise<void>;
-  acceptChatRequest: (requestId: string) => Promise<void>;
-  rejectChatRequest: (requestId: string) => Promise<void>;
+  acceptChatRequest: (requestId: string, fromUserId?: string, toUserId?: string) => Promise<void>;
+  rejectChatRequest: (requestId: string, fromUserId?: string, toUserId?: string) => Promise<void>;
   sendMessage: (roomId: string, content: string) => void;
   minimizeChat: (roomId: string) => void;
   closeChat: (roomId: string) => void;
@@ -95,13 +95,15 @@ export const useChat = () => {
 function mapServerUser(u: any): User {
   const id = (u.userId ?? u.id ?? u.user_id ?? "0").toString();
   const name = u.name ?? u.nickname ?? `user-${id}`;
+  const loginId = u.loginid ?? u.loginId ?? u.username ?? u.login_id ?? undefined; // ★ ADD
   return {
     id,
     name,
     avatar: name?.charAt(0) || "👤",
-    isOnline: true,
+    isOnline: false,             // ★ 기본값 false로
     subject: u.major ?? undefined,
     mentorId: u.roles === "MENTOR" ? Number(id) : undefined,
+    loginId,                     // ★ ADD
   };
 }
 
@@ -113,11 +115,6 @@ function mapServerMessage(m: any): UIChatMessage {
     timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
     isRead: Boolean(m.isRead ?? m.is_read ?? false),
   };
-}
-
-function uniquePairKey(a: string, b: string) {
-  const [x, y] = [a, b].sort();
-  return `${x}:${y}`;
 }
 
 export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -164,120 +161,214 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     })();
   }, []);
 
-  // ------------------------
-  // STOMP 연결 & 구독 (사용자 로그인 이후)
-  // ------------------------
-  useEffect(() => {
-    if (!currentUser?.id) return;
 
-    const client = new StompClient({
-      // SockJS factory를 사용: 자동 폴백/재연결 제공
-      webSocketFactory: () => new SockJS(ROUTES.WS_HTTP_URL) as any,
-      reconnectDelay: 3000,
-      onConnect: () => {
-        // 1) 나에게 도착하는 채팅 요청 구독
-        const sub1 = client.subscribe(
-          `${ROUTES.USER_QUEUE_PREFIX}/requests`,
-          (msg: IMessage) => {
-            try {
-              const payload = JSON.parse(msg.body);
-              // payload 예시: { requestId, fromUser, toUser, createdAt }
-              const req: ChatRequest = {
-                id: (payload.requestId ?? payload.id).toString(),
-                from: mapServerUser(payload.fromUser ?? payload.from),
-                to: mapServerUser(payload.toUser ?? payload.to),
-                timestamp: new Date(payload.createdAt ?? Date.now()),
-                status: "pending",
-              };
-              setChatRequests((prev) => {
-                // 중복 방지
-                if (prev.some((r) => r.id === req.id)) return prev;
-                return [req, ...prev];
-              });
-            } catch (e) {
-              console.warn("요청 수신 파싱 실패", e);
-            }
+// ✅ 여기에 추가 (유저 목록 로드 useEffect 바로 아래(온라인 목록 동기화))
+useEffect(() => {
+  if (users.length === 0) return;
+  (async () => {
+    try {
+      const res = await fetch(`${API_ORIGIN}/api/rt-chat/online`, {
+        credentials: "include",
+        headers: { ...AUTH_HEADERS },
+      });
+      if (!res.ok) return;
+      const onlineLoginIds: string[] = await res.json(); // ["mentor01","userA", ...]
+      setUsers(prev =>
+        prev.map(u => ({
+          ...u,
+          isOnline: u.loginId ? onlineLoginIds.includes(u.loginId) : u.isOnline,
+        })),
+      );
+    } catch (e) {
+      console.warn("온라인 목록 동기화 실패", e);
+    }
+  })();
+}, [users.length]);
+
+
+// ------------------------
+// STOMP 연결 & 구독 (사용자 로그인 이후)
+// ------------------------
+useEffect(() => {
+  if (!currentUser?.id) return;
+
+  const client = new StompClient({
+    // SockJS factory를 사용: 자동 폴백/재연결 제공
+    webSocketFactory: () => new SockJS(ROUTES.WS_HTTP_URL) as any,
+    reconnectDelay: 3000,
+
+    // ✅ JWT/세션 환경이면 CONNECT 헤더도 함께 보냄
+    connectHeaders: { ...AUTH_HEADERS },
+
+    // ✅ 여기(onConnect)가 "연결 성사 직후" 구독을 붙이는 자리
+    onConnect: () => {
+      // 1) 나에게 도착하는 채팅 요청 구독
+      const sub1 = client.subscribe(
+        `${ROUTES.USER_QUEUE_PREFIX}/requests`,
+        (msg: IMessage) => {
+          try {
+            const payload = JSON.parse(msg.body);
+            const req: ChatRequest = {
+              id: (payload.requestId ?? payload.id).toString(),
+              from: mapServerUser(payload.fromUser ?? payload.from),
+              to: mapServerUser(payload.toUser ?? payload.to),
+              timestamp: new Date(payload.createdAt ?? Date.now()),
+              status: "pending",
+            };
+            setChatRequests((prev) => {
+              if (prev.some((r) => r.id === req.id)) return prev; // 중복 방지
+              return [req, ...prev];
+            });
+          } catch (e) {
+            console.warn("요청 수신 파싱 실패", e);
           }
-        );
-
-        // 2) 내가 보낸 요청이 수락됨 → 방 정보 수신하여 방 오픈
-        const sub2 = client.subscribe(
-          `${ROUTES.USER_QUEUE_PREFIX}/request-accepted`,
-          (msg: IMessage) => {
-            try {
-              const payload = JSON.parse(msg.body);
-              // payload 예시: { requestId, chatroom, participants, messages? }
-              const roomId = (payload?.chatroom?.chatroomId ?? payload?.chatroomId ?? payload?.roomId).toString();
-              const participantsRaw = payload.participants ?? [];
-              const participants: User[] = participantsRaw.map(mapServerUser);
-              const messages: UIChatMessage[] = (payload.messages ?? []).map(mapServerMessage);
-
-              setChatRequests((prev) => prev.filter((r) => r.id !== String(payload.requestId)));
-              setChatRooms((prev) => {
-                if (prev.some((r) => r.id === roomId)) return prev; // 중복 방지
-                return [
-                  {
-                    id: roomId,
-                    participants,
-                    messages,
-                    isMinimized: false,
-                    unreadCount: 0,
-                    typingUsers: [],
-                  },
-                  ...prev,
-                ];
-              });
-
-              subscribeRoomTopic(roomId, client);
-            } catch (e) {
-              console.warn("수락 알림 파싱 실패", e);
-            }
-          }
-        );
-
-        // 언서브 핸들러 보관(사용자 변경/언마운트시 해제)
-        roomSubscriptions.current["__requests__"] = () => sub1.unsubscribe();
-        roomSubscriptions.current["__accepted__"] = () => sub2.unsubscribe();
-      },
-      onStompError: (f) => console.error("STOMP error", f.headers["message"], f.body),
-      onWebSocketClose: () => console.warn("🔌 WebSocket closed"),
-    });
-
-    client.activate();
-    stompRef.current = client;
-
-    return () => {
-      // 모든 구독 해제
-      Object.values(roomSubscriptions.current).forEach((unsub) => unsub?.());
-      roomSubscriptions.current = {};
-      client.deactivate();
-      stompRef.current = null;
-    };
-  }, [currentUser?.id]);
-
-  // 방 토픽 구독 & 메시지 수신 시 상태 반영
-  const subscribeRoomTopic = (roomId: string, client?: StompClient) => {
-    const c = client ?? stompRef.current;
-    if (!c) return;
-    if (roomSubscriptions.current[roomId]) return; // 이미 구독 중
-
-    const sub = c.subscribe(
-      `${ROUTES.TOPIC_PREFIX}/rooms/${roomId}`,
-      (msg: IMessage) => {
-        try {
-          const payload = JSON.parse(msg.body);
-          const m = mapServerMessage(payload);
-          setChatRooms((prev) =>
-            prev.map((r) => (r.id === roomId ? { ...r, messages: [...r.messages, m] } : r))
-          );
-        } catch (e) {
-          console.warn("메시지 수신 파싱 실패", e);
         }
-      }
-    );
+      );
 
-    roomSubscriptions.current[roomId] = () => sub.unsubscribe();
+      // 2) 내가 보낸 요청이 수락됨 → 방 정보 수신하여 방 오픈
+      const sub2 = client.subscribe(
+        `${ROUTES.USER_QUEUE_PREFIX}/request-accepted`,
+        (msg: IMessage) => {
+          try {
+            const payload = JSON.parse(msg.body);
+            //const roomId = (payload?.chatroom?.chatroomId ?? payload?.chatroomId ?? payload?.roomId).toString();
+
+            const roomIdRaw =
+              payload?.roomId ??
+              payload?.chatroom?.chatroomId ??
+              payload?.chatroomId ??
+              payload?.chatroom?.id;
+            if (roomIdRaw == null) {
+              console.error("request-accepted: roomId missing in payload", payload);
+              return; // 안전 탈출
+            }
+            const roomId = String(roomIdRaw);
+            const participants: User[] = Array.isArray(payload.participants)
+              ? payload.participants.map(mapServerUser)
+              : [];
+            // 🔽 메시지가 오면 정렬, 아니면 빈 배열
+            const messages: UIChatMessage[] = Array.isArray(payload.messages)
+              ? payload.messages
+                  .map(mapServerMessage)
+                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+              : [];
+
+            setChatRequests((prev) => prev.filter((r) => r.id !== String(payload.requestId)));
+            setChatRooms((prev) => {
+              if (prev.some((r) => r.id === roomId)) return prev;
+              return [
+                { id: roomId, participants, messages, isMinimized: false, unreadCount: 0, typingUsers: [] },
+                ...prev,
+              ];
+            });
+
+            subscribeRoomTopic(roomId, client);
+
+            // 🔽 서버가 messages를 안 실어준 케이스(요청자 등): 즉시 히스토리 로드
+            if (messages.length === 0) {
+              loadRoomHistory(roomId);
+            }
+
+          } catch (e) {
+            console.warn("수락 알림 파싱 실패", e);
+          }
+        }
+      );
+
+      // 3) ✅ Presence(온라인/오프라인) 실시간 반영
+      const sub3 = client.subscribe(
+        `${ROUTES.TOPIC_PREFIX}/presence`,
+        (frame: IMessage) => {
+          try {
+            const p = JSON.parse(frame.body) as { status: "ONLINE" | "OFFLINE"; loginId: string };
+            setUsers((prev) =>
+              prev.map((u) => (u.loginId === p.loginId ? { ...u, isOnline: p.status === "ONLINE" } : u))
+            );
+          } catch {/* ignore */}
+        }
+      );
+
+      // 언서브 핸들러 보관
+      roomSubscriptions.current["__requests__"] = () => sub1.unsubscribe();
+      roomSubscriptions.current["__accepted__"] = () => sub2.unsubscribe();
+      roomSubscriptions.current["__presence__"] = () => sub3.unsubscribe();
+    },
+
+    onStompError: (f) => console.error("STOMP error", f.headers["message"], f.body),
+    onWebSocketClose: () => console.warn("🔌 WebSocket closed"),
+  });
+
+  client.activate();
+  stompRef.current = client;
+
+  return () => {
+    // 모든 구독 해제
+    Object.values(roomSubscriptions.current).forEach((unsub) => unsub?.());
+    roomSubscriptions.current = {};
+    client.deactivate();
+    stompRef.current = null;
   };
+}, [currentUser?.id]);
+
+
+// 방 토픽 구독 & 메시지 수신 시 상태 반영
+const subscribeRoomTopic = (roomId: string, client?: StompClient) => {
+  const c = client ?? stompRef.current;
+  if (!c) return;
+  if (roomSubscriptions.current[roomId]) return; // 이미 구독 중
+
+  const sub = c.subscribe(
+    `${ROUTES.TOPIC_PREFIX}/rooms/${roomId}`,
+    (msg: IMessage) => {
+      try {
+        const payload = JSON.parse(msg.body);
+        const m = mapServerMessage(payload);
+        setChatRooms((prev) => {
+          const next = [...prev];
+          const idx = next.findIndex((r) => r.id === roomId);
+          if (idx < 0) return prev;
+
+          const room = next[idx];
+          // ✅ 같은 ID면 추가하지 않음
+          if (room.messages.some((x) => String(x.id) === String(m.id))) return prev;
+
+          next[idx] = { ...room, messages: [...room.messages, m] };
+          return next;
+        });
+      } catch (e) {
+        console.warn("메시지 수신 파싱 실패", e);
+      }
+    }
+  );
+
+  roomSubscriptions.current[roomId] = () => sub.unsubscribe();
+};
+
+async function loadRoomHistory(roomId: string) {
+  try {
+    const res = await fetch(`${ROUTES.API_BASE}/rooms/${roomId}/messages?size=50`, {
+      credentials: "include",
+      headers: { ...AUTH_HEADERS },
+    });
+    if (!res.ok) return;
+
+    const raw = await res.json();
+    const msgs = (Array.isArray(raw) ? raw : [])
+      .map(mapServerMessage)
+      // 🔽 오래→최신(오름차순)으로 맞춰서 세팅
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    setChatRooms(prev => {
+      const next = [...prev];
+      const idx = next.findIndex(r => r.id === roomId);
+      if (idx < 0) return prev;
+      next[idx] = { ...next[idx], messages: msgs };
+      return next;
+    });
+  } catch (e) {
+    console.warn("loadRoomHistory failed", e);
+  }
+}
 
   // ------------------------
   // Actions
@@ -321,15 +412,27 @@ const sendChatRequest = async (toUserId: string) => {
 
 // CHANGED: 수락/거절도 JWT 헤더 포함 + 동일 호스트
 const acceptChatRequest = async (requestId: string, fromUserId?: string, toUserId?: string) => {
+  // 💡 누락되면 현재 보관 중인 요청에서 보완
+  if (!fromUserId || !toUserId) {
+    const req = chatRequests.find((r) => r.id === requestId);
+    if (req) {
+      fromUserId = fromUserId ?? req.from.id;
+      toUserId   = toUserId   ?? req.to.id;
+    }
+  }
+  if (!fromUserId || !toUserId) {
+    console.error("acceptChatRequest: from/to id missing");
+    alert("수락 정보가 부족합니다. 다시 시도해주세요.");
+    return;
+  }
+
   const res = await fetch(`${ROUTES.API_BASE}/requests/${requestId}/accept`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH_HEADERS }, // CHANGED
+    headers: { "Content-Type": "application/json", ...AUTH_HEADERS },
     credentials: "include",
-    // 백엔드 Accept DTO가 fromUserId/toUserId를 받는 경우만 사용
-    body: JSON.stringify(
-      fromUserId && toUserId ? { requestId, fromUserId: Number(fromUserId), toUserId: Number(toUserId) } : {}
-    ),
-    });
+    body: JSON.stringify({ requestId, fromUserId: Number(fromUserId), toUserId: Number(toUserId) }),
+  });
+
     if (!res.ok) {
       const t = await res.text();
       console.error("수락 실패", res.status, t);
@@ -338,7 +441,20 @@ const acceptChatRequest = async (requestId: string, fromUserId?: string, toUserI
     }
 
     const payload = await res.json();
-    const roomId = (payload?.chatroom?.chatroomId ?? payload?.chatroomId ?? payload?.roomId).toString();
+    //const roomId = (payload?.chatroom?.chatroomId ?? payload?.chatroomId ?? payload?.roomId).toString();
+
+    const roomIdRaw =
+      payload?.roomId ??
+      payload?.chatroom?.chatroomId ??
+      payload?.chatroomId ??
+      payload?.chatroom?.id;
+    if (roomIdRaw == null) {
+      console.error("acceptChatRequest: roomId missing in response", payload);
+      alert("수락은 되었지만 방 정보를 받지 못했습니다. 새로고침 후 다시 시도해주세요.");
+      return;
+    }
+    const roomId = String(roomIdRaw);
+
     const participants: User[] = (payload.participants ?? [])
       .map(mapServerUser)
       .filter(Boolean);
@@ -367,7 +483,11 @@ const acceptChatRequest = async (requestId: string, fromUserId?: string, toUserI
       );
       if (his.ok) {
         const arr = await his.json();
-        const msgs = (Array.isArray(arr) ? arr : []).map(mapServerMessage);
+        const msgs = (Array.isArray(arr) ? arr : [])
+          .map(mapServerMessage)
+          // 🔽 오래→최신(오름차순)
+          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          
         setChatRooms((prev) =>
           prev.map((r) => (r.id === roomId ? { ...r, messages: msgs } : r))
         );
@@ -379,15 +499,38 @@ const acceptChatRequest = async (requestId: string, fromUserId?: string, toUserI
     subscribeRoomTopic(roomId);
   };
 
-const rejectChatRequest = async (requestId: string, fromUserId?: string) => {
-  await fetch(`${ROUTES.API_BASE}/requests/${requestId}/reject`, {
+const rejectChatRequest = async (requestId: string, fromUserId?: string, toUserId?: string) => {
+  // 누락되면 보관 중인 요청에서 보완
+  if (!fromUserId || !toUserId) {
+    const req = chatRequests.find((r) => r.id === requestId);
+    if (req) {
+      fromUserId = fromUserId ?? req.from.id;
+      toUserId   = toUserId   ?? req.to.id;
+    }
+  }
+  if (!fromUserId || !toUserId) {
+    console.error("rejectChatRequest: from/to id missing");
+    alert("거절 정보가 부족합니다. 다시 시도해주세요.");
+    return;
+  }
+
+  const res = await fetch(`${ROUTES.API_BASE}/requests/${requestId}/reject`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...AUTH_HEADERS }, // CHANGED
     credentials: "include",
-    body: JSON.stringify(fromUserId ? { requestId, fromUserId: Number(fromUserId) } : {}),
-  }).catch(() => {});
+    headers: { "Content-Type": "application/json", ...AUTH_HEADERS }, // JWT 사용 시
+    body: JSON.stringify({ requestId, fromUserId: Number(fromUserId), toUserId: Number(toUserId) }),
+  });
+
+  if (!res.ok) {
+    const t = await res.text();
+    console.error("거절 실패", res.status, t);
+    alert("채팅 요청 거절 중 오류가 발생했습니다.");
+    return;
+  }
+
   setChatRequests((prev) => prev.filter((r) => r.id !== requestId));
 };
+
 
   const sendMessage = (roomId: string, content: string) => {
     if (!content?.trim()) return;
@@ -401,18 +544,6 @@ const rejectChatRequest = async (requestId: string, fromUserId?: string) => {
         body: JSON.stringify({ senderId: Number(currentUser.id), content }),
       });
     }
-
-    // 낙관적 UI 반영(서버 에코와 중복될 수 있지만 UX가 좋음)
-    const optimistic: UIChatMessage = {
-      id: `${Date.now()}-optim`,
-      senderId: currentUser.id,
-      content,
-      timestamp: new Date(),
-      isRead: false,
-    };
-    setChatRooms((prev) =>
-      prev.map((r) => (r.id === roomId ? { ...r, messages: [...r.messages, optimistic] } : r))
-    );
   };
 
   const minimizeChat = (roomId: string) => {
@@ -436,10 +567,33 @@ const rejectChatRequest = async (requestId: string, fromUserId?: string) => {
     console.log(`typing(${roomId}):`, isTyping);
   };
 
-  const markAsRead = (roomId: string) => {
-    setChatRooms((prev) => prev.map((r) => (r.id === roomId ? { ...r, unreadCount: 0 } : r)));
-    // 필요 시 서버에 읽음 위치 업데이트 API 호출
-  };
+  // const markAsRead = (roomId: string) => {
+  //   setChatRooms((prev) => prev.map((r) => (r.id === roomId ? { ...r, unreadCount: 0 } : r)));
+  //   // 필요 시 서버에 읽음 위치 업데이트 API 호출
+  // };
+
+
+// ⬇️ ChatContext 내부
+const markAsRead = useCallback((roomId: string) => {
+  setChatRooms(prev => {
+    const idx = prev.findIndex(r => r.id === roomId);
+    if (idx < 0) return prev;
+
+    const room = prev[idx];
+    // ✅ 이미 0이면 아무것도 안 바꾸고 그대로 반환 (렌더 유발 X)
+    if (!room.unreadCount || room.unreadCount === 0) return prev;
+
+    const next = [...prev];
+    next[idx] = { ...room, unreadCount: 0 };
+    return next;
+  });
+  // 필요 시 서버에 읽음 동기화 fetch는 하되, setState는 위 조건 충족 때만
+}, []); // ✅ 레퍼런스 고정
+
+
+
+
+
 
   const toggleUserList = () => setIsUserListOpen((v) => !v);
 

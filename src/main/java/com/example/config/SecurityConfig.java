@@ -68,9 +68,8 @@ public class SecurityConfig {
                "https://localhost:3000",
                "https://localhost:8888",
                "https://192.168.56.1:8888",
-               "https://192.168.0.27:8888",
-               "https://ec9d9848c01e.ngrok-free.app"
-               
+               "https://192.168.0.27:8888"   
+             
         		));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // 필요하면 명시적으로: List.of("Content-Type","X-XSRF-TOKEN","Authorization")
@@ -133,6 +132,10 @@ public class SecurityConfig {
                    .requestMatchers("/api/mentors/**").permitAll() // **
                    
                    .requestMatchers("/api/mentoring/chatId").permitAll() // ✅ 추가됨 2025-08-08
+                   .requestMatchers("/api/mentoring/chatIdByUserId").permitAll() // ✅ 새로운 chatId 조회 API 추가 08/13
+                   .requestMatchers("/api/mentoring/mentor-id").hasRole("MENTOR") // 멘토만 멘토 ID 조회 가능 --08/13
+                   
+                   
                    .requestMatchers(HttpMethod.POST, "/api/mentoring/request").hasRole("MENTEE") // 멘티만 요청 가능
                    .requestMatchers(HttpMethod.GET, "/api/mentoring/requests").hasRole("MENTOR") // 멘토만 목록 조회 가능
                    .requestMatchers(HttpMethod.POST, "/api/mentoring/accept-request").hasRole("MENTOR") // 멘토만 수락 가능
@@ -171,6 +174,7 @@ public class SecurityConfig {
                    .requestMatchers("/favicon.ico").permitAll()// 수한 25-08-07 13:04
                    .requestMatchers("/auth/social-join").permitAll() // 수한 25-08-07 14:52
                    .requestMatchers("/auth/social/finalize").permitAll() //25-08-12 17:46
+                   .requestMatchers(HttpMethod.POST, "/api/auth/social-link").permitAll()//25-08-16-50 소셜링크
                   
                    
                    // 멘토리뷰?

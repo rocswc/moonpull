@@ -6,28 +6,32 @@
 <mapper namespace="com.example.DAO.ChatMessageRepository2">
 
 	<resultMap id="ChatMessageMap" type="com.example.VO.ChatMessage">
-	    <id     column="messageId"  property="messageId"/>
-	    <result column="chatroomId" property="chatroomId"/>
-	    <result column="senderId"   property="senderId"/>
-	    <result column="content"    property="content"/>
-	    <result column="timestamp"  property="timestamp"/>
-	    <result column="isRead"     property="isRead"/>
+	  <id     column="message_id"  property="messageId"/>
+	  <result column="chatroom_id" property="chatroomId"/>
+	  <result column="sender_id"   property="senderId"/>
+	  <result column="content"     property="content"/>
+	  <result column="timestamp"   property="timestamp"/>
+	  <result column="is_read"     property="isRead"/>
 	</resultMap>
+	
 
 	<insert id="insert" parameterType="com.example.VO.ChatMessage"
-	        useGeneratedKeys="true" keyProperty="messageId">
-	    INSERT INTO chat_message (chatroomId, senderId, content, timestamp, isRead)
-	    VALUES (#{chatroomId}, #{senderId}, #{content}, NOW(), 0)
+	        useGeneratedKeys="true" keyProperty="messageId" keyColumn="message_id">
+	  INSERT INTO chat_message (chatroom_id, sender_id, content, timestamp, is_read)
+	  VALUES (#{chatroomId}, #{senderId}, #{content}, NOW(), 0)
 	</insert>
 
-  <select id="findByRoomPaged" resultMap="ChatMessageMap">
-    SELECT * FROM chat_message
-    WHERE chatroom_id = #{roomId}
-    <if test="beforeId != null">
-      AND message_id &lt; #{beforeId}
-    </if>
-    ORDER BY message_id DESC
-    LIMIT #{limit}
-  </select>
+
+	<select id="findByRoomPaged" resultMap="ChatMessageMap">
+	  SELECT message_id, chatroom_id, sender_id, content, timestamp, is_read
+	  FROM chat_message
+	  WHERE chatroom_id = #{roomId}
+	  <if test="beforeId != null">
+	    AND message_id &lt; #{beforeId}
+	  </if>
+	  ORDER BY message_id DESC
+	  LIMIT #{limit}
+	</select>
+
 
 </mapper>
