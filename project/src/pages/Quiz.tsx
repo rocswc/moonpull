@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, RotateCcw, BookOpen, TrendingUp, Award, Clock, ChevronRight, Wifi, WifiOff, AlertCircle, Hash, ChevronUp, ChevronDown } from "lucide-react";
 import Navigation from "@/components/Navigation";
 
+
 // API Base URL
 const API_BASE_URL = 'http://localhost:5001/api';
 
