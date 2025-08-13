@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, RotateCcw, BookOpen, TrendingUp, Award, Clock, ChevronRight, Wifi, WifiOff, AlertCircle, Hash } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw, BookOpen, TrendingUp, Award, Clock, ChevronRight, Wifi, WifiOff, AlertCircle, Hash, ChevronUp, ChevronDown } from "lucide-react";
 import Navigation from "@/components/Navigation";
 
 // API Base URL
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5001/api';
 
 // 실제 API 함수들
 const api = {
@@ -82,11 +82,11 @@ const api = {
 
 const CBTQuizSystem = () => {
   // Connection state
-  const [isConnected, setIsConnected] = useState(null); // null: checking, true: connected, false: disconnected
+  const [isConnected, setIsConnected] = useState(null);
   const [connectionError, setConnectionError] = useState('');
   
   // State management
-  const [currentStep, setCurrentStep] = useState('connection'); // connection, subjects, schools, grades, mode, questionCount, quiz, results
+  const [currentStep, setCurrentStep] = useState('connection');
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [schools, setSchools] = useState([]);
@@ -103,11 +103,14 @@ const CBTQuizSystem = () => {
   const [currentAnswer, setCurrentAnswer] = useState(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [score, setScore] = useState({ correct: 0, wrong: 0 });
-  const [timeLeft, setTimeLeft] = useState(1800);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [usedQuestionIds, setUsedQuestionIds] = useState([]);
   const [currentRandomQuestion, setCurrentRandomQuestion] = useState(null);
   const [loading, setLoading] = useState(false);
   const [practiceQuestionsAnswered, setPracticeQuestionsAnswered] = useState(0);
+  
+  // Results state for exam mode
+  const [examResults, setExamResults] = useState([]);
 
   // Connection check on mount
   useEffect(() => {
@@ -122,7 +125,6 @@ const CBTQuizSystem = () => {
       setIsConnected(true);
       setConnectionError('');
       
-      // 연결 성공 후 과목 데이터 로드
       await loadSubjects();
       setCurrentStep('subjects');
     } catch (error) {
@@ -203,6 +205,8 @@ const CBTQuizSystem = () => {
     setQuestionCount(count);
     setLoading(true);
     
+    console.log('선택된 문제 수:', count);
+    
     try {
       if (selectedMode === 'exam') {
         const questionsData = await api.getQuestions(
@@ -213,9 +217,14 @@ const CBTQuizSystem = () => {
           count
         );
         console.log('📝 시험 문제 데이터:', questionsData);
-        setQuestions(questionsData);
-        setSelectedAnswers(new Array(questionsData.length).fill(null));
-        setTimeLeft(questionsData.length * 60);
+        
+        // 실제 가져온 문제 수를 기준으로 설정
+        const actualQuestionCount = Math.min(questionsData.length, count);
+        setQuestions(questionsData.slice(0, actualQuestionCount));
+        setSelectedAnswers(new Array(actualQuestionCount).fill(null));
+        setTimeLeft(actualQuestionCount * 60);
+        
+        console.log(`⏰ 시간 설정: ${actualQuestionCount}분 (${actualQuestionCount * 60}초)`);
       } else {
         await loadRandomQuestion();
         setPracticeQuestionsAnswered(0);
@@ -246,6 +255,7 @@ const CBTQuizSystem = () => {
         setCurrentRandomQuestion(question);
         setUsedQuestionIds(prev => [...prev, question.id]);
       } else {
+        // 더 이상 문제가 없으면 결과 페이지로
         setCurrentStep('results');
       }
     } catch (error) {
@@ -273,8 +283,13 @@ const CBTQuizSystem = () => {
         correct: prev.correct + (isCorrect ? 1 : 0),
         wrong: prev.wrong + (!isCorrect ? 1 : 0)
       }));
+      
+      const newAnsweredCount = practiceQuestionsAnswered + 1;
+      setPracticeQuestionsAnswered(newAnsweredCount);
+      
       setShowExplanation(true);
-      setPracticeQuestionsAnswered(prev => prev + 1);
+      
+      console.log(`완료된 문제: ${newAnsweredCount} / ${questionCount}`);
     }
   };
 
@@ -286,12 +301,14 @@ const CBTQuizSystem = () => {
         handleSubmitExam();
       }
     } else {
-      // 연습 모드에서 설정한 문제 수만큼 풀었는지 확인
+      // 연습 모드: 설정한 문제 수를 다 풀었는지 확인
       if (practiceQuestionsAnswered >= questionCount) {
+        console.log('✅ 설정한 문제 수 완료! 결과 화면으로 이동');
         setCurrentStep('results');
         return;
       }
       
+      // 다음 문제 로드
       setCurrentAnswer(null);
       setShowExplanation(false);
       await loadRandomQuestion();
@@ -300,10 +317,23 @@ const CBTQuizSystem = () => {
 
   const handleSubmitExam = () => {
     let correct = 0;
-    selectedAnswers.forEach((answer, index) => {
-      if (answer === questions[index]?.answer) {
-        correct++;
-      }
+    const results = [];
+    
+    questions.forEach((question, index) => {
+      const userAnswer = selectedAnswers[index];
+      const isCorrect = userAnswer === question.answer;
+      
+      if (isCorrect) correct++;
+      
+      results.push({
+        questionIndex: index + 1,
+        question: question.question,
+        choices: question.choices,
+        userAnswer: userAnswer,
+        correctAnswer: question.answer,
+        isCorrect: isCorrect,
+        explanation: question.explanation || ''
+      });
     });
     
     setScore({
@@ -311,6 +341,7 @@ const CBTQuizSystem = () => {
       wrong: questions.length - correct
     });
     
+    setExamResults(results);
     setCurrentStep('results');
   };
 
@@ -327,11 +358,12 @@ const CBTQuizSystem = () => {
     setCurrentAnswer(null);
     setShowExplanation(false);
     setScore({ correct: 0, wrong: 0 });
-    setTimeLeft(1800);
+    setTimeLeft(0);
     setUsedQuestionIds([]);
     setCurrentRandomQuestion(null);
     setConnectionError('');
     setPracticeQuestionsAnswered(0);
+    setExamResults([]);
   };
 
   const formatTime = (seconds) => {
@@ -592,6 +624,7 @@ const CBTQuizSystem = () => {
 
     return (
       <div className="max-w-4xl mx-auto space-y-6">
+	  
         {/* Header */}
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-xl p-4 border">
           <div className="flex justify-between items-center mb-4">
@@ -771,8 +804,9 @@ const CBTQuizSystem = () => {
     const percentage = totalQuestions > 0 ? Math.round((score.correct / totalQuestions) * 100) : 0;
     
     return (
-      <div className="text-center space-y-8 max-w-2xl mx-auto">
-        <div className="space-y-4">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* 결과 요약 */}
+        <div className="text-center space-y-4">
           <Award className="w-16 h-16 text-primary mx-auto" />
           <h1 className="text-3xl font-bold">
             {selectedMode === 'exam' ? '시험 완료!' : '연습 완료!'}
@@ -780,7 +814,7 @@ const CBTQuizSystem = () => {
           <p className="text-muted-foreground">
             {selectedSubject.name} ({selectedSchool} {selectedGrade}학년)
           </p>
-          <p className="text-sm text-green-600">총 {questionCount}문제 • MongoDB 실제 데이터로 완료</p>
+          <p className="text-sm text-green-600">총 {totalQuestions}문제 • MongoDB 실제 데이터로 완료</p>
         </div>
 
         <Card className="p-8">
@@ -810,8 +844,25 @@ const CBTQuizSystem = () => {
           </div>
         </Card>
 
-        <div className="space-y-4">
-          <Button onClick={handleRestart} size="lg" className="w-full">
+        {/* 시험 모드일 때만 상세 결과 표시 */}
+        {selectedMode === 'exam' && examResults.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5" />
+                문제별 상세 결과
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {examResults.map((result, index) => (
+                <ExamResultItem key={index} result={result} />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="space-y-4 text-center">
+          <Button onClick={handleRestart} size="lg" className="w-full max-w-md mx-auto">
             <RotateCcw className="w-4 h-4 mr-2" />
             다시 시작하기
           </Button>
@@ -820,10 +871,113 @@ const CBTQuizSystem = () => {
     );
   };
 
+  // 시험 결과 개별 문제 컴포넌트
+  const ExamResultItem = ({ result }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    return (
+      <div className="border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="font-medium text-sm text-muted-foreground">
+              문제 {result.questionIndex}
+            </span>
+            {result.isCorrect ? (
+              <Badge variant="default" className="bg-green-100 text-green-700 border-green-200">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                정답
+              </Badge>
+            ) : (
+              <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-200">
+                <XCircle className="w-3 h-3 mr-1" />
+                오답
+              </Badge>
+            )}
+          </div>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+
+        <div className="text-sm font-medium">
+          {result.question}
+        </div>
+
+        {isExpanded && (
+          <div className="space-y-4 pt-2 border-t">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">선택지:</p>
+              {result.choices.map((choice, choiceIndex) => {
+                const isUserAnswer = result.userAnswer === choiceIndex;
+                const isCorrectAnswer = result.correctAnswer === choiceIndex;
+                
+                let choiceStyle = "p-2 rounded text-sm ";
+                
+                if (isCorrectAnswer) {
+                  choiceStyle += "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300";
+                } else if (isUserAnswer && !isCorrectAnswer) {
+                  choiceStyle += "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300";
+                } else {
+                  choiceStyle += "bg-muted/50";
+                }
+                
+                return (
+                  <div key={choiceIndex} className={choiceStyle}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{choiceIndex + 1}.</span>
+                      <span>{choice}</span>
+                      {isCorrectAnswer && (
+                        <CheckCircle className="w-4 h-4 text-green-500 ml-auto" />
+                      )}
+                      {isUserAnswer && !isCorrectAnswer && (
+                        <XCircle className="w-4 h-4 text-red-500 ml-auto" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">내 답안:</p>
+                <p className="font-medium">
+                  {result.userAnswer !== null ? `${result.userAnswer + 1}번` : '미선택'}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">정답:</p>
+                <p className="font-medium text-green-600">
+                  {result.correctAnswer + 1}번
+                </p>
+              </div>
+            </div>
+
+            {result.explanation && (
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border-l-4 border-purple-500">
+                <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2">💡 해설</p>
+                <p className="text-sm leading-relaxed">{result.explanation}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
-	<Navigation /> {/* ✅ 네비게이션 추가 */}
-      <div className="container mx-auto px-4 py-8">
+	<Navigation /> {/* ✅ 네비게이션 추가 */} 
+	 <div className="container mx-auto px-4 py-8">
         {currentStep === 'connection' && renderConnectionStatus()}
         {currentStep === 'subjects' && renderSubjectSelection()}
         {currentStep === 'schools' && renderSchoolSelection()}
