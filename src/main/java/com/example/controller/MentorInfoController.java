@@ -1,9 +1,11 @@
 package com.example.controller;
 
+import com.example.DAO.MenteeRepository;
+import com.example.DAO.MentorEntityRepository;
 import com.example.DAO.MemberRepository;
-import com.example.DAO.TeacherRepository;
-import com.example.entity.Member;
+import com.example.entity.Mentee;
 import com.example.entity.Mentor;
+import com.example.entity.Member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,38 +19,46 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MentorInfoController {
 
-    private final TeacherRepository teacherRepository;
-    private final MemberRepository memberRepository; // 👈 member 테이블 조회용
+    private final MentorEntityRepository mentorEntityRepository;
+    private final MenteeRepository menteeRepository; // ✅ mentee 테이블 조회용
+    private final MemberRepository memberRepository; // ✅ member 테이블 조회용
 
     @GetMapping("/{userId}")
-    public ResponseEntity<Map<String, String>> getMentorInfo(@PathVariable Long userId) {
+    public ResponseEntity<Map<String, Object>> getMentorInfo(@PathVariable Long userId) {
         System.out.println("✅ [MentorInfoController] 요청 들어온 userId: " + userId);
 
-        Optional<Mentor> optionalMentor = teacherRepository.findByUserId(userId);
+        // 1) mentor 테이블 조회
+        Optional<Mentor> optionalMentor = mentorEntityRepository.findByUserId(userId);
         if (optionalMentor.isEmpty()) {
             System.out.println("❌ 멘토 정보 없음");
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Mentor not found"));
         }
-
         Mentor mentor = optionalMentor.get();
 
-        // ✅ member 테이블에서 이름, 전공 가져오기
+        // 2) member 테이블에서 이름 조회 (멘토도 멤버 테이블에 있음)
         Optional<Member> optionalMember = memberRepository.findById(userId);
-        String name = optionalMember.map(Member::getNickname).orElse("이름없음");
-        String subject = optionalMember.map(Member::getMajor).orElse("미지정");
+        if (optionalMember.isEmpty()) {
+            System.out.println("❌ 멤버 정보 없음");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Member not found"));
+        }
+        Member member = optionalMember.get();
+        String name = member.getName();
+        Integer age = 20; // 임시로 하드코딩
 
-        // Transient 필드 채우기
+        // 3) Transient 필드 채우기
         mentor.setName(name);
-        mentor.setSubject(subject);
 
-        System.out.println("🎯 멘토 name: " + mentor.getName());
-        System.out.println("🎯 멘토 subject: " + mentor.getSubject());
+        System.out.println("🎯 멘토 name: " + name);
+        System.out.println("🎯 멘토 specialties: " + mentor.getSpecialties());
 
+        // 4) 응답
         return ResponseEntity.ok(Map.of(
-                "name", mentor.getName(),
-                "subject", mentor.getSubject(),
-                "avatar", mentor.getName().substring(0, 1)
+                "name", name,
+                "age", age,
+                "subject", mentor.getSpecialties() != null ? mentor.getSpecialties() : "",
+                "avatar", name.isEmpty() ? "?" : name.substring(0, 1)
         ));
     }
 }

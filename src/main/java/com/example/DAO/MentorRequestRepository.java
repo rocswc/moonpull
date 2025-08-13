@@ -5,6 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface MentorRequestRepository extends JpaRepository<MentorRequest, Long> {
-    // 1
-	List<MentorRequest> findByMentorIdAndStatus(Long mentorId, String status);
+    List<MentorRequest> findByMentorIdAndStatus(Long mentorId, String status);
 }

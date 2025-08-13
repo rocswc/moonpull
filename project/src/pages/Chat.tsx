@@ -39,21 +39,22 @@ const Chat = () => {
     avatar: "?",
   });
 
-  const menteeId = 16; // 실제 로그인 유저 ID로 교체 필요
+  // 황규영의 user_id (18) 사용
+  const menteeUserId = 18; // 황규영의 user_id
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 1. 멘토 정보 조회
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
-        console.log("🎯 teacherId param:", teacherId);
+        console.log("�� teacherId param:", teacherId);
         console.log("📡 Fetching mentor info from:", `/api/mentor/${teacherId}`);
 
         const res = await fetch(`/api/mentor/${teacherId}`, { credentials: "include" });
         if (!res.ok) throw new Error("멘토 정보 로드 실패");
 
         const data = await res.json();
-        console.log("👨‍🏫 mentor response data:", data);
+        console.log("��‍🏫 mentor response data:", data);
 
         setTeacher({
           name: data.name,
@@ -68,12 +69,13 @@ const Chat = () => {
     if (teacherId) fetchTeacher();
   }, [teacherId]);
 
-  // 2. chatId 조회
+  // 2. chatId 조회 (새로운 API 사용)
   useEffect(() => {
     const fetchChatId = async () => {
       try {
-        console.log(`📡 [요청] chatId 요청: menteeId=${menteeId}, mentorId=${teacherId}`);
-        const res = await fetch(`/api/mentoring/chatId?menteeId=${menteeId}&mentorId=${teacherId}`);
+        console.log(`📡 [요청] chatId 요청: menteeUserId=${menteeUserId}, mentorUserId=${teacherId}`);
+        // 새로운 API 사용 - user_id로 조회
+        const res = await fetch(`/api/mentoring/chatIdByUserId?menteeUserId=${menteeUserId}&mentorUserId=${teacherId}`);
         const data = await res.json();
 
         if (!res.ok || !("chatId" in data) || data.chatId === -1) {
@@ -89,7 +91,7 @@ const Chat = () => {
     };
 
     if (teacherId) fetchChatId();
-  }, [teacherId]);
+  }, [teacherId, menteeUserId]);
 
   // 3. 메시지 목록 조회
   useEffect(() => {

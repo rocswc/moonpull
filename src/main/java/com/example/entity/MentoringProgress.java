@@ -1,8 +1,9 @@
-// 📁 MentoringProgress.java
 package com.example.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+
+import java.time.LocalDate;
 
 @Entity
 @Data
@@ -11,22 +12,33 @@ public class MentoringProgress {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "mentoring_progress_id")
     private int mentoringProgressId;
 
-    @Column(nullable = false)
+    @Column(name = "matching_id")
     private int matchingId;
 
-    @Column(nullable = false)
+    @Column(name = "user_id")
     private int userId;
 
-    @Column(nullable = false)
+    @Column(name = "mentee_id")
     private int menteeId;
 
-    @Column(nullable = false)
+    @Column(name = "mentor_id")
     private int mentorId;
 
-    private Integer chatId; 
+    @Column(name = "chat_id")
+    private Integer chatId;
 
+    @Column(name = "connection_status")
     private String connectionStatus;
-}
 
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
+    @Column(name = "subject_id")
+    private Integer subjectId;
+}

@@ -68,9 +68,10 @@ public class JwtFilter extends OncePerRequestFilter {
             path.startsWith("/api/mentor/") ||
             path.startsWith("/api/mentors/") ||
 
-            path.startsWith("/api/mentoring/chatId") ||
-            path.startsWith("/api/mentoring/accept") ||
-
+            path.startsWith("/api/mentoring/chatId") ||           
+            
+            
+            
             path.startsWith("/admin/") ||
             path.equals("/apply/mentor") ||
             path.startsWith("/mentee/") ||
