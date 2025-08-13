@@ -41,7 +41,7 @@ const TeacherList = () => {
 
     const fetchTeachers = async () => {
       try {
-        console.log("📡 [TeacherList] 멘토 목록 API 요청 시작:", `/api/mentors/${subject}`);
+        console.log("�� [TeacherList] 멘토 목록 API 요청 시작:", `/api/mentors/${subject}`);
         const res = await axios.get(`/api/mentors/${subject}`, {
           withCredentials: true,
         });
@@ -69,7 +69,7 @@ const TeacherList = () => {
     console.log("📌 클릭한 멘토 userId =", mentorUserId);
 
     if (!currentUser || !currentUser.id) {
-      console.error("🚫 로그인 유저 정보가 없습니다. 매칭 불가");
+      console.error("�� 로그인 유저 정보가 없습니다. 매칭 불가");
       alert("로그인이 필요합니다.");
       return;
     }
@@ -78,7 +78,7 @@ const TeacherList = () => {
       menteeId: currentUser.id, // userId (백엔드에서 menteeId 변환)
       mentorId: mentorUserId,   // userId (백엔드에서 mentorId 변환)
     };
-    console.log("📦 전송할 DTO:", payload);
+    console.log("�� 전송할 DTO:", payload);
 
     try {
       const res = await axios.post("/api/mentoring/request", payload, {
@@ -86,14 +86,18 @@ const TeacherList = () => {
       });
       console.log("✅ 매칭 요청 성공:", res.data);
 
-      // 📌 requestId 표시
+      // �� requestId 표시
       if (res.data.requestId) {
         console.log("🎯 생성된 requestId:", res.data.requestId);
         alert(`매칭 요청이 접수되었습니다.\nrequestId = ${res.data.requestId}`);
+        
+        // 🚀 바로 채팅방으로 이동
+        console.log("�� 채팅방으로 이동:", `/chat/${mentorUserId}`);
+        navigate(`/chat/${mentorUserId}`);
       }
 
       if (res.data.chatId) {
-        console.log("💬 채팅방 이동:", res.data.chatId);
+        console.log("�� 채팅방 이동:", res.data.chatId);
         navigate(`/chat/${res.data.chatId}`);
       }
     } catch (error) {
