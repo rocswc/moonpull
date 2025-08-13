@@ -84,7 +84,7 @@ const AuthPage = () => {
   };
 
   const validatePassword = (password: string) =>
-    /^(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{10,}$/.test(password);
+    /^(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/.test(password);
 
   const validateEmail = (email: string) => /^[\w.-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(email);
 
@@ -139,7 +139,7 @@ const AuthPage = () => {
     e.preventDefault();
     if (!isLogin) {
       if (!validatePassword(formData.password)) {
-        alert("비밀번호는 10자 이상이며 특수문자를 하나 이상 포함해야 합니다.");
+        alert("비밀번호는 8자 이상이며 특수문자를 하나 이상 포함해야 합니다.");
         return;
       }
       if (formData.password !== formData.confirmPassword) {
@@ -150,6 +150,10 @@ const AuthPage = () => {
         alert("올바른 이메일 형식을 입력하세요.");
         return;
       }
+	  if (!/^\d{11}$/.test(formData.phone_number.replace(/-/g, ""))) {
+	      alert("전화번호는 숫자 11자리여야 합니다.");
+	      return;
+	    }
     }
     try {
       if (!isLogin) {
