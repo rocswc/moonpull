@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.user.SimpUser;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +30,20 @@ public class RtChatRestController {
 
     private final RtChatService rtChatService;
     private final SimpMessagingTemplate broker;
-    private final MemberRepository memberRepository; // 👈 member 테이블 조회
+    private final MemberRepository memberRepository; // 👈 member 테이블 조회 
+    private final SimpUserRegistry userRegistry;
+    
+      
+ // 현재 온라인인 STOMP 사용자들의 principal name(loginId) 목록
+    @GetMapping("/online")
+    public ResponseEntity<List<String>> online(@AuthenticationPrincipal CustomUserDetails me) {
+        List<String> online = userRegistry.getUsers()
+            .stream().map(SimpUser::getName)
+            // 내 자신을 빼고 싶으면 아래 라인 유지, 아니면 제거
+            .filter(name -> me == null || !name.equals(me.getUsername()))
+            .toList();
+        return ResponseEntity.ok(online);
+    }
     
     
     @PostMapping("/rooms")
@@ -74,7 +89,7 @@ public class RtChatRestController {
         );
 
         // CHANGED: convertAndSendToUser 의 첫 인자는 username(loginId)!
-        broker.convertAndSendToUser(toM.getNickname(), "/queue/requests", payload);
+        broker.convertAndSendToUser(toM.getLoginId(), "/queue/requests", payload);
 
         return ResponseEntity.ok(payload);
     }
@@ -102,11 +117,9 @@ public class RtChatRestController {
         var opened = new ChatRequestDtos.RoomOpened(
                 requestId, room, List.of(fromVO, toVO), List.of()
         );
-
-        // CHANGED: 양쪽 username으로 각각 푸시
-        broker.convertAndSendToUser(fromM.getNickname(), "/queue/request-accepted", opened);
-        broker.convertAndSendToUser(toM.getNickname(),   "/queue/request-accepted", opened);
-
+ 
+        broker.convertAndSendToUser(fromM.getLoginId(), "/queue/request-accepted", opened);
+        broker.convertAndSendToUser(toM.getLoginId(),   "/queue/request-accepted", opened);
         return ResponseEntity.ok(opened);
     }
 
@@ -133,20 +146,10 @@ public class RtChatRestController {
         MemberVO vo = new MemberVO();
         // Long -> Integer (null 안전)
         vo.setUserId(e.getUserId() != null ? e.getUserId().intValue() : null);
-
         // 프론트는 name ?? nickname ?? `user-{id}` 순으로 쓰므로 nickname만 채워도 충분
         vo.setNickname(nvl(e.getNickname(), "이름없음"));
-
         // 전공(없으면 "미지정")
         vo.setMajor(nvl(e.getMajor(), "미지정"));
-
-        // 🔹 굳이 안 맞추면 에러 나는 필드는 세팅하지 말자 (loginid, roles, email 등)
-        // vo.setLoginid(...);  // Member에 없으면 아예 빼기
-        // vo.setName(...);     // 필요 없으면 빼기
-        // vo.setRoles(...);    // 필요 없으면 빼기
-        // vo.setUniversity(...);
-        // vo.setEmail(...);
-
         return vo;
     }
     

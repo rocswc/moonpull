@@ -11,8 +11,13 @@ interface ChatRequestNotificationProps { request: ChatRequest; }
 const ChatRequestNotification: React.FC<ChatRequestNotificationProps> = ({ request }) => {
   const { acceptChatRequest, rejectChatRequest } = useChat();
 
-  const handleAccept = async () => { await acceptChatRequest(request.id); };
-  const handleReject = async () => { await rejectChatRequest(request.id); };
+  const handleAccept = async () => {   
+    await acceptChatRequest(request.id, request.from.id, request.to.id);
+  };
+ 
+  const handleReject = async () => {
+    await rejectChatRequest(request.id, request.from.id, request.to.id);
+  };
 
   return (
     <Card className="w-full shadow-elegant bg-card border border-border/50 animate-fade-in">
