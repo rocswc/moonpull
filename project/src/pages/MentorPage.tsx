@@ -30,78 +30,104 @@ const MentorPage = () => {
   const [acceptedMenteeIds, setAcceptedMenteeIds] = useState<number[]>([]);
 
   useEffect(() => {
+    console.log("🚀 useEffect 실행 - MentorPage 마운트됨");
+
     const fetchData = async () => {
       try {
-        console.log("📡 [FRONT] /api/user 요청 보냄 (쿠키):", document.cookie);
+        console.log("📡 [FRONT] 데이터 로딩 시작 -----------------------------");
+        console.log("📡 현재 쿠키:", document.cookie || "(없음)");
+        console.log("🔍 axios baseURL:", axios.defaults.baseURL || "(기본)");
+
+        // 1. 로그인된 유저 정보 확인
+        console.log("📤 API 호출 → GET /api/user");
         const userRes = await axios.get("/api/user");
-        console.log("✅ [FRONT] /api/user 응답:", userRes.data);
+        console.log("✅ 응답(/api/user):", JSON.stringify(userRes.data, null, 2));
 
-        console.log("📡 [FRONT] /api/mentoring/mentor-id 요청");
-        const mentorRes = await axios.get(`/api/mentoring/mentor-id`);
-        console.log("✅ [FRONT] /api/mentoring/mentor-id 응답:", mentorRes.data);
-
-        const mentorIdValue = mentorRes.data;
+        // 2. mentor-id 가져오기
+        const mentorIdUrl = `/api/mentoring/mentor-id`;
+        console.log("📤 API 호출 → GET", mentorIdUrl);
+        const mentorRes = await axios.get(mentorIdUrl);
+        console.log("✅ 응답(mentor-id):", mentorRes.data);
+        const mentorIdValue = mentorRes.data.mentorId;
         setMentorId(mentorIdValue);
 
-        console.log("📡 [FRONT] /api/mentoring/requests 요청");
-        const reqRes = await axios.get(`/api/mentoring/requests`);
-        console.log("✅ [FRONT] /api/mentoring/requests 응답:", reqRes.data);
+        // 3. 멘토 요청 목록
+        const requestsUrl = `/api/mentoring/requests`;
+        console.log("📤 API 호출 → GET", requestsUrl);
+        const reqRes = await axios.get(requestsUrl);
+        console.log("✅ 응답(requests):", JSON.stringify(reqRes.data, null, 2));
         setRequests(reqRes.data);
 
-        console.log("📡 [FRONT] /api/mentoring/mentees 요청");
-        const menteeRes = await axios.get(`/api/mentoring/mentees`);
-        console.log("✅ [FRONT] /api/mentoring/mentees 응답:", menteeRes.data);
+        // 4. 멘티 목록
+        const menteesUrl = `/api/mentoring/mentees`;
+        console.log("📤 API 호출 → GET", menteesUrl);
+        const menteeRes = await axios.get(menteesUrl);
+        console.log("✅ 응답(mentees):", JSON.stringify(menteeRes.data, null, 2));
         setMentees(menteeRes.data);
+
+        console.log("📡 [FRONT] 데이터 로딩 완료 -----------------------------");
+
       } catch (error) {
         console.error("❌ [FRONT] 데이터 로딩 실패", error);
       }
     };
-
     fetchData();
+
+    return () => {
+      console.log("🛑 useEffect cleanup - MentorPage 언마운트됨");
+    };
   }, []);
 
   const handleAccept = async (mentee: Mentee) => {
+    console.log("🟢 handleAccept 호출 - mentee:", mentee);
     if (!mentee.requestId) {
-      console.warn("⚠️ [FRONT] requestId 없음 → 수락 불가", mentee);
+      console.warn("⚠️ requestId 없음 → 수락 불가", mentee);
       return;
     }
-
     try {
-      console.log("📡 [FRONT] 멘토 수락 API 호출:", mentee);
+      console.log("�� API 호출 → POST /api/mentoring/accept-request", { requestId: mentee.requestId });
       const response = await axios.post("/api/mentoring/accept-request", null, {
-        params: { requestId: mentee.requestId }
+        params: { requestId: mentee.requestId },
       });
-      console.log("✅ [FRONT] 수락 응답:", response.data);
+      console.log("✅ 응답(accept-request):", response.data);
 
       const chatId = response.data.chatId;
       setAcceptedMenteeIds((prev) => [...prev, mentee.id]);
-      setRequests((prev) => prev.filter((r) => r.id !== mentee.id));
+      setRequests((prev) => prev.filter((r) => r.requestId !== mentee.requestId));
 
+      console.log("�� 멘티 목록 재요청");
       const menteeRes = await axios.get(`/api/mentoring/mentees`);
-      console.log("📡 [FRONT] 멘티 목록 재조회:", menteeRes.data);
+      console.log("✅ 응답(mentees 재조회):", menteeRes.data);
       setMentees(menteeRes.data);
 
       if (chatId) {
-        console.log("➡️ [FRONT] 채팅 페이지 이동:", chatId);
+        console.log(`💬 채팅방 이동: /chat/${chatId}`);
         navigate(`/chat/${chatId}`);
       }
     } catch (error) {
       console.error("❌ [FRONT] 멘토 수락 실패:", error);
-      alert("멘토 수락 중 오류가 발생했습니다.");
     }
   };
 
-  const handleReject = (id: number) => {
-    console.log("🚫 [FRONT] 멘토 요청 거절:", id);
-    setRequests((prev) => prev.filter((r) => r.id !== id));
+  const handleReject = (requestId: number) => {
+    console.log("🚫 handleReject 호출 - requestId:", requestId);
+    setRequests((prev) => prev.filter((r) => r.requestId !== requestId));
   };
 
   const handleReport = async (mentee: Mentee) => {
+    console.log("🚨 handleReport 호출 - mentee:", mentee);
     const reason = window.prompt(`"${mentee.name}" 멘티를 신고하는 이유를 입력하세요:`);
-    if (!reason || reason.trim() === "") return;
-
+    if (!reason || reason.trim() === "") {
+      console.log("❌ 신고 취소됨 - 이유 없음");
+      return;
+    }
     try {
-      console.log("📡 [FRONT] 신고 API 호출:", { reporterId: mentorId, menteeId: mentee.id });
+      console.log("�� API 호출 → POST /api/admin/report", {
+        reporterId: mentorId,
+        targetUserId: mentee.id,
+        targetMentorId: null,
+        reason,
+      });
       await axios.post("/api/admin/report", {
         reporterId: mentorId,
         targetUserId: mentee.id,
@@ -111,7 +137,6 @@ const MentorPage = () => {
       alert("신고가 정상적으로 접수되었습니다.");
     } catch (err) {
       console.error("❌ [FRONT] 신고 실패", err);
-      alert("신고 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -130,7 +155,7 @@ const MentorPage = () => {
               <p className="text-muted-foreground">들어온 요청이 없습니다.</p>
             ) : (
               requests.map((req) => (
-                <div key={req.id} className="flex justify-between items-center border p-4 rounded-lg bg-background/50">
+                <div key={req.requestId} className="flex justify-between items-center border p-4 rounded-lg bg-background/50">
                   <div>
                     <p className="font-semibold">{req.name}</p>
                     <p className="text-sm text-muted-foreground">나이: {req.age}세</p>
@@ -141,7 +166,7 @@ const MentorPage = () => {
                     ) : (
                       <>
                         <Button size="sm" onClick={() => handleAccept(req)}>수락</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleReject(req.id)}>거절</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleReject(req.requestId!)}>거절</Button>
                       </>
                     )}
                   </div>
@@ -171,9 +196,7 @@ const MentorPage = () => {
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <Badge variant="secondary">멘토링 진행중</Badge>
-                  <Button size="sm" variant="destructive" onClick={() => handleReport(mentee)}>
-                    신고하기
-                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleReport(mentee)}>신고하기</Button>
                 </div>
               </div>
             ))}

@@ -21,18 +21,18 @@ public class MentoringChatroom {
     @Column(nullable = true)
     private String content;
 
-    @Column(nullable = true)
+    @Column(name = "sent_at", nullable = true)
     private LocalDateTime sentAt;
 
-    @Column(nullable = false)
+    @Column(name = "is_reported", nullable = false)
     private boolean isReported = false;
 
-    @Column(nullable = false)
-    private Long participant1Id; // -`멘티
+    @Column(name = "participant1_id", nullable = false)
+    private Long participant1Id; // 멘티
 
-    @Column(nullable = false)
+    @Column(name = "participant2_id", nullable = false)
     private Long participant2Id; // 멘토
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

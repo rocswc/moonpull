@@ -3,11 +3,14 @@ package com.example.controller;
 import com.example.DAO.MenteeRepository;
 import com.example.DAO.MentorEntityRepository;
 import com.example.DAO.MentorRequestRepository;
+import com.example.DAO.MemberRepository;
 import com.example.dto.MentorRequestDTO;
 import com.example.entity.Mentee;
 import com.example.entity.Mentor;
 import com.example.entity.MentorRequest;
+import com.example.entity.Member;
 import com.example.security.CustomUserDetails;
+import com.example.service.MentoringChatroomService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +36,8 @@ public class MentorRequestController {
     private final MentorRequestRepository mentorRequestRepository;
     private final MenteeRepository menteeRepository;
     private final MentorEntityRepository mentorEntityRepository;
+    private final MemberRepository memberRepository;
+    private final MentoringChatroomService mentoringChatroomService;
 
     /**
      * 1. 멘티 → 멘토 요청 생성
@@ -42,17 +47,17 @@ public class MentorRequestController {
         log.info("======== [createRequest] 멘토 요청 생성 시작 ========");
         log.info("📥 받은 DTO: menteeUserId={}, mentorUserId={}", dto.getMenteeId(), dto.getMentorId());
 
-        // 1) menteeUserId → mentee_id 변환
-        Mentee mentee = menteeRepository.findByUserId(dto.getMenteeId())
+        // menteeUserId → mentee_id 변환 (중복 가능성 고려: 가장 최근 1건 사용)
+        Mentee mentee = menteeRepository.findTopByUserIdOrderByMenteeIdDesc(dto.getMenteeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "멘티를 찾을 수 없습니다. userId=" + dto.getMenteeId()));
 
-        // 2) mentorUserId → mentor_id 변환
+        // mentorUserId → mentor_id 변환
         Mentor mentor = mentorEntityRepository.findByUserId(dto.getMentorId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "멘토를 찾을 수 없습니다. userId=" + dto.getMentorId()));
 
-        // 3) 요청 저장
+        // 요청 저장
         MentorRequest request = new MentorRequest();
         request.setMenteeId(mentee.getMenteeId());
         request.setMentorId(mentor.getMentorId());
@@ -80,20 +85,40 @@ public class MentorRequestController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long userId = userDetails.getUserId().longValue();
+        log.info("📌 현재 로그인한 userId={}", userId);
 
         Mentor mentor = mentorEntityRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "멘토 정보를 찾을 수 없습니다. userId=" + userId));
 
+        log.info("✅ 매핑된 mentorId={}", mentor.getMentorId());
+
         List<MentorRequest> requests = mentorRequestRepository
                 .findByMentorIdAndStatus(mentor.getMentorId(), "REQUESTED");
 
+        log.info("🔍 조회된 요청 개수={}", requests.size());
+
         List<MentorRequestInfo> result = requests.stream().map(req -> {
+            log.info("🔍 요청 처리 중: requestId={}, menteeId={}, mentorId={}", 
+                    req.getId(), req.getMenteeId(), req.getMentorId());
+            
+            // mentee_id로 멘티 정보 조회
             Mentee mentee = menteeRepository.findById(req.getMenteeId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "멘티를 찾을 수 없습니다. menteeId=" + req.getMenteeId()));
+            
+            log.info("👤 멘티 정보: menteeId={}, userId={}", mentee.getMenteeId(), mentee.getUserId());
+            
+            // user_id로 멤버 정보 조회 (이름, 나이 등)
+            Member member = memberRepository.findById(mentee.getUserId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "멤버 정보를 찾을 수 없습니다. userId=" + mentee.getUserId()));
+            
+            log.info("👤 멤버 정보: userId={}, name={}, age={}", 
+                    member.getUserId(), member.getName(), mentee.getAge());
+            
             return new MentorRequestInfo(req.getId(), mentee.getMenteeId(),
-                    mentee.getName(), mentee.getAge());
+                    member.getName(), mentee.getAge());
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
@@ -103,7 +128,7 @@ public class MentorRequestController {
      * 3. 멘토 → 요청 수락
      */
     @PostMapping("/accept-request")
-    public ResponseEntity<String> acceptRequest(@AuthenticationPrincipal CustomUserDetails userDetails,
+    public ResponseEntity<Map<String, Object>> acceptRequest(@AuthenticationPrincipal CustomUserDetails userDetails,
                                                 @RequestParam Long requestId) {
         Long userId = userDetails.getUserId().longValue();
 
@@ -120,10 +145,41 @@ public class MentorRequestController {
                     "이 요청을 수락할 권한이 없습니다.");
         }
 
+        // 1. 요청 상태 변경
         request.setStatus("ACCEPTED");
         mentorRequestRepository.save(request);
 
-        return ResponseEntity.ok("멘토 요청이 수락되었습니다.");
+        // 2. 채팅방 생성
+        int chatId = mentoringChatroomService.createChatroomAndUpdateProgress(
+                request.getMenteeId().intValue(), 
+                request.getMentorId().intValue()
+        );
+
+        log.info("✅ 멘토 요청 수락 완료 - requestId={}, status=ACCEPTED, chatId={}", requestId, chatId);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "멘토 요청이 수락되었습니다.",
+                "chatId", chatId
+        ));
+    }
+
+    /**
+     * 4. 멘토 → 현재 로그인한 멘토의 ID 조회
+     */
+    @GetMapping("/mentor-id")
+    public ResponseEntity<Map<String, Long>> getMentorId(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        Long userId = userDetails.getUserId().longValue();
+        log.info("📌 현재 로그인한 userId={}", userId);
+
+        Mentor mentor = mentorEntityRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "멘토 정보를 찾을 수 없습니다. userId=" + userId));
+
+        log.info("✅ 매핑된 mentorId={}", mentor.getMentorId());
+
+        return ResponseEntity.ok(Map.of("mentorId", mentor.getMentorId()));
     }
 
     @Getter

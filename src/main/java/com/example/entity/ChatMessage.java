@@ -23,9 +23,12 @@ public class ChatMessage {
     @Column(name = "sender_id") // ✅ DB 컬럼 이름과 매핑
     private String senderId;
 
+    @Column(name = "content")
     private String content;
 
+    @Column(name = "timestamp")
     private LocalDateTime timestamp;
 
+    @Column(name = "is_read")
     private boolean isRead;
 }
