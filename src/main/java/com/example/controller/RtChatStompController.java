@@ -30,7 +30,12 @@ public class RtChatStompController {
     public void send(@DestinationVariable Long roomId, @Payload SendPayload payload) {
         ChatMessage saved = rtChatService.saveMessage(roomId, payload.senderId(), payload.content());
         // 구독 주소: /topic/rt-chat/rooms/{roomId}
-        broker.convertAndSend("/topic/rt-chat/rooms/" + roomId, saved);
+        //broker.convertAndSend("/topic/rt-chat/rooms/" + roomId, saved);
+        broker.convertAndSend("/topic/rooms/" + roomId, saved);  // ← 프론트 구독과 동일
+        
+        
+        
+        
     }
       
 }
