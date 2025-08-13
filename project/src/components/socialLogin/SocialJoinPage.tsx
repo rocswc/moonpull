@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {Mail, User, Phone, Tag, Calendar, GraduationCap, BookOpen, IdCard, ArrowLeft} from "lucide-react";
+import { Mail, User, Phone, Tag, Calendar, GraduationCap, BookOpen, IdCard, ArrowLeft } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const SocialJoinPage = () => {
   const location = useLocation();
@@ -17,7 +17,13 @@ const SocialJoinPage = () => {
   const { login } = useAuth(); // ✅ AuthContext 로그인 함수
 
   const [submitting, setSubmitting] = useState(false);
-  const [phoneRaw, setPhoneRaw] = useState("");                 // ✅ 추가: 숫자만 보관하는 전화번호 상태
+  const [phoneRaw, setPhoneRaw] = useState("");                 // 숫자만 보관하는 전화번호 상태
+
+  // ✨ 연동 모달 상태 + 입력값
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkLoginId, setLinkLoginId] = useState("");
+  const [linkPassword, setLinkPassword] = useState("");
+  const [linkSubmitting, setLinkSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     social_type: "",
@@ -27,7 +33,7 @@ const SocialJoinPage = () => {
     email: "",
     name: "",
     nickname: "",
-    phone_number: "", // ← 이 값에는 항상 숫자만 넣을 겁니다.
+    phone_number: "", // ← 항상 숫자만
     birthday: "",
     gender: "",
     roles: "",
@@ -68,7 +74,7 @@ const SocialJoinPage = () => {
     }));
   }, [location.search, navigate]);
 
-  // ✅ 추가: 화면 표시용 포맷터 (하이픈 포함 표시)
+  // 화면 표시용 포맷터 (하이픈)
   const formatPhone = (d: string) => {
     const s = d.slice(0, 11);
     if (s.length <= 3) return s;
@@ -76,23 +82,85 @@ const SocialJoinPage = () => {
     return `${s.slice(0, 3)}-${s.slice(3, 7)}-${s.slice(7)}`;
   };
 
-  // ✅ 추가: 전화번호 전용 onChange — 숫자만 상태에 저장
+  // 전화번호 전용 onChange — 숫자만 상태에 저장
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
     setPhoneRaw(digits); // 화면 포맷용
     setFormData((p) => ({ ...p, phone_number: digits })); // formData에는 숫자만
   };
 
-  // 입력 핸들러 (전화번호 제외 모두 처리)
+  // 공통 입력 핸들러 (파일/전화번호 제외)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, files } = e.target as HTMLInputElement;
     if (type === "file") {
       setFormData((p) => ({ ...p, [name]: files && files.length > 0 ? files[0] : null }));
       return;
     }
-    // ❌ 삭제했던 부분: (name === "phone_number") 분기 전체 삭제
-    // ✅ 수정: 전화번호가 아닌 나머지만 공통 처리
     setFormData((p) => ({ ...p, [name]: value }));
+  };
+
+  // ✨ 기존 계정과 소셜 계정 연동 API 호출 (독립 함수)
+  // 기존 계정과 소셜 계정 연동 (수정본)
+  const linkExistingAccount = async () => {
+    if (!linkLoginId.trim() || !linkPassword.trim()) {
+      alert("아이디와 비밀번호를 입력하세요.");
+      return;
+    }
+    if (!formData.social_type || !formData.social_id) {
+      alert("소셜 정보가 없습니다. 다시 시도하세요.");
+      return;
+    }
+
+    setLinkSubmitting(true);
+    try {
+      // 1) 연동 호출 (이 API는 로그인/쿠키 발급을 하지 않음)
+      await axios.post(
+        "/api/auth/social-link",
+        {
+          loginId: linkLoginId.trim(),
+          password: linkPassword,
+          socialType: formData.social_type,
+          socialId: formData.social_id,
+        },
+        { withCredentials: true }
+      );
+
+      // 2A) (선택1) 자동 로그인까지 해주고 /api/user 조회
+      await axios.post(
+        "/api/login",
+        { loginId: linkLoginId.trim(), password: linkPassword },
+        { withCredentials: true }
+      );
+      const me = await axios.get("/api/user", { withCredentials: true }).then(r => r.data);
+      login?.(me);
+      setLinkOpen(false);
+      navigate("/", { replace: true });
+
+      // ※ 자동 로그인을 원치 않으면 2B로 대체:
+      // alert("계정 연동이 완료됐습니다. 로그인해 주세요.");
+      // setLinkOpen(false);
+      // navigate("/auth/login", { replace: true });
+
+	  } catch (err: unknown) {
+	    // axios 에러인지부터 구분
+	    if (axios.isAxiosError(err)) {
+	      const st = err.response?.status;
+	      const isLinkCall = err.config?.url?.includes("/api/auth/social-link");
+
+	      const msg =
+	        isLinkCall && st === 403 ? "비밀번호가 올바르지 않습니다."
+	        : isLinkCall && st === 409 ? "이미 다른 계정에 연동된 소셜입니다."
+	        : err.response?.data?.message || "연동에 실패했습니다.";
+
+	      alert(msg);
+	    } else {
+	      // 비-axios 에러 안전 처리
+	      console.error(err);
+	      alert("알 수 없는 오류가 발생했습니다.");
+	    }
+	  } finally {
+	    setLinkSubmitting(false);
+	  }
   };
 
   // 닉네임 중복 확인
@@ -120,21 +188,24 @@ const SocialJoinPage = () => {
     if (!formData.name.trim()) return alert("이름을 입력하세요.");
     if (!formData.nickname.trim()) return alert("닉네임을 입력하세요.");
     if (!formData.phone_number.trim()) return alert("전화번호를 입력하세요.");
+    if (!/^\d{11}$/.test(formData.phone_number)) return alert("전화번호는 숫자 11자리여야 합니다.");
     if (!formData.birthday.trim()) return alert("생년월일을 입력하세요.");
+    if (!/^\d{8}$/.test(formData.birthday)) return alert("생년월일은 숫자 8자리여야 합니다. 예: 19990101");
     if (!formData.gender) return alert("성별을 선택하세요.");
     if (!formData.roles) return alert("역할을 선택하세요.");
     if (!formData.email.trim()) return alert("이메일을 입력하세요.");
+    if (!/^[\w.-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(formData.email)) return alert("올바른 이메일 형식을 입력하세요.");
     if (
       formData.roles === "MENTOR" &&
       (!formData.university.trim() || !formData.major.trim() || !formData.graduation_file)
     ) {
-      return alert("멘토는 대학교/전공/졸업증명서가 필요합니다.");
+      return alert("멘토는 대학교, 전공, 졸업증명서를 모두 입력해야 합니다.");
     }
 
     try {
       setSubmitting(true);
 
-      // ✅ 서버 컨트롤러가 @RequestPart("joinDTO")로 받으므로 Blob(JSON)로 담아 전송
+      // 서버 컨트롤러가 @RequestPart("joinDTO")로 받으므로 Blob(JSON)로 담아 전송
       const joinDTO = {
         login_id: formData.login_id,
         is_social: formData.is_social,
@@ -143,7 +214,7 @@ const SocialJoinPage = () => {
         email: formData.email,
         name: formData.name,
         nickname: formData.nickname.trim(),
-        phone_number: formData.phone_number, // ✅ 수정: 이미 숫자만이므로 replace 불필요
+        phone_number: formData.phone_number,
         birthday: formData.birthday,
         gender: formData.gender,
         roles: formData.roles,
@@ -156,23 +227,19 @@ const SocialJoinPage = () => {
       if (formData.roles === "MENTOR" && formData.graduation_file) {
         form.append("graduation_file", formData.graduation_file);
       }
-	  
 
-	  // 1) 회원가입
-	  await axios.post("/api/join", form, { withCredentials: true });
+      // 1) 회원가입
+      await axios.post("/api/join", form, { withCredentials: true });
 
-	  // 2) 서버가 쿠키를 세팅했다면, 내 정보 가져와서 컨텍스트 갱신
-	  try {
-	    const me = await axios.get("/api/user", { withCredentials: true }).then(r => r.data);
-	    login?.(me);                  // useAuth()에서 가져온 로그인 set 함수
-	    navigate("/", { replace: true });
-	  } catch {
-	    // 쿠키가 없다면(백엔드가 아직 쿠키 안 심는다면) 로그인 페이지로 보냄
-	    navigate("/auth/login", { replace: true });
-	  }
-	  return; // 아래 코드 실행 금지
-
-      
+      // 2) 서버가 쿠키를 세팅했다면, 내 정보 가져와서 컨텍스트 갱신
+      try {
+        const me = await axios.get("/api/user", { withCredentials: true }).then((r) => r.data);
+        login?.(me);
+        navigate("/", { replace: true });
+      } catch {
+        navigate("/auth/login", { replace: true });
+      }
+      return;
     } catch (error) {
       console.error(error);
       const data =
@@ -204,6 +271,24 @@ const SocialJoinPage = () => {
               <p className="text-muted-foreground">소셜 로그인 후 추가 정보를 입력해주세요.</p>
             </div>
 
+            {/* ✨ 기존 계정 연동 섹션 */}
+            <div className="rounded-2xl border p-4">
+              <div className="mb-2 text-lg font-semibold">이미 계정이 있나요?</div>
+              <p className="text-sm text-muted-foreground">
+                기존 이메일/아이디로 가입한 계정이 있다면 비밀번호 확인 후 소셜 계정과 연동할 수 있어요.
+              </p>
+              <div className="mt-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setLinkOpen(true)}
+                  disabled={!formData.social_type || !formData.social_id}
+                  title={!formData.social_type || !formData.social_id ? "provider/socialId가 없습니다." : ""}
+                >
+                  기존 계정과 연동
+                </Button>
+              </div>
+            </div>
+
             {/* 카드 */}
             <Card className="shadow-elegant border-0 bg-card/50 backdrop-blur-sm">
               <CardHeader />
@@ -212,57 +297,51 @@ const SocialJoinPage = () => {
                   {formData.email ? (
                     <Input name="email" value={formData.email} readOnly />
                   ) : (
-                    <Input
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                    />
+                    <Input name="email" type="email" value={formData.email} onChange={handleChange} required />
                   )}
 
-				  <div className="relative">
-				    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-				    <Input
-				      name="name"
-				      placeholder="이름"
-				      value={formData.name}
-				      onChange={handleChange}
-				      className="pl-10"
-				      required
-				    />
-				  </div>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      name="name"
+                      placeholder="이름"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
 
-				  <div className="flex gap-2">
-				    <div className="relative w-full">
-				      <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-				      <Input
-				        name="nickname"
-				        placeholder="닉네임"
-				        value={formData.nickname}
-				        onChange={handleChange}
-				        className="pl-10"
-				        required
-				      />
-				    </div>
-				    <Button type="button" onClick={checkDuplicateNickname}>
-				      중복확인
-				    </Button>
-				  </div>
+                  <div className="flex gap-2">
+                    <div className="relative w-full">
+                      <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        name="nickname"
+                        placeholder="닉네임"
+                        value={formData.nickname}
+                        onChange={handleChange}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                    <Button type="button" onClick={checkDuplicateNickname}>
+                      중복확인
+                    </Button>
+                  </div>
 
-                  {/* ✅ 수정: 전화번호 인풋 교체 */}
-				  <div className="relative">
-				    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-				    <Input
-				      name="phone_number"
-				      placeholder="전화번호"
-				      inputMode="numeric"
-				      value={formatPhone(phoneRaw)}   // 화면에는 하이픈
-				      onChange={handlePhoneChange}    // 상태에는 숫자만
-				      className="pl-10"
-				      required
-				    />
-				  </div>
+                  {/* 전화번호 */}
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      name="phone_number"
+                      placeholder="전화번호"
+                      inputMode="numeric"
+                      value={formatPhone(phoneRaw)} // 화면에는 하이픈
+                      onChange={handlePhoneChange} // 상태에는 숫자만
+                      className="pl-10"
+                      required
+                    />
+                  </div>
 
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -326,60 +405,55 @@ const SocialJoinPage = () => {
                   {/* 멘토 전용 */}
                   {formData.roles === "MENTOR" && (
                     <>
-					<div className="relative">
-					  <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-					  <Input
-					    name="university"
-					    placeholder="대학교"
-					    value={formData.university}
-					    onChange={handleChange}
-					    className="pl-10"
-					    required
-					  />
-					</div>
+                      <div className="relative">
+                        <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          name="university"
+                          placeholder="대학교"
+                          value={formData.university}
+                          onChange={handleChange}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
 
-					<div className="relative">
-					  <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-					  <Input
-					    name="major"
-					    placeholder="전공"
-					    value={formData.major}
-					    onChange={handleChange}
-					    className="pl-10"
-					    required
-					  />
-					</div>
-					  <div
-					    role="button"
-					    tabIndex={0}
-					    aria-label="졸업증명서 업로드"
-					    onClick={() => document.getElementById("graduation_file")?.click()}
-					    onKeyDown={(e) => {
-					      if (e.key === "Enter" || e.key === " ") {
-					        e.preventDefault();
-					        document.getElementById("graduation_file")?.click();
-					      }
-					    }}
-					    className="
-					      w-full border border-input rounded-md px-3 py-2 text-sm
-					      text-muted-foreground bg-background
-					      hover:border-primary cursor-pointer
-					    "
-					  >
-					    {formData.graduation_file
-					      ? (formData.graduation_file as File).name
-					      : "졸업증명서 업로드 해주세요"}
-					  </div>
+                      <div className="relative">
+                        <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          name="major"
+                          placeholder="전공"
+                          value={formData.major}
+                          onChange={handleChange}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
 
-					  <input
-					    id="graduation_file"
-					    type="file"
-					    name="graduation_file"
-					    accept=".pdf,image/*"
-					    onChange={handleChange}
-					    className="hidden"
-					    required
-					  />
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label="졸업증명서 업로드"
+                        onClick={() => document.getElementById("graduation_file")?.click()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            document.getElementById("graduation_file")?.click();
+                          }
+                        }}
+                        className="w-full border border-input rounded-md px-3 py-2 text-sm text-muted-foreground bg-background hover:border-primary cursor-pointer"
+                      >
+                        {formData.graduation_file ? (formData.graduation_file as File).name : "졸업증명서 업로드 해주세요"}
+                      </div>
+
+                      <input
+                        id="graduation_file"
+                        type="file"
+                        name="graduation_file"
+                        accept=".pdf,image/*"
+                        onChange={handleChange}
+                        className="hidden"
+                        required
+                      />
                     </>
                   )}
 
@@ -389,6 +463,42 @@ const SocialJoinPage = () => {
                 </form>
               </CardContent>
             </Card>
+
+            {/* ✨ 연동 모달 */}
+            <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>기존 계정과 연동</DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground">
+                    제공자: <span className="font-medium">{formData.social_type || "-"}</span>
+                  </div>
+                  <Input
+                    placeholder="로그인 아이디"
+                    value={linkLoginId}
+                    onChange={(e) => setLinkLoginId(e.target.value)}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="비밀번호"
+                    value={linkPassword}
+                    onChange={(e) => setLinkPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && linkExistingAccount()}
+                  />
+                </div>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setLinkOpen(false)} disabled={linkSubmitting}>
+                    취소
+                  </Button>
+                  <Button onClick={linkExistingAccount} disabled={linkSubmitting}>
+                    {linkSubmitting ? "연동 중..." : "연동하기"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
