@@ -70,7 +70,7 @@ public class GoogleCallbackController {
         final String socialType = "GOOGLE";
         final String socialId   = userInfo.path("id").asText();
         final String email      = userInfo.path("email").asText(null);
-        final String name       = userInfo.path("name").asText(null);
+
 
         // 3) 기존 회원: JWT 쿠키 심고 홈으로 리다이렉트
         if (userService.existsBySocialIdAndType(socialId, socialType)) {
@@ -98,8 +98,8 @@ public class GoogleCallbackController {
         String joinUrl = "https://localhost:8888/auth/social-join"
             + "?provider=" + enc(socialType)
             + "&socialId=" + enc(socialId)
-            + "&email="    + enc(email)
-            + "&name="     + enc(name);
+            + "&email="    + enc(email);
+     
 
         return ResponseEntity.status(HttpStatus.SEE_OTHER)
             .location(URI.create(joinUrl))

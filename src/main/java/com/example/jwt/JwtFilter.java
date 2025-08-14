@@ -21,6 +21,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+//1. 한 요청당 한번 만 실행
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
@@ -39,13 +40,13 @@ public class JwtFilter extends OncePerRequestFilter {
         System.out.println("[JwtFilter] 요청 URI: " + request.getRequestURI());
         System.out.println("[JwtFilter] 요청 Method: " + request.getMethod());
 
-        // 0. OPTIONS 요청은 인증없이 허용
+        // 2. OPTIONS 요청은 인증없이 허용
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 1. 인증 예외 경로
+        // 3. 인증 예외 경로(로그인, 회원가입, 소셜 로그인 콜백, 공개 API 등은 JWT 검사 없이 통과)
         String path = request.getRequestURI();
         if (
             path.equals("/api/login") ||
@@ -90,7 +91,7 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 2. 쿠키에서 JWT 추출
+        // 4. 쿠키에서 JWT 추출(요청에 포함된 쿠키에서 JWT 토큰을 꺼내 검증.)
         String token = null;
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
@@ -104,17 +105,18 @@ public class JwtFilter extends OncePerRequestFilter {
         if (token == null) {
             System.out.println("❌ JWT 쿠키가 없음");
             filterChain.doFilter(request, response);
-            return;
+            return; //토큰이 없으면 인증 없이 다음 필터로 넘어감(익명 사용자로 처리).
         }
 
-        // 3. 토큰 만료 확인
+        // 5. 토큰 만료 확인(JWT가 있으면 → 만료 여부 확인.)
         if (jwtUtil.isExpired(token)) {
             System.out.println("❌ JWT 토큰 만료됨");
             filterChain.doFilter(request, response);
             return;
         }
 
-     // 4. 사용자 정보 추출 (subject=PK, roles)
+     /* 6. 사용자 정보 추출 (subject=PK, roles)유효하면 jwtUtil.getSubject()로 사용자 PK를 추출. 
+           PK로 UserRepository에서 사용자를 조회. */
         String subject = jwtUtil.getSubject(token);          // ✅ 토큰의 sub = PK
         String rolesString = jwtUtil.getRole(token);         // "USER,ADMIN" 또는 "ROLE_USER,ROLE_ADMIN"
 
@@ -124,7 +126,8 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 5. 권한 설정
+        /* 7. 권한 설정(토큰에 포함된 roles 값이 있으면 → 이를 ROLE_ 형식으로 변환하여 권한 리스트 생성.)
+              토큰 roles가 비어 있으면 → DB에서 roles 가져와서 권한 리스트 생성.*/
         List<SimpleGrantedAuthority> authorities = Arrays.stream(
                 rolesString == null ? new String[0] : rolesString.split(","))
             .map(String::trim)
@@ -133,7 +136,7 @@ public class JwtFilter extends OncePerRequestFilter {
             .map(SimpleGrantedAuthority::new)
             .toList();
 
-        // 6. DB에서 사용자 정보 조회 (✅ PK 기반)
+        // 8. DB에서 사용자 정보 조회 ( PK 기반)
         Integer userId = Integer.valueOf(subject); // ✅
         Optional<MemberVO> optionalUser = userRepository.findById(userId);
         if (optionalUser.isEmpty()) {
@@ -143,7 +146,7 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         MemberVO userEntity = optionalUser.get();
 
-        // (선택) 토큰 roles가 비었으면 DB 기준으로 보완
+        // 9  토큰 roles가 비었으면 DB 기준으로 보완
         if (authorities.isEmpty() && userEntity.getRoles() != null && !userEntity.getRoles().isBlank()) {
             authorities = Arrays.stream(userEntity.getRoles().split(","))
                     .map(String::trim)
@@ -153,7 +156,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     .toList();
         }
 
-        // 7. SecurityContext 세팅
+        // 10. SecurityContext 세팅
         CustomUserDetails customUserDetails = new CustomUserDetails(userEntity, authorities);
         Authentication authToken =
                 new UsernamePasswordAuthenticationToken(customUserDetails, null, authorities);
@@ -162,7 +165,7 @@ public class JwtFilter extends OncePerRequestFilter {
         System.out.println("✅ SecurityContext 인증 완료: " + authToken);
         System.out.println("✅ 권한 목록: " + authToken.getAuthorities());
 
-        // 8. 다음 필터 체인 진행
+        // 11. 다음 필터 체인 진행
         filterChain.doFilter(request, response);
     }
 }

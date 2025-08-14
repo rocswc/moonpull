@@ -278,14 +278,14 @@ const SocialJoinPage = () => {
                 기존 이메일/아이디로 가입한 계정이 있다면 비밀번호 확인 후 소셜 계정과 연동할 수 있어요.
               </p>
               <div className="mt-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setLinkOpen(true)}
-                  disabled={!formData.social_type || !formData.social_id}
-                  title={!formData.social_type || !formData.social_id ? "provider/socialId가 없습니다." : ""}
-                >
-                  기존 계정과 연동
-                </Button>
+			  <Button
+			    variant="hero"   // ← 회원가입 버튼과 동일 보라색
+			    onClick={() => setLinkOpen(true)}
+			    disabled={!formData.social_type || !formData.social_id}
+			    title={!formData.social_type || !formData.social_id ? "provider/socialId가 없습니다." : ""}  
+			  >
+			    기존 계정과 연동
+			  </Button>
               </div>
             </div>
 

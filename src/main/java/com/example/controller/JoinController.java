@@ -42,6 +42,22 @@ public class JoinController {
             if (userRepository.existsByPhonenumber(joinDTO.getPhoneNumber().replace("-", ""))) {
                 return ResponseEntity.badRequest().body(Map.of("error", "이미 가입한 회원입니다."));
             }
+            
+            //   이메일 중복 검사
+            if (userRepository.existsByEmail(joinDTO.getEmail())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "이미 가입된 이메일입니다."));
+            }
+            
+            //   일반 로그인 ID 중복 검사 (NULL 아닌 경우에만 검사)
+            if (joinDTO.getLoginId() != null && userRepository.existsByLoginid(joinDTO.getLoginId())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "이미 사용 중인 로그인 ID입니다."));
+            }
+
+            //  소셜 로그인 ID 중복 검사
+            if (Boolean.TRUE.equals(joinDTO.getIsSocial()) &&
+                userRepository.existsBySocialIdAndSocialType(joinDTO.getSocialId(), joinDTO.getSocialType())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "이미 가입된 소셜 계정입니다."));
+            }
 
             // 멘토인 경우 졸업증명서 필수
             if ("MENTOR".equalsIgnoreCase(joinDTO.getRoles())) {

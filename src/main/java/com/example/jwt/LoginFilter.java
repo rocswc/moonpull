@@ -36,6 +36,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @PersistenceContext
     private EntityManager entityManager;
 
+    //프론트엔드에서 /api/login으로 로그인 요청
     public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
@@ -43,6 +44,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         setFilterProcessesUrl("/api/login");
     }
 
+    //로그인 필터 실행
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
@@ -50,20 +52,24 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             LoginDTO loginRequest = objectMapper.readValue(request.getInputStream(), LoginDTO.class);
-
+            //요청 바디(JSON)를 LoginDTO로 읽어서 loginId / password를 꺼냅
             String loginid = loginRequest.getLoginId();
-            String password = loginRequest.getPassword();
+            String password = loginRequest.getPassword(); //LoginDTO로 읽어와 loginId, password를 꺼냅
 
             System.out.println("[LoginFilter] 입력 loginId: " + loginid);
             System.out.println("[LoginFilter] 입력 password: " + password);
 
-            // ✅ 정지 여부 확인
+            
+            //  DB에서 사용자 조회
             MemberVO member = userRepository.findByLoginid(loginid)
                     .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
             System.out.println("📌 getIsBanned: " + member.getIsBanned());
             System.out.println("📌 getBanReason: " + member.getBanReason());
             System.out.println("📌 getBanExpireDate: " + member.getBanExpireDate());
+            
+            
+             // 정지 여부 확인(정지 상태가 아닌 정상적인 계정인지 확인하는 코드)
             if (member.getIsBanned()) {
                 Date today = new Date();
                 Date expireDate = member.getBanExpireDate();
@@ -109,10 +115,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 })
                 .collect(Collectors.joining(","));
 
-        // 🔴 기존: subject 없이 발급 → 새로고침 시 JwtFilter(subject 필요)에서 실패
+        //  기존: subject 없이 발급 → 새로고침 시 JwtFilter(subject 필요)에서 실패
         // String token = jwtUtil.createJwt(username, nickname, roles, 24 * 60 * 60 * 1000L);
 
-        // ✅ 변경: PK(subject) 포함 발급
+        
+        //  변경: PK(subject) 포함 발급
         MemberVO member = userRepository.findByLoginid(username)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         String token = jwtUtil.generateToken(member); // subject = userId 포함
@@ -138,6 +145,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         }
         boolean secureFlag = isHttps || "None".equals(sameSite); // HTTPS 또는 SameSite=None 이면 true
 
+        
+     // ✅ JWT를 HttpOnly 쿠키로 내려줌 (현재 코드는 고정값으로 내려줌)
 	    ResponseCookie cookie = ResponseCookie.from("jwt", token)
 	        .httpOnly(true)
 	        .secure(true)
@@ -166,9 +175,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             throws IOException, ServletException {
 
         System.out.println("로그인 실패: " + failed.getMessage());
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // ✅ 401
         response.setContentType("application/json; charset=UTF-8");
         response.getWriter().write("{\"error\": \"인증 실패\"}");
+        //아이디/비번 불일치 등 인증 실패하면 401과 에러 메시지를 반환.
     }
 
     // 🔒 정지된 유저에 대한 응답
@@ -176,5 +186,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write("{\"message\": \"" + message + "\"}");
+        // 정지된 계정이면 403으로 사유를 내려줌.
     }
 }

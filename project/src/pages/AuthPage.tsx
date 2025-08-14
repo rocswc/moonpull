@@ -306,7 +306,7 @@ const AuthPage = () => {
 					      id="email"
 					      name="email"
 					      type="email"
-					      placeholder="이메일을 입력하세요"
+					      placeholder="이메일"
 					      value={formData.email}
 					      onChange={handleInputChange}
 					      className="pl-10"
