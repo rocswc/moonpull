@@ -20,7 +20,7 @@ public class MyMenteeListController {
     }
 
     @PostMapping("/accept")
-    public void acceptMentee(@RequestParam Long progressId) {
-        myMenteeListService.acceptMentee(progressId);
+    public void acceptMentee(@RequestParam Long menteeId, @RequestParam Long mentorId) {
+        myMenteeListService.acceptMentee(menteeId, mentorId);
     }
 }

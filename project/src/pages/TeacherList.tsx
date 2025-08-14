@@ -69,16 +69,17 @@ const TeacherList = () => {
     console.log("📌 클릭한 멘토 userId =", mentorUserId);
 
     if (!currentUser || !currentUser.id) {
-      console.error("�� 로그인 유저 정보가 없습니다. 매칭 불가");
+      console.error("❌ 로그인 유저 정보가 없습니다. 매칭 불가");
       alert("로그인이 필요합니다.");
       return;
     }
 
+    // �� 수정: currentUser.id를 숫자로 변환
     const payload = {
-      menteeId: currentUser.id, // userId (백엔드에서 menteeId 변환)
+      menteeId: Number(currentUser.id), // 문자열을 숫자로 변환
       mentorId: mentorUserId,   // userId (백엔드에서 mentorId 변환)
     };
-    console.log("�� 전송할 DTO:", payload);
+    console.log("➡️ 전송할 DTO:", payload);
 
     try {
       const res = await axios.post("/api/mentoring/request", payload, {

@@ -22,55 +22,84 @@ interface Mentee {
   recentSubject?: string;
 }
 
+interface MentoringProgress {
+  mentoring_progress_id: number;
+  mentee_id: number;
+  mentee_name: string;
+  chat_id: number | null;
+  connection_status: string;
+  start_date: string;
+  end_date: string | null;
+}
+
 const MentorPage = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<Mentee[]>([]);
   const [mentees, setMentees] = useState<Mentee[]>([]);
   const [mentorId, setMentorId] = useState<number | null>(null);
   const [acceptedMenteeIds, setAcceptedMenteeIds] = useState<number[]>([]);
+  const [endedMentoring, setEndedMentoring] = useState<MentoringProgress[]>([]);
+
+  // 데이터 로딩 함수
+  const fetchData = async () => {
+    try {
+      console.log("📡 [FRONT] 데이터 로딩 시작 -----------------------------");
+      console.log("📡 현재 쿠키:", document.cookie || "(없음)");
+      console.log("🔍 axios baseURL:", axios.defaults.baseURL || "(기본)");
+
+      // 1. 로그인된 유저 정보 확인
+      console.log("📤 API 호출 → GET /api/user");
+      const userRes = await axios.get("/api/user");
+      console.log("✅ 응답(/api/user):", JSON.stringify(userRes.data, null, 2));
+
+      // 2. mentor-id 가져오기
+      const mentorIdUrl = `/api/mentoring/mentor-id`;
+      console.log("📤 API 호출 → GET", mentorIdUrl);
+      const mentorRes = await axios.get(mentorIdUrl);
+      console.log("✅ 응답(mentor-id):", mentorRes.data);
+      const mentorIdValue = mentorRes.data.mentorId;
+      setMentorId(mentorIdValue);
+
+      // 3. 멘토 요청 목록
+      const requestsUrl = `/api/mentoring/requests`;
+      console.log("📤 API 호출 → GET", requestsUrl);
+      const reqRes = await axios.get(requestsUrl);
+      console.log("✅ 응답(requests):", JSON.stringify(reqRes.data, null, 2));
+      setRequests(reqRes.data);
+
+      // 4. 멘티 목록
+      const menteesUrl = `/api/mentoring/mentees`;
+      console.log("📤 API 호출 → GET", menteesUrl);
+      const menteeRes = await axios.get(menteesUrl);
+      console.log("✅ 응답(mentees):", JSON.stringify(menteeRes.data, null, 2));
+      setMentees(menteeRes.data);
+
+      // 5. 멘토링 진행 상황 조회 (종료된 것만)
+      try {
+        const progressUrl = `/api/mentoring/progress`;
+        console.log("📤 API 호출 → GET", progressUrl);
+        const progressRes = await axios.get(progressUrl, {
+          params: { mentorId: mentorIdValue },
+          withCredentials: true,
+        });
+        console.log("✅ 응답(progress):", progressRes.data);
+        
+        const all: MentoringProgress[] = progressRes.data;
+        const ended = all.filter((p) => p.connection_status === "ended");
+        
+        setEndedMentoring(ended);
+      } catch (err) {
+        console.error("❌ 멘토링 진행 상황 불러오기 실패:", err);
+      }
+
+      console.log("📡 [FRONT] 데이터 로딩 완료 -----------------------------");
+    } catch (error) {
+      console.error("❌ [FRONT] 데이터 로딩 실패", error);
+    }
+  };
 
   useEffect(() => {
     console.log("🚀 useEffect 실행 - MentorPage 마운트됨");
-
-    const fetchData = async () => {
-      try {
-        console.log("📡 [FRONT] 데이터 로딩 시작 -----------------------------");
-        console.log("📡 현재 쿠키:", document.cookie || "(없음)");
-        console.log("🔍 axios baseURL:", axios.defaults.baseURL || "(기본)");
-
-        // 1. 로그인된 유저 정보 확인
-        console.log("📤 API 호출 → GET /api/user");
-        const userRes = await axios.get("/api/user");
-        console.log("✅ 응답(/api/user):", JSON.stringify(userRes.data, null, 2));
-
-        // 2. mentor-id 가져오기
-        const mentorIdUrl = `/api/mentoring/mentor-id`;
-        console.log("📤 API 호출 → GET", mentorIdUrl);
-        const mentorRes = await axios.get(mentorIdUrl);
-        console.log("✅ 응답(mentor-id):", mentorRes.data);
-        const mentorIdValue = mentorRes.data.mentorId;
-        setMentorId(mentorIdValue);
-
-        // 3. 멘토 요청 목록
-        const requestsUrl = `/api/mentoring/requests`;
-        console.log("📤 API 호출 → GET", requestsUrl);
-        const reqRes = await axios.get(requestsUrl);
-        console.log("✅ 응답(requests):", JSON.stringify(reqRes.data, null, 2));
-        setRequests(reqRes.data);
-
-        // 4. 멘티 목록
-        const menteesUrl = `/api/mentoring/mentees`;
-        console.log("📤 API 호출 → GET", menteesUrl);
-        const menteeRes = await axios.get(menteesUrl);
-        console.log("✅ 응답(mentees):", JSON.stringify(menteeRes.data, null, 2));
-        setMentees(menteeRes.data);
-
-        console.log("📡 [FRONT] 데이터 로딩 완료 -----------------------------");
-
-      } catch (error) {
-        console.error("❌ [FRONT] 데이터 로딩 실패", error);
-      }
-    };
     fetchData();
 
     return () => {
@@ -85,20 +114,34 @@ const MentorPage = () => {
       return;
     }
     try {
-      console.log("�� API 호출 → POST /api/mentoring/accept-request", { requestId: mentee.requestId });
+      console.log(" API 호출 → POST /api/mentoring/accept-request", { requestId: mentee.requestId });
       const response = await axios.post("/api/mentoring/accept-request", null, {
         params: { requestId: mentee.requestId },
       });
       console.log("✅ 응답(accept-request):", response.data);
 
       const chatId = response.data.chatId;
+      
+      // 수락된 멘티 ID 추가
       setAcceptedMenteeIds((prev) => [...prev, mentee.id]);
+      
+      // 요청 목록에서 제거
       setRequests((prev) => prev.filter((r) => r.requestId !== mentee.requestId));
 
-      console.log("�� 멘티 목록 재요청");
-      const menteeRes = await axios.get(`/api/mentoring/mentees`);
-      console.log("✅ 응답(mentees 재조회):", menteeRes.data);
-      setMentees(menteeRes.data);
+      // 멘티 목록에 바로 추가 (새로고침 없이)
+      const acceptedMentee: Mentee = {
+        id: mentee.id,
+        name: mentee.name,
+        age: mentee.age,
+        accuracy: 0, // 기본값
+        wrongRate: 0, // 기본값
+        questionsAsked: 0, // 기본값
+        feedbacksGiven: 0, // 기본값
+        recentSubject: "정보 없음" // 기본값
+      };
+      
+      setMentees((prev) => [...prev, acceptedMentee]);
+      console.log("✅ 멘티 목록에 바로 추가됨:", acceptedMentee);
 
       if (chatId) {
         console.log(`💬 채팅방 이동: /chat/${chatId}`);
@@ -109,9 +152,20 @@ const MentorPage = () => {
     }
   };
 
-  const handleReject = (requestId: number) => {
+  const handleReject = async (requestId: number) => {
     console.log("🚫 handleReject 호출 - requestId:", requestId);
-    setRequests((prev) => prev.filter((r) => r.requestId !== requestId));
+    try {
+      console.log(" API 호출 → POST /api/mentoring/reject-request", { requestId });
+      const response = await axios.post("/api/mentoring/reject-request", null, {
+        params: { requestId },
+      });
+      console.log("✅ 응답(reject-request):", response.data);
+
+      // 요청 목록에서 제거
+      setRequests((prev) => prev.filter((r) => r.requestId !== requestId));
+    } catch (error) {
+      console.error("❌ [FRONT] 멘토 거절 실패:", error);
+    }
   };
 
   const handleReport = async (mentee: Mentee) => {
@@ -122,7 +176,7 @@ const MentorPage = () => {
       return;
     }
     try {
-      console.log("�� API 호출 → POST /api/admin/report", {
+      console.log(" API 호출 → POST /api/admin/report", {
         reporterId: mentorId,
         targetUserId: mentee.id,
         targetMentorId: null,
@@ -131,6 +185,32 @@ const MentorPage = () => {
       await axios.post("/api/admin/report", {
         reporterId: mentorId,
         targetUserId: mentee.id,
+        targetMentorId: null,
+        reason,
+      });
+      alert("신고가 정상적으로 접수되었습니다.");
+    } catch (err) {
+      console.error("❌ [FRONT] 신고 실패", err);
+    }
+  };
+
+  const handleReportMentoring = async (mentoring: MentoringProgress) => {
+    console.log("🚨 handleReportMentoring 호출 - mentoring:", mentoring);
+    const reason = window.prompt(`"${mentoring.mentee_name}" 멘티를 신고하는 이유를 입력하세요:`);
+    if (!reason || reason.trim() === "") {
+      console.log("❌ 신고 취소됨 - 이유 없음");
+      return;
+    }
+    try {
+      console.log(" API 호출 → POST /api/admin/report", {
+        reporterId: mentorId,
+        targetUserId: mentoring.mentee_id,
+        targetMentorId: null,
+        reason,
+      });
+      await axios.post("/api/admin/report", {
+        reporterId: mentorId,
+        targetUserId: mentoring.mentee_id,
         targetMentorId: null,
         reason,
       });
@@ -182,24 +262,59 @@ const MentorPage = () => {
             <CardTitle className="text-xl font-bold">멘토링 중인 멘티 현황</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mentees.map((mentee) => (
-              <div key={mentee.id} className="border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm">
-                <h3 className="text-lg font-semibold mb-1">
-                  {mentee.name} ({mentee.age}세)
-                </h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>정답률: <span className="font-bold text-foreground">{mentee.accuracy ?? "-"}%</span></p>
-                  <p>오답률: {mentee.wrongRate ?? "-"}%</p>
-                  <p>질문 횟수: {mentee.questionsAsked ?? "-"}회</p>
-                  <p>피드백 제공: {mentee.feedbacksGiven ?? "-"}회</p>
-                  <p>최근 학습 과목: {mentee.recentSubject ?? "정보 없음"}</p>
+            {mentees.length === 0 ? (
+              <p className="text-muted-foreground col-span-full text-center py-8">
+                멘토링 중인 멘티가 없습니다.
+              </p>
+            ) : (
+              mentees.map((mentee) => (
+                <div key={mentee.id} className="border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-1">
+                    {mentee.name} ({mentee.age}세)
+                  </h3>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p>정답률: <span className="font-bold text-foreground">{mentee.accuracy ?? "-"}%</span></p>
+                    <p>오답률: {mentee.wrongRate ?? "-"}%</p>
+                    <p>질문 횟수: {mentee.questionsAsked ?? "-"}회</p>
+                    <p>피드백 제공: {mentee.feedbacksGiven ?? "-"}회</p>
+                    <p>최근 학습 과목: {mentee.recentSubject ?? "정보 없음"}</p>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Badge variant="secondary">멘토링 진행중</Badge>
+                    <Button size="sm" variant="destructive" onClick={() => handleReport(mentee)}>신고하기</Button>
+                  </div>
                 </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <Badge variant="secondary">멘토링 진행중</Badge>
-                  <Button size="sm" variant="destructive" onClick={() => handleReport(mentee)}>신고하기</Button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 종료된 멘토링 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl font-bold">종료된 멘토링</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {endedMentoring.length === 0 ? (
+              <p className="text-muted-foreground">종료된 멘토링이 없습니다.</p>
+            ) : (
+              endedMentoring.map((item) => (
+                <div key={item.mentoring_progress_id} className="p-3 border rounded-md">
+                  <p className="font-medium">
+                    {item.mentee_name} ({item.start_date?.slice(0, 7)} ~ {item.end_date !== null ? item.end_date.slice(0, 7) : "진행 중"})
+                  </p>
+                  <p className="text-sm text-muted-foreground">채팅방 ID: {item.chat_id ?? "없음"}</p>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleReportMentoring(item)}
+                    className="mt-2"
+                  >
+                    신고하기
+                  </Button>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 

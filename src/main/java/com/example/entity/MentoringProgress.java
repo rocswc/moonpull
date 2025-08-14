@@ -8,37 +8,34 @@ import java.time.LocalDate;
 @Entity
 @Data
 @Table(name = "mentoring_progress")
+@IdClass(MentoringProgressId.class)
 public class MentoringProgress {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "mentoring_progress_id")
-    private int mentoringProgressId;
-
-    @Column(name = "matching_id")
-    private int matchingId;
-
-    @Column(name = "user_id")
-    private int userId;
-
-    @Column(name = "mentee_id")
+    @Column(name = "mentee_id", nullable = false)
     private int menteeId;
 
-    @Column(name = "mentor_id")
+    @Id
+    @Column(name = "mentor_id", nullable = false)
     private int mentorId;
+
+    @Column(nullable = false)
+    private int matchingId;
+
+    @Column(nullable = false)
+    private int userId;
 
     @Column(name = "chat_id")
     private Integer chatId;
 
-    @Column(name = "connection_status")
     private String connectionStatus;
 
     @Column(name = "start_date")
-    private LocalDate startDate;
+    private LocalDate startDate; // DB의 start_date
 
     @Column(name = "end_date")
-    private LocalDate endDate;
+    private LocalDate endDate;   // DB의 end_date
 
     @Column(name = "subject_id")
-    private Integer subjectId;
+    private Integer subjectId;   // DB의 subject_id
 }

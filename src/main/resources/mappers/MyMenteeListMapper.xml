@@ -24,10 +24,12 @@
       AND mp.connection_status = 'accepted'
   </select>
 
-  <update id="acceptMentoringRequest" parameterType="long">
+  <update id="acceptMentoringRequest" parameterType="map">
     UPDATE mentoring_progress
     SET connection_status = 'accepted'
-    WHERE id = #{progressId}
+    WHERE mentee_id = #{menteeId} 
+      AND mentor_id = #{mentorId}
+      AND connection_status = 'pending'
   </update>
 
 </mapper>
