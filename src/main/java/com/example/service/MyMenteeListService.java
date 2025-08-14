@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -17,7 +19,10 @@ public class MyMenteeListService {
         return myMenteeListMapper.findMyMentees(mentorId);
     }
 
-    public void acceptMentee(Long progressId) {
-        myMenteeListMapper.acceptMentoringRequest(progressId);
+    public void acceptMentee(Long menteeId, Long mentorId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("menteeId", menteeId);
+        params.put("mentorId", mentorId);
+        myMenteeListMapper.acceptMentoringRequest(params);
     }
 }

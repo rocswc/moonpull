@@ -40,13 +40,13 @@ public class MentoringChatroomService {
             progress.setMentorId(mentorId);
             progress.setChatId(chatId);
             progress.setConnectionStatus("in_progress");
+            progress.setMatchingId(1); // 임시값
             
             // menteeId로 Mentee 엔티티 조회하여 올바른 userId 설정
             Mentee mentee = menteeRepository.findById((long) menteeId)
                     .orElseThrow(() -> new RuntimeException("멘티를 찾을 수 없습니다. menteeId=" + menteeId));
             
-            progress.setMatchingId(1); // 임시값
-            progress.setUserId(mentee.getUserId().intValue()); // 올바른 user_id 설정
+            progress.setUserId(mentee.getUserId().intValue()); // 멘티의 userId
             mentoringProgressRepository.save(progress);
         }
 

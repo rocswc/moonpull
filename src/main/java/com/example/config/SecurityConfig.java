@@ -130,6 +130,7 @@ public class SecurityConfig {
                    .requestMatchers("/api/chat/**").permitAll()
                    .requestMatchers("/api/teacher/**").permitAll()
                    .requestMatchers("/api/mentors/**").permitAll() // **
+                   .requestMatchers("/api/mentor/**").permitAll() // ✅ 멘토 정보 조회 API 추가 08/14
                    
                    .requestMatchers("/api/mentoring/chatId").permitAll() // ✅ 추가됨 2025-08-08
                    .requestMatchers("/api/mentoring/chatIdByUserId").permitAll() // ✅ 새로운 chatId 조회 API 추가 08/13
