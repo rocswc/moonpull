@@ -18,13 +18,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # MongoDB 연결 설정 - 데이터베이스 이름을 'quiz'로 변경
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://192.168.0.40:27017')
 DATABASE_NAME = 'quiz'  # 변경됨
 
 try:
     client = MongoClient(MONGODB_URI)
     db = client[DATABASE_NAME]
     logger.info(f"MongoDB 연결 성공 - 데이터베이스: {DATABASE_NAME}")
+    logger.info(f"접속된 MongoDB URI: {MONGODB_URI}")
+    logger.info(f"사용 가능한 DB 목록: {client.list_database_names()}")
+    logger.info(f"quiz DB의 컬렉션 목록: {db.list_collection_names()}")
 except Exception as e:
     logger.error(f"MongoDB 연결 실패: {e}")
     db = None
@@ -114,31 +117,26 @@ def health_check():
 
 @app.route('/api/subjects', methods=['GET'])
 def get_subjects():
-    """사용 가능한 과목 목록 반환 - 실제 데이터 기반"""
     try:
         if db is None:
             raise Exception("Database not connected")
 
         subjects = []
-
-        # 실제 데이터가 있는 컬렉션들만 확인
         target_collections = ['history', 'korea', 'eng']
 
+        logger.info("=== DEBUG: 컬렉션별 문서 수 확인 ===")
         for collection_name in target_collections:
             try:
-                # 컬렉션에 데이터가 있는지 확인
                 count = db[collection_name].count_documents({})
+                logger.info(f"{collection_name}: {count} documents")  # 여기서 확인 가능
                 if count == 0:
                     continue
 
-                # 사용 가능한 학교 정보 추출
                 schools = db[collection_name].distinct('school')
-                schools = [school for school in schools if school]  # 빈 값 제거
-
-                if not schools:  # 학교 정보가 없다면 기본값 설정
+                schools = [school for school in schools if school]
+                if not schools:
                     schools = ['고등학교']
 
-                # 과목 정보 구성
                 subject_names = {
                     'history': '한국사',
                     'korea': '국어',
@@ -149,9 +147,8 @@ def get_subjects():
                     'id': collection_name,
                     'name': subject_names.get(collection_name, collection_name),
                     'schools': schools,
-                    'question_count': count  # 디버깅용
+                    'question_count': count
                 }
-
                 subjects.append(subject_info)
                 logger.info(f"과목 추가: {subject_info['name']} - {count}문제")
 
@@ -167,6 +164,7 @@ def get_subjects():
     except Exception as e:
         logger.error(f"과목 조회 오류: {e}")
         return jsonify({'error': 'Failed to fetch subjects'}), 500
+
 
 
 @app.route('/api/grades', methods=['GET'])
