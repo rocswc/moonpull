@@ -50,7 +50,7 @@ reader = easyocr.Reader(['ko', 'en'], gpu=True,
 
 # LangChain LLM 초기화
 llm = ChatGroq(
-    api_key="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",
+    api_key="",
     model="llama-3.3-70b-versatile",
     temperature=0.0
 )
