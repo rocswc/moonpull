@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>객관식 문제 생성 결과</title>
+</head>
+<body>
+    <h1>✅ 객관식 문제 생성 완료</h1>
+
+    <h2>생성된 문제:</h2>
+    <pre>{{ mcqs }}</pre>
+
+    <h2>파일 다운로드:</h2>
+    <ul>
+        <li><a href="{{ url_for('download_file', filename=txt_filename) }}">📄 텍스트 파일 다운로드</a></li>
+        <li><a href="{{ url_for('download_file', filename=pdf_filename) }}">📕 PDF 파일 다운로드</a></li>
+    </ul>
+
+    <a href="{{ url_for('index') }}">🔙 처음으로 돌아가기</a>
+</body>
+</html>
