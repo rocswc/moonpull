@@ -14,7 +14,7 @@ public class MyMentorlistController {
     @Autowired
     private MyMentorListRepository repository;
 
-    @GetMapping("/progress")
+    @GetMapping("/my-progress")
     public List<MyMentorListDTO> getMentoringProgress(@RequestParam("menteeId") int menteeId) {
         System.out.println("menteeId: " + menteeId);
         List<MyMentorListDTO> list = repository.findByMenteeId(menteeId);
