@@ -1,615 +1,380 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Mic, MicOff, Play, Square, Upload, Clock, CheckCircle, XCircle } from 'lucide-react';
 import Navigation from "@/components/Navigation";
 
-const API_BASE_URL = 'http://localhost:8000';
-
-function Opictest() {
+const Opictest = () => {
   // 상태 관리
-  const [currentScreen, setCurrentScreen] = useState('welcome');
-  const [userSession, setUserSession] = useState(null);
-  const [testData, setTestData] = useState(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [testResults, setTestResults] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
   
-  // 오디오 녹음용 refs
-  const mediaRecorder = useRef(null);
-  const audioChunks = useRef([]);
-  const streamRef = useRef(null);
+  // 참조
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const audioRef = useRef(null);
+  
+  // 샘플 질문들
+  const sampleQuestions = [
+    "Tell me about your favorite hobby and why you enjoy it.",
+    "Describe your typical day from morning to evening.",
+    "What kind of music do you like and how does it make you feel?",
+    "Tell me about a memorable trip or vacation you've taken.",
+    "Describe your ideal weekend and what you would do."
+  ];
+  
+  const [currentQuestion, setCurrentQuestion] = useState(sampleQuestions[0]);
 
-  // 에러 클리어
-  const clearError = () => setError(null);
-
-  // 화면 렌더링
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'welcome':
-        return <WelcomeScreen onStartTest={handleStartTest} error={error} />;
-      case 'test':
-        return (
-          <TestScreen 
-            testData={testData}
-            currentQuestionIndex={currentQuestionIndex}
-            onNextQuestion={handleNextQuestion}
-            isRecording={isRecording}
-            onStartRecording={handleStartRecording}
-            onStopRecording={handleStopRecording}
-            isSubmitting={isSubmitting}
-            error={error}
-          />
-        );
-      case 'result':
-        return <ResultScreen results={testResults} onRestart={handleRestart} />;
-      default:
-        return <WelcomeScreen onStartTest={handleStartTest} error={error} />;
+  // 타이머 업데이트
+  useEffect(() => {
+    if (isRecording) {
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
     }
-  };
+    
+    return () => clearInterval(timerRef.current);
+  }, [isRecording]);
 
-  // 테스트 시작 (모의 데이터 사용)
-  const handleStartTest = async (nickname) => {
-    clearError();
-    try {
-      const userId = `user_${Date.now()}`;
-      
-      // 실제 API 호출 시도
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/start-test`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId, nickname })
-        });
-
-        if (!response.ok) throw new Error('API 서버 응답 실패');
-
-        const data = await response.json();
-        setUserSession({ user_id: userId, nickname });
-        setTestData(data);
-        setCurrentScreen('test');
-      } catch (apiError) {
-        console.warn('API 서버에 연결할 수 없어 모의 데이터를 사용합니다:', apiError.message);
-        
-        // 모의 데이터 사용
-        const mockData = {
-          questions: [
-            {
-              question_id: 1,
-              category: "자기소개",
-              question: "안녕하세요! 간단히 자기소개를 해주세요. 이름, 나이, 직업 등에 대해 말씀해 주시면 됩니다."
-            },
-            {
-              question_id: 2,
-              category: "취미",
-              question: "당신의 취미는 무엇인가요? 그 취미를 언제부터 시작했고, 왜 좋아하는지 설명해 주세요."
-            },
-            {
-              question_id: 3,
-              category: "여행",
-              question: "가장 기억에 남는 여행지는 어디인가요? 그곳에서 어떤 경험을 했는지 자세히 말씀해 주세요."
-            }
-          ]
-        };
-        
-        setUserSession({ user_id: userId, nickname });
-        setTestData(mockData);
-        setCurrentScreen('test');
-      }
-    } catch (error) {
-      setError('테스트 시작 중 오류가 발생했습니다: ' + error.message);
-    }
-  };
-
-  // 브라우저 호환성 체크
-  const checkBrowserSupport = () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('이 브라우저는 음성 녹음을 지원하지 않습니다.');
-    }
-    if (!window.MediaRecorder) {
-      throw new Error('이 브라우저는 MediaRecorder API를 지원하지 않습니다.');
-    }
+  // 시간 포맷 함수
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // 녹음 시작
-  const handleStartRecording = async () => {
-    clearError();
+  const startRecording = async () => {
     try {
-      checkBrowserSupport();
+      // 마이크 권한 요청
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100
-        } 
-      });
+      // MediaRecorder 설정
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
       
-      streamRef.current = stream;
-      audioChunks.current = [];
-
-      // MediaRecorder 옵션 설정
-      let options = {};
-      if (MediaRecorder.isTypeSupported('audio/webm')) {
-        options.mimeType = 'audio/webm';
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        options.mimeType = 'audio/mp4';
-      }
-
-      mediaRecorder.current = new MediaRecorder(stream, options);
-
-      mediaRecorder.current.ondataavailable = (event) => {
+      // 데이터 수집
+      mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunks.current.push(event.data);
+          audioChunksRef.current.push(event.data);
         }
       };
-
-      mediaRecorder.current.onstop = async () => {
-        const mimeType = mediaRecorder.current.mimeType || 'audio/webm';
-        const audioBlob = new Blob(audioChunks.current, { type: mimeType });
-        await submitAnswer(audioBlob);
+      
+      // 녹음 완료 시 처리
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        setAudioBlob(audioBlob);
+        setAudioUrl(URL.createObjectURL(audioBlob));
         
         // 스트림 정리
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
+        stream.getTracks().forEach(track => track.stop());
       };
-
-      mediaRecorder.current.start(1000); // 1초마다 데이터 수집
+      
+      // 녹음 시작
+      mediaRecorder.start();
       setIsRecording(true);
-    } catch (error) {
-      setError('마이크 접근 권한이 필요합니다: ' + error.message);
+      setRecordingTime(0);
+      setError(null);
+      setResult(null);
+      
+    } catch (err) {
+      console.error('마이크 접근 오류:', err);
+      setError('마이크 접근 권한이 필요합니다.');
     }
   };
 
   // 녹음 중지
-  const handleStopRecording = async () => {
-    if (mediaRecorder.current && isRecording) {
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
       setIsRecording(false);
-      setIsSubmitting(true);
-      mediaRecorder.current.stop();
     }
   };
 
-  // 답변 제출
-  const submitAnswer = async (audioBlob) => {
-    try {
-      // 실제 API 호출 시도
-      try {
-        const formData = new FormData();
-        formData.append('audio_file', audioBlob, 'answer.wav');
-        formData.append('user_id', userSession.user_id);
-        formData.append('question_id', testData.questions[currentQuestionIndex].question_id);
-
-        const response = await fetch(`${API_BASE_URL}/api/submit-answer`, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) throw new Error('API 서버 응답 실패');
-
-        const result = await response.json();
-        
-        const newAnswer = {
-          question: testData.questions[currentQuestionIndex],
-          transcription: result.transcription,
-          evaluation: result.evaluation
-        };
-        
-        setAnswers(prev => [...prev, newAnswer]);
-      } catch (apiError) {
-        console.warn('API 서버 응답 실패, 모의 데이터 사용:', apiError.message);
-        
-        // 모의 응답 생성
-        const mockEvaluation = {
-          score: Math.floor(Math.random() * 30) + 70, // 70-100 점수
-          grade: ['3', '4', '5'][Math.floor(Math.random() * 3)],
-          feedback: "발음이 명확하고 문법 구조가 적절합니다. 더 다양한 어휘를 사용하면 좋겠습니다."
-        };
-
-        const newAnswer = {
-          question: testData.questions[currentQuestionIndex],
-          transcription: "음성이 성공적으로 녹음되었습니다. (실제 환경에서는 여기에 변환된 텍스트가 표시됩니다)",
-          evaluation: mockEvaluation
-        };
-        
-        setAnswers(prev => [...prev, newAnswer]);
+  // 오디오 재생/일시정지
+  const togglePlayback = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
       }
-      
-      setIsSubmitting(false);
-    } catch (error) {
-      setError('답변 제출 중 오류가 발생했습니다: ' + error.message);
-      setIsSubmitting(false);
+      setIsPlaying(!isPlaying);
     }
   };
 
-  // 다음 질문으로 이동
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < testData.questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else {
-      completeTest();
-    }
+  // 오디오 재생 이벤트 처리
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
   };
 
-  // 테스트 완료
-  const completeTest = async () => {
-    try {
-      // 실제 API 호출 시도 (선택사항)
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/complete-test`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userSession.user_id })
-        });
-        
-        if (!response.ok) throw new Error('API 서버 응답 실패');
-      } catch (apiError) {
-        console.warn('테스트 완료 API 호출 실패:', apiError.message);
-      }
-
-      const totalScore = answers.reduce((sum, answer) => sum + answer.evaluation.score, 0) / answers.length;
-      const overallGrade = getGradeFromScore(totalScore);
-
-      setTestResults({
-        answers,
-        totalScore: Math.round(totalScore),
-        overallGrade,
-        nickname: userSession.nickname
-      });
-      
-      setCurrentScreen('result');
-    } catch (error) {
-      setError('테스트 완료 처리 중 오류가 발생했습니다: ' + error.message);
-    }
-  };
-
-  // 점수를 등급으로 변환
-  const getGradeFromScore = (score) => {
-    if (score >= 90) return '5';
-    if (score >= 80) return '4';
-    if (score >= 70) return '3';
-    if (score >= 60) return '2';
-    return '1';
-  };
-
-  // 테스트 재시작
-  const handleRestart = () => {
-    // 진행 중인 녹음 정리
-    if (isRecording && mediaRecorder.current) {
-      mediaRecorder.current.stop();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+  // 서버로 오디오 전송 및 평가
+  const submitAudio = async () => {
+    if (!audioBlob) {
+      setError('먼저 음성을 녹음해주세요.');
+      return;
     }
 
-    setCurrentScreen('welcome');
-    setUserSession(null);
-    setTestData(null);
-    setCurrentQuestionIndex(0);
-    setAnswers([]);
-    setTestResults(null);
-    setIsRecording(false);
-    setIsSubmitting(false);
+    setIsLoading(true);
     setError(null);
-  };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-		<Navigation />
-      {renderScreen()}
-    </div>
-  );
-}
+    try {
+      // FormData 생성
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.wav');
+      formData.append('question', currentQuestion);
 
-// 환영 화면
-function WelcomeScreen({ onStartTest, error }) {
-  const [nickname, setNickname] = useState('');
+      // FastAPI 서버로 전송
+      const response = await fetch('http://localhost:8000/evaluate-opic', {
+        method: 'POST',
+        body: formData,
+      });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (nickname.trim()) {
-      onStartTest(nickname.trim());
-    } else {
-      alert('닉네임을 입력해 주세요.');
+      if (!response.ok) {
+        throw new Error(`서버 오류: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setResult(data);
+      
+    } catch (err) {
+      console.error('평가 오류:', err);
+      setError('평가 중 오류가 발생했습니다. 서버 연결을 확인해주세요.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="flex items-center justify-center min-h-screen p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-          </div>
-		  
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">OPIc 테스트</h1>
-          <p className="text-gray-600">AI 기반 영어 말하기 능력 평가</p>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              닉네임
-            </label>
-            <input
-              type="text"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-              placeholder="닉네임을 입력하세요"
-              maxLength={20}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSubmit(e);
-                }
-              }}
-            />
-          </div>
-
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105"
-          >
-            테스트 시작하기
-          </button>
-        </div>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="font-semibold text-blue-800 mb-2">테스트 안내</h3>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• 총 3개의 질문이 출제됩니다</li>
-            <li>• 각 질문에 대해 자유롭게 답변하세요</li>
-            <li>• 녹음 버튼을 눌러 답변을 시작하세요</li>
-            <li>• 마이크 권한을 허용해 주세요</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 테스트 화면
-function TestScreen({ testData, currentQuestionIndex, onNextQuestion, isRecording, onStartRecording, onStopRecording, isSubmitting, error }) {
-  const currentQuestion = testData?.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / testData?.questions.length) * 100;
-
-  if (!currentQuestion) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-center min-h-screen p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-2xl">
-        {/* 진행률 바 */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-600">
-              질문 {currentQuestionIndex + 1} / {testData.questions.length}
-            </span>
-            <span className="text-sm font-medium text-gray-600">{Math.round(progress)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* 에러 메시지 */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-
-        {/* 카테고리 */}
-        <div className="mb-6">
-          <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-            {currentQuestion.category}
-          </span>
-        </div>
-
-        {/* 질문 */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">질문</h2>
-          <div className="p-6 bg-gray-50 rounded-lg border-l-4 border-blue-500">
-            <p className="text-lg text-gray-700 leading-relaxed">
-              {currentQuestion.question}
-            </p>
-          </div>
-        </div>
-
-        {/* 녹음 컨트롤 */}
-        <div className="text-center space-y-4">
-          {!isRecording && !isSubmitting && (
-            <button
-              onClick={onStartRecording}
-              className="w-32 h-32 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:from-red-600 hover:to-pink-700 transition-all duration-200 transform hover:scale-105 shadow-lg mx-auto"
-            >
-              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
-          )}
-
-          {isRecording && (
-            <div className="space-y-4">
-              <button
-                onClick={onStopRecording}
-                className="w-32 h-32 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-full flex items-center justify-center hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105 shadow-lg mx-auto animate-pulse"
-              >
-                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="6" width="12" height="12" rx="2" strokeWidth={2}></rect>
-                </svg>
-              </button>
-              <p className="text-red-600 font-medium">녹음 중... 다시 클릭하여 중지</p>
-            </div>
-          )}
-
-          {isSubmitting && (
-            <div className="space-y-4">
-              <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg mx-auto">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-              </div>
-              <p className="text-blue-600 font-medium">답변 처리 중...</p>
-            </div>
-          )}
-
-          {/* 다음 질문 버튼 */}
-          {!isRecording && !isSubmitting && (
-            <div className="pt-6 border-t">
-              <button
-                onClick={onNextQuestion}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-8 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200 transform hover:scale-105"
-              >
-                {currentQuestionIndex < testData.questions.length - 1 ? '다음 질문' : '테스트 완료'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 안내 메시지 */}
-        <div className="mt-8 p-4 bg-yellow-50 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            <strong>안내:</strong> 녹음 버튼을 눌러 답변을 시작하고, 다시 눌러 답변을 완료하세요. 
-            답변은 자동으로 분석되어 점수가 산출됩니다.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 결과 화면
-function ResultScreen({ results, onRestart }) {
-  const getGradeColor = (grade) => {
-    switch (grade) {
-      case '5': return 'text-green-600';
-      case '4': return 'text-blue-600';
-      case '3': return 'text-yellow-600';
-      case '2': return 'text-orange-600';
-      default: return 'text-red-600';
-    }
+  // 새 질문 선택
+  const selectRandomQuestion = () => {
+    const availableQuestions = sampleQuestions.filter(q => q !== currentQuestion);
+    const randomQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+    setCurrentQuestion(randomQuestion);
+    
+    // 상태 초기화
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setResult(null);
+    setError(null);
+    setRecordingTime(0);
   };
 
-  const getGradeBgColor = (grade) => {
-    switch (grade) {
-      case '5': return 'bg-green-100';
-      case '4': return 'bg-blue-100';
-      case '3': return 'bg-yellow-100';
-      case '2': return 'bg-orange-100';
-      default: return 'bg-red-100';
-    }
+  // 점수에 따른 색상 반환
+  const getScoreColor = (score) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  // 등급에 따른 배지 색상
+  const getGradeBadgeColor = (grade) => {
+    const gradeNum = parseInt(grade);
+    if (gradeNum >= 4) return 'bg-green-100 text-green-800';
+    if (gradeNum >= 3) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
   };
 
   return (
-    <div className="min-h-screen p-4">
+	
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+	<Navigation /> {/* ✅ 네비게이션 추가 */} 
       <div className="max-w-4xl mx-auto">
+	  
         {/* 헤더 */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">OPIc Speaking Test</h1>
+          <p className="text-gray-600">AI 기반 영어 말하기 평가 시스템</p>
+        </div>
+
+        {/* 메인 컨테이너 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 왼쪽: 질문 및 녹음 */}
+          <div className="space-y-6">
+            {/* 질문 카드 */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-semibold text-gray-800">Question</h2>
+                <button
+                  onClick={selectRandomQuestion}
+                  className="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full hover:bg-indigo-200 transition-colors"
+                >
+                  New Question
+                </button>
+              </div>
+              <p className="text-gray-700 leading-relaxed text-lg">{currentQuestion}</p>
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">테스트 완료!</h1>
-            <p className="text-gray-600 mb-4">{results.nickname}님의 OPIc 테스트 결과</p>
-            
-            {/* 총점 */}
-            <div className="inline-block">
-              <div className={`${getGradeBgColor(results.overallGrade)} rounded-2xl p-6`}>
-                <div className="flex items-center space-x-4">
-                  <div>
-                    <p className="text-sm text-gray-600 font-medium">총점</p>
-                    <p className="text-4xl font-bold text-gray-800">{results.totalScore}</p>
-                  </div>
-                  <div className="w-px h-12 bg-gray-300"></div>
-                  <div>
-                    <p className="text-sm text-gray-600 font-medium">등급</p>
-                    <p className={`text-4xl font-bold ${getGradeColor(results.overallGrade)}`}>
-                      {results.overallGrade}
-                    </p>
-                  </div>
+
+            {/* 녹음 컨트롤 */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Recording</h3>
+              
+              {/* 타이머 */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center bg-gray-100 rounded-lg px-4 py-2">
+                  <Clock className="w-5 h-5 text-gray-600 mr-2" />
+                  <span className="text-xl font-mono text-gray-700">
+                    {formatTime(recordingTime)}
+                  </span>
                 </div>
               </div>
+
+              {/* 녹음 버튼 */}
+              <div className="flex justify-center mb-4">
+                {!isRecording ? (
+                  <button
+                    onClick={startRecording}
+                    className="flex items-center bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full text-lg font-medium transition-colors shadow-lg"
+                  >
+                    <Mic className="w-6 h-6 mr-2" />
+                    Start Recording
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopRecording}
+                    className="flex items-center bg-gray-700 hover:bg-gray-800 text-white px-6 py-3 rounded-full text-lg font-medium transition-colors shadow-lg animate-pulse"
+                  >
+                    <Square className="w-6 h-6 mr-2" />
+                    Stop Recording
+                  </button>
+                )}
+              </div>
+
+              {/* 재생 컨트롤 */}
+              {audioUrl && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-center space-x-4 mb-4">
+                    <button
+                      onClick={togglePlayback}
+                      className="flex items-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      {isPlaying ? (
+                        <>
+                          <MicOff className="w-4 h-4 mr-2" />
+                          Pause
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          Play
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <audio
+                    ref={audioRef}
+                    src={audioUrl}
+                    onEnded={handleAudioEnded}
+                    className="w-full"
+                    controls
+                  />
+                </div>
+              )}
+
+              {/* 제출 버튼 */}
+              {audioBlob && (
+                <div className="flex justify-center mt-4">
+                  <button
+                    onClick={submitAudio}
+                    disabled={isLoading}
+                    className="flex items-center bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Evaluating...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Submit for Evaluation
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* 상세 결과 */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">상세 결과</h2>
-          {results.answers.map((answer, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-lg p-6">
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-                    {answer.question.category}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">점수:</span>
-                    <span className="font-bold text-lg">{answer.evaluation.score}</span>
-                    <span className={`font-bold text-lg ${getGradeColor(answer.evaluation.grade)}`}>
-                      ({answer.evaluation.grade}등급)
+          {/* 오른쪽: 결과 */}
+          <div className="space-y-6">
+            {/* 오류 메시지 */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <div className="flex items-center">
+                  <XCircle className="w-5 h-5 text-red-500 mr-2" />
+                  <p className="text-red-700">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* 평가 결과 */}
+            {result && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center mb-4">
+                  <CheckCircle className="w-6 h-6 text-green-500 mr-2" />
+                  <h3 className="text-xl font-semibold text-gray-800">Evaluation Results</h3>
+                </div>
+
+                {/* 점수 및 등급 */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Score</p>
+                    <p className={`text-3xl font-bold ${getScoreColor(result.score)}`}>
+                      {result.score}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Grade</p>
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getGradeBadgeColor(result.grade)}`}>
+                      Level {result.grade}
                     </span>
                   </div>
                 </div>
-                <h3 className="font-semibold text-gray-800">{answer.question.question}</h3>
-              </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-2">답변 내용</h4>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-gray-600 text-sm leading-relaxed">
-                      {answer.transcription || '음성 변환 실패'}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-2">피드백</h4>
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-blue-800 text-sm leading-relaxed">
-                      {answer.evaluation.feedback}
-                    </p>
-                  </div>
+                {/* 피드백 */}
+                <div className="border-t pt-4">
+                  <h4 className="font-medium text-gray-800 mb-2">Detailed Feedback</h4>
+                  <p className="text-gray-700 leading-relaxed">{result.feedback}</p>
                 </div>
               </div>
+            )}
+
+            {/* 평가 기준 안내 */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Evaluation Criteria</h3>
+              <ul className="space-y-2 text-gray-600">
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Fluency and naturalness of speech</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Grammar accuracy</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Logic and completeness of answer</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  <span>Creativity and engagement</span>
+                </li>
+              </ul>
             </div>
-          ))}
-        </div>
-
-        {/* 재시작 버튼 */}
-        <div className="text-center mt-8">
-          <button
-            onClick={onRestart}
-            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-8 rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105"
-          >
-            다시 테스트하기
-          </button>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default Opictest;
