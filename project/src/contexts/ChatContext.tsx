@@ -164,6 +164,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 // ✅ 여기에 추가 (유저 목록 로드 useEffect 바로 아래(온라인 목록 동기화))
 useEffect(() => {
+  console.log("랄라라"+API_ORIGIN);
+
   if (users.length === 0) return;
   (async () => {
     try {
@@ -563,15 +565,8 @@ const rejectChatRequest = async (requestId: string, fromUserId?: string, toUserI
 
   const setTyping = (roomId: string, isTyping: boolean) => {
     // 서버에 타이핑 신호를 보낼 계획이라면 여기서 publish
-    // stompRef.current?.publish({ destination: `${ROUTES.APP_PREFIX}/rooms/${roomId}/typing`, body: JSON.stringify({ userId: currentUser?.id, isTyping }) });
     console.log(`typing(${roomId}):`, isTyping);
   };
-
-  // const markAsRead = (roomId: string) => {
-  //   setChatRooms((prev) => prev.map((r) => (r.id === roomId ? { ...r, unreadCount: 0 } : r)));
-  //   // 필요 시 서버에 읽음 위치 업데이트 API 호출
-  // };
-
 
 // ⬇️ ChatContext 내부
 const markAsRead = useCallback((roomId: string) => {
