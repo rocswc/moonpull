@@ -1,5 +1,4 @@
 package com.example.controller;
-
 import com.example.DAO.MemberRepository;
 import com.example.VO.ChatMessage;
 import com.example.VO.ChatRequestDtos;
@@ -9,8 +8,6 @@ import com.example.entity.Member;
 import com.example.security.CustomUserDetails;
 import com.example.service.RtChatService;
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -18,7 +15,6 @@ import org.springframework.messaging.simp.user.SimpUser;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -30,10 +26,9 @@ public class RtChatRestController {
 
     private final RtChatService rtChatService;
     private final SimpMessagingTemplate broker;
-    private final MemberRepository memberRepository; // 👈 member 테이블 조회 
+    private final MemberRepository memberRepository; // 👈 member 테이블 조회
     private final SimpUserRegistry userRegistry;
     
-      
  // 현재 온라인인 STOMP 사용자들의 principal name(loginId) 목록
     @GetMapping("/online")
     public ResponseEntity<List<String>> online(@AuthenticationPrincipal CustomUserDetails me) {
@@ -44,7 +39,6 @@ public class RtChatRestController {
             .toList();
         return ResponseEntity.ok(online);
     }
-    
     
     @PostMapping("/rooms")
     public ChatRoom createRoom(@RequestParam long me, @RequestParam long other,
@@ -59,10 +53,6 @@ public class RtChatRestController {
         return rtChatService.getMessages(roomId, beforeId, size);
     }
 	 
- // ------------------------
-    // 2) 채팅 "요청/수락/거절"
-    // ------------------------
-
  // CHANGED: 요청 생성
     @PostMapping("/requests")
     public ResponseEntity<?> createRequest(
@@ -74,10 +64,8 @@ public class RtChatRestController {
         long fromUserId = me.getUserId();
         long toUserId   = req.toUserId();
 
-        Member fromM = memberRepository.findById(fromUserId)
-                .orElseThrow(() -> new IllegalArgumentException("fromUser not found: " + fromUserId));
-        Member toM = memberRepository.findById(toUserId)
-                .orElseThrow(() -> new IllegalArgumentException("toUser not found: " + toUserId));
+        Member fromM = memberRepository.findById(fromUserId).orElseThrow(() -> new IllegalArgumentException("fromUser not found: " + fromUserId));
+        Member toM = memberRepository.findById(toUserId).orElseThrow(() -> new IllegalArgumentException("toUser not found: " + toUserId));
 
         MemberVO fromVO = toVO(fromM); // CHANGED: 엔티티→VO 변환
         MemberVO toVO   = toVO(toM);
@@ -87,10 +75,8 @@ public class RtChatRestController {
                 fromUserId, toUserId, Instant.now(),
                 fromVO, toVO
         );
-
-        // CHANGED: convertAndSendToUser 의 첫 인자는 username(loginId)!
         broker.convertAndSendToUser(toM.getLoginId(), "/queue/requests", payload);
-
+        
         return ResponseEntity.ok(payload);
     }
 
@@ -137,18 +123,14 @@ public class RtChatRestController {
         return ResponseEntity.ok().build();
     }
 
- // ---- helper: Member 엔티티 → MemberVO (필요한 최소 필드만) ----
     private static String nvl(String s, String def) {
         return (s == null || s.isBlank()) ? def : s;
     }
     
     private MemberVO toVO(Member e) {
         MemberVO vo = new MemberVO();
-        // Long -> Integer (null 안전)
         vo.setUserId(e.getUserId() != null ? e.getUserId().intValue() : null);
-        // 프론트는 name ?? nickname ?? `user-{id}` 순으로 쓰므로 nickname만 채워도 충분
         vo.setNickname(nvl(e.getNickname(), "이름없음"));
-        // 전공(없으면 "미지정")
         vo.setMajor(nvl(e.getMajor(), "미지정"));
         return vo;
     }
