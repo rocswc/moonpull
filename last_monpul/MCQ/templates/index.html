@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>문제 생성기</title>
+</head>
+<body>
+  <h2>📄 문서 업로드하여 문제 만들기</h2>
+  <form action="/generate" method="post" enctype="multipart/form-data">
+    <label>문서 파일 (PDF, TXT, DOCX):</label><br>
+    <input type="file" name="file" required><br><br>
+
+    <label>생성할 문제 수:</label><br>
+    <input type="number" name="num_questions" value="5" min="1" max="20"><br><br>
+
+    <label>문제 유형 선택:</label><br>
+    <select name="question_type" required>
+      <option value="객관식">객관식</option>
+      <option value="주관식">주관식</option>
+    </select><br><br>
+
+    <button type="submit">문제 생성하기</button>
+  </form>
+</body>
+</html>
