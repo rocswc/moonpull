@@ -14,6 +14,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import KakaoLoginButton from "@/components/socialLogin/KakaoLoginButton";
 import GoogleLoginButton from "@/components/socialLogin/GoogleLoginButton";
 
+//흐름 요약 
+//사용자가 소셜 로그인 시도
+//서버가 소셜 프로바이더에서 프로필(이메일, social_id, social_type) 받음
+//B에 같은 이메일의 일반 계정이 있는지 확인
+//있으면: “연동할래?” 플래그를 내려 프론트에 표시
+//없으면: 신규 소셜가입 플로우로 진행
+//사용자가 연동 동의 → 서버에 “연동하기” API 호출
+//보안상 본인확인(비번, OTP, 이메일 코드 중 택1) 한 번 거침
+//서버가 기존 계정에 해당 소셜을 연결
+//이후엔 소셜 로그인만으로 같은 계정에 로그인 가능
+
 const AuthPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
