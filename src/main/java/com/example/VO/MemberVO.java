@@ -1,10 +1,19 @@
 package com.example.VO;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Date;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity // 이 클래스가 JPA 엔티티임을 명시 (DB 테이블과 매핑됨)
 @Table(name = "member") // 실제 매핑될 DB 테이블 이름을 "member"로 지정
@@ -12,7 +21,7 @@ import lombok.*;
 @NoArgsConstructor // 기본 생성자 자동 생성
 @AllArgsConstructor // 모든 필드를 인자로 받는 생성자 자동 생성
 @Builder // 빌더 패턴 지원 (UserEntity.builder().loginid("abc")...)
-public class MemberVO {
+public class MemberVO implements Serializable {
 
     @Id // 기본 키(primary key)로 설정
     @GeneratedValue(strategy = GenerationType.IDENTITY) // auto_increment 전략
@@ -84,4 +93,7 @@ public class MemberVO {
     private LocalDateTime createdat; // 가입 일시 (자동 생성1)
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
+    
+    @Column(name = "session_version", nullable = false)
+    private Integer sessionVersion = 0; // 기본값 0
 }

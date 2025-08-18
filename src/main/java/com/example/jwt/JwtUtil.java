@@ -1,7 +1,11 @@
 package com.example.jwt;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
+import java.util.Set;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -9,114 +13,100 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.example.VO.MemberVO;
-
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
-@Component // Spring에서 Bean으로 등록되어 DI 대상이 됨
+@Component
 public class JwtUtil {
 
     private final SecretKey secretKey;
 
-    // 생성자에서 application.properties의 시크릿 값을 읽어 HS256 키로 변환
     public JwtUtil(@Value("${spring.jwt.secret}") String secret) {
         this.secretKey = new SecretKeySpec(
-            secret.getBytes(StandardCharsets.UTF_8), // UTF-8로 인코딩
-            Jwts.SIG.HS256.key().build().getAlgorithm() // HS256 알고리즘 키 설정
+            secret.getBytes(StandardCharsets.UTF_8),
+            Jwts.SIG.HS256.key().build().getAlgorithm()
         );
     }
 
-    // ✅ subject(PK) 추출
+    // ★ Access 토큰 생성 (sessionVersion은 long으로 넣되, int여도 Number로 받아 해결 가능)
+    public String createAccess(Integer userId, Set<String> roles, int sessionVersion, Duration ttl) {
+        var now = java.time.Instant.now();
+        return io.jsonwebtoken.Jwts.builder()
+            .subject(String.valueOf(userId))
+            .claim("roles", String.join(",", roles))
+            .claim("ver", sessionVersion)         // int로 저장
+            .issuedAt(java.util.Date.from(now))
+            .expiration(java.util.Date.from(now.plus(ttl)))
+            .signWith(secretKey)                  // 네가 쓰던 방식 유지
+            .compact();
+    }
+
+    /* -------------- 파싱 -------------- */
+
+    public Jws<Claims> parse(String token) {
+        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
+    }
+
+    // 만료여도 클레임 열어보기
+    public Claims getClaimsAllowExpired(String token) {
+        try { return parse(token).getPayload(); }
+        catch (ExpiredJwtException ex) { return ex.getClaims(); }
+    }
+
     public String getSubject(String token) {
+        try { return parse(token).getPayload().getSubject(); }
+        catch (JwtException | IllegalArgumentException e) { return null; }
+    }
+
+    public String getRoles(String token) {
+        try { return parse(token).getPayload().get("roles", String.class); }
+        catch (JwtException | IllegalArgumentException e) { return null; }
+    }
+
+    // ★ Number로 받아 long으로 변환 (Integer/Long 모두 OK)
+    public Long getVersion(String token) {
         try {
-            return Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .getSubject();
+            Object v = parse(token).getPayload().get("ver");
+            return (v instanceof Number n) ? n.longValue() : null;
         } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("getSubject 토큰 파싱 오류: " + e.getMessage());
             return null;
         }
     }
 
-    // JWT에서 "username" 클레임 추출
-    public String getUsername(String token) {
+    public boolean isExpired(String token) {
         try {
-            return Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .get("username", String.class);
+            Date exp = parse(token).getPayload().getExpiration();
+            return exp.before(new Date());
+        } catch (ExpiredJwtException e) {
+            return true;
         } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("getUsername 토큰 파싱 오류: " + e.getMessage());
-            return null;
-        }
-    }
-
-    // JWT에서 "roles" 클레임 추출 (예: ROLE_USER,ROLE_ADMIN 또는 USER,ADMIN)
-    public String getRole(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .get("roles", String.class);
-        } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("getRole 토큰 파싱 오류: " + e.getMessage());
-            return null;
-        }
-    }
-
-    // JWT의 만료 시간(exp) 검사
-    public Boolean isExpired(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .getExpiration()
-                    .before(new Date());
-        } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("isExpired 토큰 파싱 오류: " + e.getMessage());
             return true;
         }
     }
 
-    //  기존 시그니처 유지 (subject는 못 넣음 — 레거시 용도로 그대로 둠)
-    public String createJwt(String username, String nickname, String role, Long expiredMs) {
-        return Jwts.builder()
-                .claim("username", username)
-                .claim("nickname", nickname)
-                .claim("roles", role.replace("ROLE_", "")) // USER,ADMIN 형태로 저장
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiredMs))
-                .signWith(secretKey)
-                .compact();
+    /* ---- 레거시 호환(필요 시 유지) ---- */
+
+    public String getUsername(String token) {
+        try { return parse(token).getPayload().get("username", String.class); }
+        catch (JwtException | IllegalArgumentException e) { return null; }
     }
 
-    // ✅ PK 기반 발급 경로: subject=PK를 넣고, 기존 클레임도 그대로 유지
-    public String generateToken(MemberVO user) {
-        String username = user.getSocialId() != null ? user.getSocialId() : user.getLoginid();
-        String nickname = user.getNickname();
-        String role = user.getRoles(); // 예: ROLE_MENTOR 또는 ROLE_USER 등
+    public String getRole(String token) {
+        try { return parse(token).getPayload().get("roles", String.class); }
+        catch (JwtException | IllegalArgumentException e) { return null; }
+    }
 
-        String subjectUserId = String.valueOf(user.getUserId()); // PK를 subject에 저장 (getUserId() 이름 확인)
-
-        long expiredMs = 1000L * 60 * 60 * 24; // 1일
+    public String createJwt(String username, String nickname, String role, Long expiredMs) {
         return Jwts.builder()
-                .subject(subjectUserId) // ✅ 1subject = PK
-                .claim("username", username)
-                .claim("nickname", nickname)
-                .claim("roles", role.replace("ROLE_", "")) // USER,ADMIN 형태로 저장
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiredMs))
-                .signWith(secretKey)
-                .compact();
+            .claim("username", username)
+            .claim("nickname", nickname)
+            .claim("roles", role.replace("ROLE_", ""))
+            .issuedAt(new Date(System.currentTimeMillis()))
+            .expiration(new Date(System.currentTimeMillis() + expiredMs))
+            .signWith(secretKey)
+            .compact();
     }
 }
