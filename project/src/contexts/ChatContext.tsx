@@ -602,11 +602,11 @@ const markAsRead = useCallback((roomId: string) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          reason: reason.trim(),
-          targetUserId: Number(targetUser.id),
-          targetMentorId: targetUser.mentorId,
-        }),
+       body: JSON.stringify({
+         reporterId: Number(currentUser!.id),       // ✅ 신고자 아이디 전송
+         targetUserId: Number(targetUser.id),
+         reason: reason.trim(),
+       }),
       });
       if (res.ok) alert("신고가 정상적으로 접수되었습니다.");
       else alert(`신고 실패: ${res.status}`);
