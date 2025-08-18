@@ -22,7 +22,7 @@ const SuccessPage = () => {
     console.log(customerKey);
     console.log(authKey);
    
-    const response = await fetch("http://localhost:8080/payments/create_billing_key", {
+    const response = await fetch("https://localhost:8080/payments/create_billing_key", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -54,7 +54,7 @@ const SuccessPage = () => {
   }
 
   async function confirmPayment() {
-    const response = await fetch("http://localhost:8080/payments/confirm", {
+    const response = await fetch("https://localhost:8080/payments/confirm", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
