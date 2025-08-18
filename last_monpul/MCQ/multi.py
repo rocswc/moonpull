@@ -46,7 +46,7 @@ reader = easyocr.Reader(['ko', 'en'], gpu=True,
 
 # LangChain LLM 초기화
 llm = ChatGroq(
-    api_key="",
+    api_key="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",
     model="llama-3.3-70b-versatile",
     temperature=0.0
 )
@@ -288,4 +288,10 @@ def health_check():
     return jsonify({"status": "healthy", "message": "API가 정상적으로 작동중입니다."})
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
+    
+    
+
+
+
+    
