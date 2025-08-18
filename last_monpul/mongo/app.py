@@ -11,7 +11,13 @@ import json
 
 # Flask 앱 설정
 app = Flask(__name__)
-CORS(app)  # React 앱에서의 CORS 요청 허용
+# 정확한 CORS 설정
+CORS(app,
+     supports_credentials=True,
+     origins=["https://192.168.56.1:8888"],  # React 앱 도메인 정확히 지정
+     allow_headers=["Content-Type", "Authorization"],
+     expose_headers=["Content-Type", "Authorization"]
+)  # React 앱에서의 CORS 요청 허용
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -402,6 +408,48 @@ def debug_collection(collection_name):
         logger.error(f"디버깅 조회 오류: {e}")
         return jsonify({'error': str(e)}), 500
 
+    
+@app.route('/api/admin/total-questions', methods=['GET'])
+def get_total_question_count():
+    """전체 과목의 총 문제 수를 반환"""
+    try:
+        if db is None:
+            raise Exception("Database not connected")
+        
+        logger.info("=== 총 문제 수 API 호출됨 ===")
+        logger.info(f"접속된 DB: {db.name}")
+        logger.info(f"컬렉션 목록: {db.list_collection_names()}")
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+        total = 0
+        for col in ['history', 'korea', 'eng']:
+            count = db[col].count_documents({})
+            logger.info(f"{col} 문서 수: {count}")
+            total += count
+
+        return jsonify({'total_questions': total})
+    
+    except Exception as e:
+        logger.error(f"총 문제 수 계산 오류: {e}")
+        return jsonify({'error': 'Failed to fetch total question count'}), 500
+
+
+
+
+
+
+if __name__ == "__main__":
+    app.run(
+        debug=True,
+        host='0.0.0.0',
+        port=5001,
+        ssl_context=(
+            'D:/2jo/moonpull/project/certs/localhost.pem',
+            'D:/2jo/moonpull/project/certs/localhost-key.pem'
+        ),
+        use_reloader=False  # ⭐ 이게 핵심!
+    )
+
+
+    
+
+    

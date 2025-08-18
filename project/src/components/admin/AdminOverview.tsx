@@ -8,7 +8,7 @@ const AdminOverview = () => {
   const [userCount, setUserCount] = useState("로딩 중...");
   const [inactiveUserCount, setInactiveUserCount] = useState("로딩 중...");
   const [totalPaymentAmount, setTotalPaymentAmount] = useState("로딩 중...");
-
+  const [totalQuestions, setTotalQuestions] = useState("로딩 중...");	
   useEffect(() => {
     axios.get("/api/admin/stats")
       .then((res) => {
@@ -29,6 +29,16 @@ const AdminOverview = () => {
 	      console.error("총 결제액 불러오기 실패", err);
 	      setTotalPaymentAmount("에러");
 	    });
+		
+		axios.get("https://localhost:5001/api/admin/total-questions")
+		   .then((res) => {
+		     setTotalQuestions(res.data.total_questions.toLocaleString('ko-KR'));
+		   })
+		   .catch((err) => {
+		     console.error("총 문제 수 불러오기 실패", err);
+		     setTotalQuestions("에러");
+		   });
+		
   }, []);
 
   const stats = [
@@ -36,7 +46,7 @@ const AdminOverview = () => {
     { title: "현재 온라인 사용자 수", value: "89", change: "+5%", icon: Activity, color: "text-admin-secondary" },
     { title: "장기간 미로그인 사용자", value: inactiveUserCount, icon: Users, color: "text-admin-success" },
     { title: "월 수익", value: totalPaymentAmount, icon: DollarSign, color: "text-admin-success" }, 
-    { title: "총 문제 수", value: "3,456", change: "+24", icon: BookOpen, color: "text-admin-warning" },
+     { title: "총 문제 수", value: totalQuestions, icon: BookOpen, color: "text-admin-warning" },
     { title: "이상 탐지", value: "3", change: "-2", icon: AlertTriangle, color: "text-admin-danger" },
   ];
 

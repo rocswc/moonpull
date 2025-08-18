@@ -83,5 +83,14 @@ def get_question():
 
     return jsonify(result)
 
+# ✅ 총 문제 수 반환 API (별도 route)
+@app.route("/api/admin/total-questions", methods=["GET"])
+def get_total_questions():
+    try:
+        total = collection.count_documents({})
+        return jsonify({"total_questions": total}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(debug=True)
