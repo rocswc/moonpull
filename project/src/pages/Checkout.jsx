@@ -19,31 +19,6 @@ const CheckoutPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
 
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       const userRes = await axios.get("/api/user");
-  //       const userId = userRes.data.userId;
-
-  //       const mentorRes = await axios.get(`/api/mentor-id?userId=${userId}`);
-  //       const mentorId = mentorRes.data.mentorId;
-  //       setMentorId(mentorId);
-
-  //       // 1. 요청 받은 멘티 목록 가져오기
-  //       const reqRes = await axios.get(`/api/mentoring/requests?mentorId=${mentorId}`);
-  //       setRequests(reqRes.data);
-
-  //       // 2. 멘토링 중인 멘티 목록 가져오기
-  //       const menteeRes = await axios.get(`/api/mentoring/mentees?mentorId=${mentorId}`);
-  //       setMentees(menteeRes.data);
-  //     } catch (error) {
-  //       console.error("❌ 데이터 로딩 실패", error);
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, []);
-
   useEffect(() => {
     async function fetchPaymentWidgets() {
       const tossPayments = await loadTossPayments(clientKey);

@@ -1,5 +1,4 @@
 package com.example.service;
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,17 +12,11 @@ import java.util.Map;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.core5.http.ContentType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.example.DAO.PaymentRepository;
 import com.example.config.TossConfig;
 import com.example.dto.PaymentDTO;
 import com.example.dto.SubscribeDTO;
-import com.example.security.CustomUserDetails;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
@@ -90,7 +83,7 @@ public class PaymentServiceImpl implements PaymentService {
             paymentRepository.insertPayment(paymentData);
             paymentRepository.insertSubscription(subscriptionData);       
             return responseMap;
-            
+        
         } catch (Exception e) {     
             // 트랜잭션 롤백이 자동으로 발생
             Map<String, Object> error = new HashMap<>();
@@ -98,7 +91,6 @@ public class PaymentServiceImpl implements PaymentService {
             return error;
         }
     }
-    
     
     @Transactional 
     public Map<String, Object> createBillingKey(PaymentDTO payment) {
@@ -139,24 +131,23 @@ public class PaymentServiceImpl implements PaymentService {
             return error;
         }   	
     }
-      
-       
+           
     // 매일 자정에 실행되는 스케줄러에서 호출
-    //@Scheduled(cron = "0 0 0 * * *") // 매일 자정 
+    //@Scheduled(cron="0 0 0 * * *", zone="Asia/Seoul")
     //@Scheduled(fixedDelay = 1000) // 이전 실행 완료 후 1초 후 다시 실행(테스트용)
-    @Transactional 
     public void processMonthlyRecurringPayments() {
-    	
-    	System.out.println("김갑중 스케줄링 테스트입니다.");
-    	 	String orderId = UUID.randomUUID().toString(); //결제API에 보낼 결재고유id
+
+    	System.out.println("김갑중 스케줄링 테스트입니다."); 	 	
     	 	String orderName = "문풀 프리미엄 자동결제";
     	 		
             // 1. SQL 쿼리로 오늘 결제해야 할 구독자들 조회
-    	 	List<SubscribeDTO> subscriptionsToCharge = paymentRepository.findSubscriptionsForToday();
- 		 		
-    	 	if(subscriptionsToCharge != null) { 	 		
+    	 	List<SubscribeDTO> targets = paymentRepository.findSubscriptionsForToday();
+ 		 	 		 	
+    	 	if(targets != null) { 	 		
         	 	//2. 각 구독자별로 결제 처리
-        	 	for (SubscribeDTO subscription : subscriptionsToCharge) {  	    	  
+        	 	for (SubscribeDTO subscription : targets) {    	      	 		
+        	 		String orderId = UUID.randomUUID().toString(); //결제API에 보낼 결재고유id
+        	        
         	 		try {            	  
         	 			HttpRequest request = HttpRequest.newBuilder()		
     	  	    	    .uri(URI.create("https://api.tosspayments.com/v1/billing/"+subscription.getBilling_key()))
@@ -171,30 +162,21 @@ public class PaymentServiceImpl implements PaymentService {
     	  		
     	  				response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     	  				System.out.println(response.body());
-	  				
-    	  				//결제가 완료되었으면 결제정보를 결제 테이블에 저장해야 함
-    	  				//결제 테이블에 정보를 세팅
-    	  				
-//    	  			    s.subscription_id,
-//    	  			    s.member_id,
-//    	  			    m.name,       
-//    	  			    m.email,     
-//    	  			    s.plan_type,
-//    	  			    s.amount,
-//    	  			    s.billing_key,
-//    	  			    s.customer_key  
-    	  						
-//    	  	            paymentData.setMember_id(req.getMember_id());
-//    	  	            paymentData.setName(req.getName());
-//    	  	            paymentData.setEmail(req.getEmail());         
-//    	  	            paymentData.setOrder_id(req.getOrder_id());
-//    	  	            paymentData.setOrder_name((String)responseMap.get("orderName"));
-//    	  	            paymentData.setPayment_method((String)responseMap.get("method"));
-//    	  	            paymentData.setAmount(req.getAmount());
-//    	  	            paymentData.setPayment_status((String)responseMap.get("status"));
-//    	  	            paymentData.setPayment_key(req.getPayment_key());  	  			
-    	  					  				
-    	                  Thread.sleep(100); // API 호출 간격 조절 (선택사항)
+	  					  				
+    	  				Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
+  								
+    	  				PaymentDTO paymentData = new PaymentDTO();
+    	  	            paymentData.setMember_id(subscription.getMember_id());
+    	  	            paymentData.setName(subscription.getName());
+    	  	            paymentData.setEmail(subscription.getEmail());         
+    	  	            paymentData.setOrder_id(orderId);
+    	  	            paymentData.setOrder_name(orderName);  	  	            
+    	  	            paymentData.setPayment_method((String)responseMap.get("method"));
+    	  	            paymentData.setAmount(subscription.getAmount());        
+    	  	            paymentData.setPayment_status((String)responseMap.get("status"));
+    	  	            paymentData.setPayment_key((String)responseMap.get("paymentKey"));
+    	  	            paymentRepository.insertPayment(paymentData);
+    	  	          
         	 		} catch (Exception e) {
     	                  System.err.println("구독 ID " + subscription.getSubscription_id() + " 결제 실패: " + e.getMessage());
     	                  // 개별 결제 실패 시에도 다른 결제는 계속 처리
