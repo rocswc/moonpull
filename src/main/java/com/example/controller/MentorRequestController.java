@@ -4,6 +4,7 @@ import com.example.DAO.MenteeRepository;
 import com.example.DAO.MentorEntityRepository;
 import com.example.DAO.MentorRequestRepository;
 import com.example.DAO.MentoringChatroomRepository;
+import com.example.DAO.UserRepository;
 import com.example.dto.MenteeInfo;
 import com.example.dto.MentorRequestDTO;
 import com.example.dto.MentorRequestInfo;
@@ -11,12 +12,14 @@ import com.example.entity.Mentee;
 import com.example.entity.Mentor;
 import com.example.entity.MentorRequest;
 import com.example.entity.MentoringChatroom;
+import com.example.VO.MemberVO;
 import com.example.security.CustomUserDetails;
 import com.example.service.MentoringChatroomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -38,6 +41,8 @@ public class MentorRequestController {
     private final MentorEntityRepository mentorEntityRepository;
     private final MentoringChatroomService mentoringChatroomService;
     private final MentoringChatroomRepository mentoringChatroomRepository;
+    private final UserRepository userRepository;
+    private final SimpMessagingTemplate broker;
 
     /**
      * 1. 멘티 → 멘토 요청 생성
@@ -101,6 +106,28 @@ public class MentorRequestController {
 
         log.info("💾 저장 완료: requestId={}, menteeId={}, mentorId={}, status={}",
                 request.getId(), request.getMenteeId(), request.getMentorId(), request.getStatus());
+
+        // 실시간 알림 전송
+        try {
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("type", "NEW_MENTOR_REQUEST");
+            notification.put("requestId", request.getId());
+            notification.put("menteeId", mentee.getUserId());
+            notification.put("mentorId", mentor.getUserId());
+            notification.put("menteeName", mentee.getName());
+            notification.put("message", "새로운 멘토 요청이 도착했습니다!");
+            notification.put("timestamp", LocalDateTime.now());
+            
+            // 멘토에게 알림 전송
+            broker.convertAndSendToUser(
+                String.valueOf(mentor.getUserId()), 
+                "/queue/notifications", 
+                notification
+            );
+            log.info("✅ 멘토 알림 전송 완료: mentorId={}", mentor.getUserId());
+        } catch (Exception e) {
+            log.warn("⚠️ 알림 전송 실패", e);
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "멘토 요청이 생성되었습니다.");
@@ -173,25 +200,70 @@ public class MentorRequestController {
         request.setStatus("ACCEPTED");
         mentorRequestRepository.save(request);
 
-        // 2. 채팅방 생성
-        log.info("🔍 채팅방 생성 시작: menteeId={}, mentorId={}", 
+        // 2. 채팅방 생성 또는 기존 채팅방 찾기
+        log.info("🔍 채팅방 생성/조회 시작: menteeId={}, mentorId={}", 
                 request.getMenteeId(), request.getMentorId());
         
         int chatId;
         try {
-            chatId = mentoringChatroomService.createChatroomAndUpdateProgress(
-                    request.getMenteeId().intValue(), 
-                    request.getMentorId().intValue()
-            );
-            log.info("✅ 채팅방 생성 완료: chatId={}", chatId);
+            // 기존 채팅방이 있는지 먼저 확인 (양방향 검색)
+            var existingChatroomOpt = mentoringChatroomRepository
+                    .findTopByParticipant1IdAndParticipant2IdOrderByCreatedAtDesc(
+                            (long) request.getMenteeId().intValue(), 
+                            (long) request.getMentorId().intValue()
+                    );
+            
+            if (existingChatroomOpt.isPresent()) {
+                chatId = Math.toIntExact(existingChatroomOpt.get().getChat_id());
+                log.info("🔍 기존 채팅방 사용: chatId={}", chatId);
+            } else {
+                // 반대 방향으로도 확인
+                var existingChatroomOpt2 = mentoringChatroomRepository
+                        .findTopByParticipant1IdAndParticipant2IdOrderByCreatedAtDesc(
+                                (long) request.getMentorId().intValue(), 
+                                (long) request.getMenteeId().intValue()
+                        );
+                
+                if (existingChatroomOpt2.isPresent()) {
+                    chatId = Math.toIntExact(existingChatroomOpt2.get().getChat_id());
+                    log.info("🔍 기존 채팅방 사용 (반대): chatId={}", chatId);
+                } else {
+                    // 기존 채팅방이 없으면 새로 생성
+                    chatId = mentoringChatroomService.createChatroomAndUpdateProgress(
+                            request.getMenteeId().intValue(), 
+                            request.getMentorId().intValue()
+                    );
+                    log.info("✅ 새 채팅방 생성 완료: chatId={}", chatId);
+                }
+            }
         } catch (Exception e) {
-            log.error("❌ 채팅방 생성 실패", e);
+            log.error("❌ 채팅방 생성/조회 실패", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "채팅방 생성 중 오류가 발생했습니다: " + e.getMessage());
         }
 
-        log.info("✅ 멘토 요청 수락 완료 - requestId={}, status=ACCEPTED, chatId={}", requestId, chatId);
-
+                log.info("✅ 멘토 요청 수락 완료 - requestId={}, status=ACCEPTED, chatId={}", requestId, chatId);
+        
+        // 실시간 알림 전송
+        try {
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("type", "MENTOR_REQUEST_ACCEPTED");
+            notification.put("requestId", requestId);
+            notification.put("chatId", chatId);
+            notification.put("message", "멘토 요청이 수락되었습니다!");
+            notification.put("timestamp", LocalDateTime.now());
+            
+            // 멘티에게 알림 전송
+            broker.convertAndSendToUser(
+                String.valueOf(request.getMenteeId()), 
+                "/queue/notifications", 
+                notification
+            );
+            log.info("✅ 멘티 알림 전송 완료: menteeId={}", request.getMenteeId());
+        } catch (Exception e) {
+            log.warn("⚠️ 알림 전송 실패", e);
+        }
+        
         Map<String, Object> response = new HashMap<>();
         response.put("message", "멘토 요청이 수락되었습니다.");
         response.put("chatId", chatId);
@@ -347,19 +419,59 @@ public class MentorRequestController {
                             "멘토 정보를 찾을 수 없습니다. mentorId=" + mentorId));
             
             // 멘토의 user 정보 조회 (멘토 이름 등을 위해)
-            // 여기서는 간단히 mentorId를 사용하지만, 실제로는 User 테이블에서 이름을 가져와야 함
-            log.info("✅ 멘토 정보 조회 완료: mentorId={}", mentorId);
+            MemberVO mentorUser = userRepository.findById(mentor.getUserId().intValue())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "멘토 사용자 정보를 찾을 수 없습니다. userId=" + mentor.getUserId()));
+            
+            log.info("✅ 멘토 정보 조회 완료: mentorId={}, name={}", mentorId, mentorUser.getName());
             
             Map<String, Object> response = new HashMap<>();
-            response.put("name", "멘토 " + mentorId); // 임시 이름
-            response.put("subject", "전문 과목"); // 임시 과목
-            response.put("avatar", "M"); // 임시 아바타
+            response.put("name", mentorUser.getName());
+            response.put("subject", mentor.getSubject() != null ? mentor.getSubject() : "전문 과목");
+            response.put("avatar", mentorUser.getName() != null ? mentorUser.getName().substring(0, 1) : "M");
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
             log.error("❌ chatId로 멘토 정보 조회 실패: chatId={}", chatId, e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "멘토 정보 조회 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 9. chatId로 멘티 정보 조회
+     */
+    @GetMapping("/menteeByChatId")
+    public ResponseEntity<Map<String, Object>> getMenteeByChatId(@RequestParam Integer chatId) {
+        log.info("🔍 chatId로 멘티 정보 조회: chatId={}", chatId);
+        
+        try {
+            // chatId로 채팅방 조회
+            MentoringChatroom chatroom = mentoringChatroomRepository.findById(chatId.longValue())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "채팅방을 찾을 수 없습니다. chatId=" + chatId));
+            
+            // participant1Id가 멘티 ID (participant2Id가 멘토 ID)
+            Long menteeId = chatroom.getParticipant1Id();
+            
+            // menteeId로 멘티 정보 조회
+            Mentee mentee = menteeRepository.findById(menteeId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "멘티 정보를 찾을 수 없습니다. menteeId=" + menteeId));
+            
+            log.info("✅ 멘티 정보 조회 완료: menteeId={}, name={}, age={}", 
+                    menteeId, mentee.getName(), mentee.getAge());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("name", mentee.getName());
+            response.put("age", mentee.getAge());
+            response.put("avatar", mentee.getName() != null ? mentee.getName().substring(0, 1) : "?");
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("❌ chatId로 멘티 정보 조회 실패: chatId={}", chatId, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "멘티 정보 조회 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
 }

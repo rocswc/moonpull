@@ -12,3 +12,4 @@ public class MenteeInfo {
     private String name;    // 멘티 이름
     private Integer age;    // 멘티 나이
 }
+

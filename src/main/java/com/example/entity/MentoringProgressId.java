@@ -13,3 +13,4 @@ public class MentoringProgressId implements Serializable {
     private int menteeId;
     private int mentorId;
 }
+

@@ -19,15 +19,16 @@ public class MentoringProgress {
     @Column(name = "mentor_id", nullable = false)
     private int mentorId;
 
-    @Column(nullable = false)
+    @Column(name = "matching_id", nullable = false)
     private int matchingId;
 
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private int userId;
 
     @Column(name = "chat_id")
     private Integer chatId;
 
+    @Column(name = "connection_status")
     private String connectionStatus;
 
     @Column(name = "start_date")

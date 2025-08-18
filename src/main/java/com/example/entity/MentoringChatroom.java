@@ -16,7 +16,8 @@ public class MentoringChatroom {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long chatId;
+    @Column(name = "chat_id")
+    private Long chat_id;
 
     @Column(nullable = true)
     private String content;
