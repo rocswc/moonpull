@@ -47,7 +47,7 @@ const queryClient = new QueryClient();
 const ChatComponents = () => {
   const { chatRooms } = useChat();
   const { user  } = useAuth();   // ✅ 로그인된 유저 정보
-  useFcm({ currentUser: user });       
+ // useFcm({ currentUser: user });       
   return (
     <>
       <UserListDrawer />
@@ -59,7 +59,7 @@ const ChatComponents = () => {
   );
 };
 const App = () => {
-  useFcm(); // 👈 여기서 실행 (정상 위치)
+  // 👈 여기서 실행 (정상 위치)
 
   return (
     <QueryClientProvider client={queryClient}>
