@@ -3,19 +3,28 @@ package com.example.controller;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.security.CustomUserDetails;
+import com.example.service.SessionService; // ★ 세션 무효화
 
-import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/api")
 public class AuthController {
+
+    private final SessionService sessionService;
+
+    public AuthController(SessionService sessionService) {
+        this.sessionService = sessionService;
+    }
 
     @GetMapping("/me")
     public Map<String, Object> me(Authentication authentication) {
@@ -24,32 +33,42 @@ public class AuthController {
         }
         CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
         List<String> roles = user.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority).toList();
+            .map(GrantedAuthority::getAuthority).toList();
 
         return Map.of(
             "authenticated", true,
             "loginId", user.getUsername(),
             "roles", roles,
-            "nickname", user.getMemberVO().getNickname()    // MemberVO에서 닉네임 가져옴
+            "nickname", user.getMemberVO().getNickname()
         );
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse res) {
-        // 쿠키 삭제용 쿠키 생성 (로그인과 동일한 속성)
-        Cookie cookie = new Cookie("jwt", "");
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // HTTPS 환경이면 true로 변경
-        cookie.setMaxAge(0); // 즉시 만료
+    public ResponseEntity<Void> logout(HttpServletRequest req, HttpServletResponse res) {
+        // 1) 서버 세션 무효화 (JDBC 세션 제거)
+        sessionService.invalidate(req.getSession(false));
 
-        // 쿠키 추가
-        res.addCookie(cookie);
+        // 2) jwt 쿠키 삭제
+        ResponseCookie delJwt = ResponseCookie.from("jwt", "")
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("None")
+            .path("/")
+            .maxAge(0)
+            .build();
+        res.addHeader(HttpHeaders.SET_COOKIE, delJwt.toString());
 
-        // SameSite 속성까지 명시적으로 삭제
-        res.addHeader("Set-Cookie",
-            "jwt=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+        // 3) SESSION 쿠키 삭제 추가 ★★★
+        ResponseCookie delSession = ResponseCookie.from("SESSION", "")
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("None") // CORS 환경이면 반드시 필요
+            .domain("192.168.56.1")
+            .path("/")
+            .maxAge(0)
+            .build();
+        res.addHeader(HttpHeaders.SET_COOKIE, delSession.toString());
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }

@@ -9,12 +9,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import com.example.VO.MemberVO;
 
-public class CustomUserDetails implements UserDetails {
+public class CustomUserDetails implements UserDetails, java.io.Serializable {
 
     private final MemberVO memberVO;   // ✅ userEntity 대신 memberVO 사용
 
     // 직접 주입된 권한 목록 (nullable)
-    private final Collection<? extends GrantedAuthority> authorities;
+    private final Collection<SimpleGrantedAuthority> authorities;
 
     // 생성자 1: 권한 없이 memberVO만 전달받을 때 사용
     public CustomUserDetails(MemberVO memberVO) {
@@ -24,9 +24,14 @@ public class CustomUserDetails implements UserDetails {
 
     // 생성자 2: 권한 목록까지 직접 전달받을 때 사용
     public CustomUserDetails(MemberVO memberVO, Collection<? extends GrantedAuthority> authorities) {
-        this.memberVO = memberVO;   // ✅ 변수명 통일
-        this.authorities = authorities;
-    }
+    	        this.memberVO = memberVO;
+    	        // 전달된 컬렉션이 직렬화 가능하도록 SimpleGrantedAuthority 리스트로 복사
+    	        this.authorities = (authorities == null)
+    	          ? null
+    	          : authorities.stream()
+    	              .map(a -> new SimpleGrantedAuthority(a.getAuthority()))
+    	              .collect(java.util.stream.Collectors.toList());
+    	    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
