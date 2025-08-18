@@ -1,10 +1,15 @@
 package com.example.jwt;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,43 +19,47 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.example.DAO.UserRepository;
 import com.example.VO.MemberVO;
 import com.example.security.CustomUserDetails;
+import com.example.service.SessionService;
+import com.example.session.ServerSession;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
-//1. 한 요청당 한번 만 실행
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final SessionService sessionService;
 
-    public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository) {
+    public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository, SessionService sessionService) {
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
+        this.sessionService = sessionService;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        System.out.println("요청 쿠키: " + Arrays.toString(request.getCookies()));
-        System.out.println("[JwtFilter] 요청 URI: " + request.getRequestURI());
-        System.out.println("[JwtFilter] 요청 Method: " + request.getMethod());
-
-        // 2. OPTIONS 요청은 인증없이 허용
+        // 1) OPTIONS 패스
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 3. 인증 예외 경로(로그인, 회원가입, 소셜 로그인 콜백, 공개 API 등은 JWT 검사 없이 통과)
+        // 2) 인증 예외 경로
         String path = request.getRequestURI();
         if (
             path.equals("/api/login") ||
             path.equals("/api/join") ||
+            path.equals("/api/logout") ||   
+            
             path.equals("/api/check-duplicate") ||
             path.equals("/api/keywords/trending") ||
             path.equals("/api/keywords/autocomplete") ||
@@ -64,15 +73,17 @@ public class JwtFilter extends OncePerRequestFilter {
             path.startsWith("/api/teacher/") ||
 
             path.startsWith("/api/mentor-id") ||
+            path.startsWith("/api/mentoring/mentorByChatId") || //  08/18
+            path.startsWith("/api/mentoring/menteeByChatId") || //  08/18
+            
+            
             path.startsWith("/api/chat/messages") ||
 
             path.startsWith("/api/mentor/") ||
             path.startsWith("/api/mentors/") ||
 
-            path.startsWith("/api/mentoring/chatId") ||           
-            
-            
-            
+            path.startsWith("/api/mentoring/chatId") ||
+
             path.startsWith("/admin/") ||
             path.equals("/apply/mentor") ||
             path.startsWith("/mentee/") ||
@@ -81,91 +92,134 @@ public class JwtFilter extends OncePerRequestFilter {
             path.startsWith("/api/mentor-review/") ||
             path.equals("/mentorReview/insert") ||
             path.startsWith("/mentorReview/") ||
-            
-         //  소셜 로그인 과정 인증 없이 통과
-            path.startsWith("/auth/kakao/") ||     
-            path.startsWith("/auth/google/")       
+
+            // 소셜 로그인 콜백
+            path.startsWith("/auth/kakao/") ||
+            path.startsWith("/auth/google/")
         ) {
-            System.out.println(" [JwtFilter] 인증 예외 경로 - 필터 통과: " + path);
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 4. 쿠키에서 JWT 추출(요청에 포함된 쿠키에서 JWT 토큰을 꺼내 검증.)
-        String token = null;
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("jwt".equals(cookie.getName())) {
-                    token = cookie.getValue();
-                    break;
+        // 3) 쿠키에서 jwt 읽기 (구 ACCESS 호환은 당분간 유지)
+        String token = readCookie(request, "jwt");
+        if (token == null) token = readCookie(request, "ACCESS");
+
+        HttpSession httpSession = request.getSession(false);
+        Optional<ServerSession> sessOpt = sessionService.get(httpSession);
+
+        // 4) 토큰 유효 → 버전 일치 확인 후 인증 주입
+        if (token != null) {
+            try {
+                Claims claims = jwtUtil.parse(token).getPayload();
+                if (versionMatches(claims, sessOpt)) {
+                    authenticateWithClaims(claims, sessOpt);
+                    filterChain.doFilter(request, response);
+                    return;
+                } else {
+                    unauthorized(response); // 세션 버전 불일치 → 강제로그아웃/권한변경 대응
+                    return;
                 }
+            } catch (ExpiredJwtException ex) {
+                // 만료 → 아래 세션 기반 재발급 시도
+            } catch (Exception e) {
+                filterChain.doFilter(request, response); // 토큰 손상 등 → 익명
+                return;
             }
         }
 
-        if (token == null) {
-            System.out.println("❌ JWT 쿠키가 없음");
-            filterChain.doFilter(request, response);
-            return; //토큰이 없으면 인증 없이 다음 필터로 넘어감(익명 사용자로 처리).
+        // 5) 토큰 없음/만료 → 세션(refresh)로 10분짜리 재발급
+        if (sessOpt.isPresent()) {
+            ServerSession s = sessOpt.get();
+            if (s.refreshExpiry().isAfter(java.time.Instant.now())) {
+                sessionService.rotateRefresh(httpSession, Duration.ofDays(14));
+                String newJwt = jwtUtil.createAccess(
+                	    s.userId(), s.roles(), s.sessionVersion(), Duration.ofMinutes(10));
+                setAccessCookie(response, newJwt);      // jwt 쿠키 갱신
+                setAuthentication(s.userId(), s.roles());
+                filterChain.doFilter(request, response);
+                return;
+            }
         }
 
-        // 5. 토큰 만료 확인(JWT가 있으면 → 만료 여부 확인.)
-        if (jwtUtil.isExpired(token)) {
-            System.out.println("❌ JWT 토큰 만료됨");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-     /* 6. 사용자 정보 추출 (subject=PK, roles)유효하면 jwtUtil.getSubject()로 사용자 PK를 추출. 
-           PK로 UserRepository에서 사용자를 조회. */
-        String subject = jwtUtil.getSubject(token);          // ✅ 토큰의 sub = PK
-        String rolesString = jwtUtil.getRole(token);         // "USER,ADMIN" 또는 "ROLE_USER,ROLE_ADMIN"
-
-        if (subject == null || subject.isBlank()) {
-            System.out.println("❌ JWT subject(PK) 없음");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        /* 7. 권한 설정(토큰에 포함된 roles 값이 있으면 → 이를 ROLE_ 형식으로 변환하여 권한 리스트 생성.)
-              토큰 roles가 비어 있으면 → DB에서 roles 가져와서 권한 리스트 생성.*/
-        List<SimpleGrantedAuthority> authorities = Arrays.stream(
-                rolesString == null ? new String[0] : rolesString.split(","))
-            .map(String::trim)
-            .filter(r -> !r.isEmpty())
-            .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)  // USER → ROLE_USER 복원
-            .map(SimpleGrantedAuthority::new)
-            .toList();
-
-        // 8. DB에서 사용자 정보 조회 ( PK 기반)
-        Integer userId = Integer.valueOf(subject); // ✅
-        Optional<MemberVO> optionalUser = userRepository.findById(userId);
-        if (optionalUser.isEmpty()) {
-            System.out.println("❌ DB에 해당 PK 사용자 없음: " + subject);
-            filterChain.doFilter(request, response);
-            return;
-        }
-        MemberVO userEntity = optionalUser.get();
-
-        // 9  토큰 roles가 비었으면 DB 기준으로 보완
-        if (authorities.isEmpty() && userEntity.getRoles() != null && !userEntity.getRoles().isBlank()) {
-            authorities = Arrays.stream(userEntity.getRoles().split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
-                    .map(SimpleGrantedAuthority::new)
-                    .toList();
-        }
-
-        // 10. SecurityContext 세팅
-        CustomUserDetails customUserDetails = new CustomUserDetails(userEntity, authorities);
-        Authentication authToken =
-                new UsernamePasswordAuthenticationToken(customUserDetails, null, authorities);
-        SecurityContextHolder.getContext().setAuthentication(authToken);
-
-        System.out.println("✅ SecurityContext 인증 완료: " + authToken);
-        System.out.println("✅ 권한 목록: " + authToken.getAuthorities());
-
-        // 11. 다음 필터 체인 진행
+        // 6) 익명 진행
         filterChain.doFilter(request, response);
+    }
+
+    /* ------------ helpers ------------ */
+
+    private String readCookie(HttpServletRequest req, String name) {
+        if (req.getCookies() == null) return null;
+        for (Cookie c : req.getCookies()) if (name.equals(c.getName())) return c.getValue();
+        return null;
+    }
+
+    private boolean versionMatches(Claims claims, Optional<ServerSession> sessOpt) {
+        if (sessOpt.isEmpty()) return false;
+        ServerSession s = sessOpt.get();
+        Object v = claims.get("ver");
+        long tokenVer = (v instanceof Number n) ? n.longValue() : Long.MIN_VALUE; // ver 없으면 하위호환이 필요하면 여기서 통과도 가능
+        return (v == null) || (tokenVer == s.sessionVersion());
+    }
+
+    private void authenticateWithClaims(Claims claims, Optional<ServerSession> sessOpt) {
+        Integer userId = Integer.valueOf(claims.getSubject());
+        String rolesCsv = claims.get("roles", String.class);
+        Set<String> roles = (rolesCsv == null || rolesCsv.isBlank())
+                ? sessOpt.map(ServerSession::roles).orElseGet(java.util.Set::of)
+                : Arrays.stream(rolesCsv.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toSet());
+        setAuthentication(userId, roles);
+    }
+
+    private void setAuthentication(Integer userId, Set<String> roles) {
+        MemberVO user = userRepository.findById(userId).orElseGet(() -> {
+            MemberVO m = new MemberVO();
+            m.setUserId(userId);
+            m.setRoles(String.join(",", roles));
+            return m;
+        });
+
+        List<SimpleGrantedAuthority> authorities = roles.stream()
+                .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
+                .map(SimpleGrantedAuthority::new)
+                .toList();
+
+        CustomUserDetails cud = new CustomUserDetails(user, authorities);
+        Authentication authToken =
+            new UsernamePasswordAuthenticationToken(cud, null, authorities);
+        SecurityContextHolder.getContext().setAuthentication(authToken);
+    }
+
+    // ★ 백엔드-프론트 도메인이 다르면 None, 같으면 Lax 사용
+    private void setAccessCookie(HttpServletResponse res, String token) {
+        ResponseCookie c = ResponseCookie.from("jwt", token)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")   // 프론트 : https://localhost:8888, 백 : https://localhost:8080 → 교차 사이트면 None
+                .path("/")
+                .maxAge(10 * 60)
+                .build();
+        res.addHeader(HttpHeaders.SET_COOKIE, c.toString());
+    }
+
+    // ★ 로그아웃 시 쿠키 즉시 삭제할 때 사용 (프론트/백 동일 속성으로)
+    public static void addDeleteCookie(HttpServletResponse res) {
+        ResponseCookie del = ResponseCookie.from("jwt", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(0)
+                .build();
+        res.addHeader(HttpHeaders.SET_COOKIE, del.toString());
+    }
+
+    private void unauthorized(HttpServletResponse res) throws IOException {
+        res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write("{\"error\":\"unauthorized\"}");
     }
 }

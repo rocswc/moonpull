@@ -23,59 +23,64 @@ import com.example.jwt.JwtFilter;
 import com.example.jwt.JwtUtil;
 import com.example.jwt.LoginFilter;
 import com.example.security.CustomAccessDeniedHandler;
+import com.example.service.SessionService;
+
+import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpSession;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-   private final AuthenticationConfiguration authenticationConfiguration;
-   private final JwtUtil jwtUtil;
-   private final UserRepository userRepository;
+    private final AuthenticationConfiguration authenticationConfiguration;
+    private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
+    private final SessionService sessionService;
 
-   public SecurityConfig(
-       AuthenticationConfiguration authenticationConfiguration,
-       JwtUtil jwtUtil,
-       UserRepository userRepository // ✅ 매개변수에 추가
-   ) {
-       this.authenticationConfiguration = authenticationConfiguration;
-       this.jwtUtil = jwtUtil;
-       this.userRepository = userRepository; // ✅ 정상 초기화
-   }
+    public SecurityConfig(
+        AuthenticationConfiguration authenticationConfiguration,
+        JwtUtil jwtUtil,
+        UserRepository userRepository,
+        SessionService sessionService
+    ) {
+        this.authenticationConfiguration = authenticationConfiguration;
+        this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
+        this.sessionService = sessionService;
+    }
 
-    // AuthenticationManager
+    // 🔐 로그인 인증 관리자
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
-    // Password encoder
+    // 🔐 비밀번호 암호화
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // CORS 설정: 네가 쓰던 CorsFilter 그대로 유지
+    // 🌐 CORS 설정
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(
-               "http://localhost:3000",
-               "http://localhost:8888",
-               "http://192.168.56.1:8888",
-               "http://192.168.0.27:8888",
-                 //개발용 네이버 배포할때는 삭제 할 예정 suhan 수한 25-08-17 13:04
-               "https://localhost:3000",
-               "https://localhost:8888",
-               "https://192.168.56.1:8888",
-               "https://192.168.0.27:8888"   
-             
-        		));
+            "http://localhost:3000",
+            "http://localhost:8888",
+            "http://192.168.56.1:8888",
+            "http://192.168.0.27:8888",
+            "https://localhost:3000",
+            "https://localhost:8888",
+            "https://192.168.56.1:8888",
+            "https://192.168.0.27:8888"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // 필요하면 명시적으로: List.of("Content-Type","X-XSRF-TOKEN","Authorization")
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-        // 참고: HttpOnly 쿠키는 JS에서 읽을 수 없으므로 Set-Cookie 노출 여부는 큰 의미 없음
         config.setExposedHeaders(List.of("Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -83,122 +88,126 @@ public class SecurityConfig {
         return new CorsFilter(source);
     }
 
-    // Security Filter Chain
+    // ✅ 로그인 필터 (세션 저장 포함)
+    @Bean
+    public LoginFilter loginFilter() throws Exception {
+        return new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, userRepository, sessionService);
+    }
+
+    // ✅ JWT 필터 (세션 + 쿠키 검증)
+    @Bean
+    public JwtFilter jwtFilter() {
+        return new JwtFilter(jwtUtil, userRepository, sessionService);
+    }
+
+    // ✅ 익명 사용자의 세션 생성을 막는 필터
+    @Bean
+    public Filter preventSessionCreationForAnonymous() {
+        return (ServletRequest request, ServletResponse response, FilterChain chain) -> {
+            HttpServletRequest req = (HttpServletRequest) request;
+            String uri = req.getRequestURI();
+
+            boolean isApiRequest = uri.startsWith("/api/");
+            boolean isAnonymous = req.getSession(false) == null;
+
+            // 로그인/회원가입 요청은 세션 허용
+            boolean allowSession =
+                uri.equals("/api/login") ||
+                uri.equals("/auth/login") ||
+                uri.startsWith("/api/join");
+
+            if (isAnonymous && isApiRequest && !allowSession) {
+                chain.doFilter(new HttpServletRequestWrapper(req) {
+                    @Override
+                    public HttpSession getSession() { return null; }
+                    @Override
+                    public HttpSession getSession(boolean create) { return null; }
+                }, response);
+            } else {
+                chain.doFilter(request, response);
+            }
+        };
+    }
+
+
+    // 🔒 보안 설정
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // 네 CorsFilter 빈이 있으니 여기서는 기본 활성화만
             .cors(cors -> {})
-            // 지금은 프론트 수정 없이 바로 쓰게 CSRF 비활성화
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(httpBasic -> httpBasic.disable())
             .headers(headers -> headers.frameOptions().sameOrigin())
 
-            // JWT 로그인/검증 필터 등록  
-            .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(new JwtFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class)
+            // ✅ 하이브리드 방식: 세션 필요시 생성 (로그인 시)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
+            // ✅ 필터 등록 순서
+            .addFilterBefore(preventSessionCreationForAnonymous(), UsernamePasswordAuthenticationFilter.class)
+            .addFilterAt(loginFilter(), UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(jwtFilter(), UsernamePasswordAuthenticationFilter.class)
 
-            // 인가 규칙
+            // ✅ 접근 규칙
             .authorizeHttpRequests(auth -> auth
-                // 프리플라이트
-            		.requestMatchers("/favicon.ico").permitAll()// 수한 25-08-17 13:04
-            		.requestMatchers("/auth/social-join").permitAll() // 수한 25-08-17 14:52
+                .requestMatchers("/favicon.ico").permitAll()
+                .requestMatchers("/auth/social-join").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/admin/spam-stats").permitAll()
-                // 공개 엔드포인트
-                .requestMatchers(
-                        "/",
-                        "/api/login",
-                        "/api/join/**", //수한 25-08-11 15:49
-                        "/api/join",
-                        "/api/profile/check-email",
-                        "/api/profile/check-phone",                      
-                        "/api/check-duplicate",
-                        "/api/keywords/trending",
-                        "/api/keywords/autocomplete",
-                        "/api/kibana/**"
-                ).permitAll() 
-                .requestMatchers("/api/admin/reports").permitAll()
-                	
-                .requestMatchers(HttpMethod.POST, "/api/admin/report").permitAll()
-                
-                
-                .requestMatchers(HttpMethod.GET, "/users/all").permitAll()
-                
-                   .requestMatchers("/api/chat/**").permitAll()
-                   .requestMatchers("/api/teacher/**").permitAll()
-                   .requestMatchers("/api/mentors/**").permitAll() // **
-                   .requestMatchers("/api/mentor/**").permitAll() // ✅ 멘토 정보 조회 API 추가 08/14
-                   
-                   .requestMatchers("/api/mentoring/chatId").permitAll() // ✅ 추가됨 2025-08-08
-                   .requestMatchers("/api/mentoring/chatIdByUserId").permitAll() // ✅ 새로운 chatId 조회 API 추가 08/13
-                   .requestMatchers("/api/mentoring/mentor-id").hasRole("MENTOR") // 멘토만 멘토 ID 조회 가능 --08/13
-                   
-                   
-                   .requestMatchers(HttpMethod.POST, "/api/mentoring/request").hasRole("MENTEE") // 멘티만 요청 가능
-                   .requestMatchers(HttpMethod.GET, "/api/mentoring/requests").hasRole("MENTOR") // 멘토만 목록 조회 가능
-                   .requestMatchers(HttpMethod.POST, "/api/mentoring/accept-request").hasRole("MENTOR") // 멘토만 수락 가능
-                   .requestMatchers("/api/mentoring/progress").authenticated() // 진행 상황은 인증 필요
-                   
-                   .requestMatchers("/error/**").permitAll()
-                   
-                   .requestMatchers("/api/mentor-id").hasAnyRole("MENTOR", "ADMIN")
-                   .requestMatchers("/api/mentor-id/**").hasAnyRole("MENTOR", "ADMIN")
-                   
-                   
-                   .requestMatchers("/ws/**").permitAll()  
-                   .requestMatchers("/api/rt-chat/**").permitAll()
-                   
-                   
-                   
-                   .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")       
-                   .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                   .requestMatchers("/admin/**").permitAll()
-                   .requestMatchers("/auth/**").permitAll() // 수한 25-08-17 15:03
-                 //.requestMatchers("/admin/**").hasRole("ADMIN")
-                 //.requestMatchers("/mentor/**").hasAnyRole("MENTOR", "ADMIN")
-                   .requestMatchers("/mentee/**").permitAll()        
-                   //.requestMatchers("/mentee/**").hasAnyRole("MENTEE", "ADMIN")
-                   .requestMatchers("/payments/**").permitAll()
-                   .requestMatchers("/auth/naver/callback").permitAll()
-                   .requestMatchers(HttpMethod.POST, "/api/chat/log").permitAll()
-                   .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
-                   .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated() // 프로필 수정 인증 필요
-                   .requestMatchers("/api/admin/reports/top").permitAll()
-                   
-                   
-                   //수한
-                   .requestMatchers("/auth/**").permitAll() // 수한 25-08-07 15:03
-                   .requestMatchers("/api/join/**").permitAll()  //수한 25-08-11 15:49
-                   .requestMatchers("/favicon.ico").permitAll()// 수한 25-08-07 13:04
-                   .requestMatchers("/auth/social-join").permitAll() // 수한 25-08-07 14:52
-                   .requestMatchers("/auth/social/finalize").permitAll() //25-08-12 17:46
-                   .requestMatchers(HttpMethod.POST, "/api/auth/social-link").permitAll()//25-08-16-50 소셜링크
-                  
-                   
-                   // 멘토리뷰?
-                   .requestMatchers("/api/mentor-review/**").permitAll()
-                   .requestMatchers("/mentor-review/**").permitAll()
-                   .requestMatchers("/mentorReview/**").permitAll()
-                   .requestMatchers("/api/mentoring/accept").permitAll()
-                 //추가
-                 .requestMatchers("/api/mentoring/progress").authenticated()
-                   
-                   .anyRequest().authenticated()// 그 외에는 인증 필요
-               )
 
-            // 접근 거부 처리
-            .exceptionHandling(ex ->
-                ex.accessDeniedHandler(new CustomAccessDeniedHandler())
+                .requestMatchers(
+                    "/", "/api/login", "/api/join/**", "/api/profile/check-email",
+                    "/api/profile/check-phone", "/api/check-duplicate",
+                    "/api/keywords/trending", "/api/keywords/autocomplete", "/api/kibana/**"
+                ).permitAll()
+
+                .requestMatchers("/api/admin/reports").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/admin/report").permitAll()
+                .requestMatchers(HttpMethod.GET, "/users/all").permitAll()
+
+                .requestMatchers("/api/chat/**", "/api/teacher/**", "/api/mentors/**", "/api/mentor/**").permitAll()
+                .requestMatchers("/api/mentoring/chatId", "/api/mentoring/chatIdByUserId").permitAll()
+
+                .requestMatchers("/api/mentoring/mentor-id").hasRole("MENTOR")
+                .requestMatchers("/api/mentoring/mentorByChatId").permitAll() // ✅ chatId로 멘토 정보 조회 08/18
+                .requestMatchers("/api/mentoring/menteeByChatId").permitAll() // ✅ chatId로 멘티 정보 조회 08/18
+                .requestMatchers(HttpMethod.POST, "/api/mentoring/request").hasRole("MENTEE")
+                .requestMatchers(HttpMethod.GET, "/api/mentoring/requests").hasRole("MENTOR")
+                .requestMatchers(HttpMethod.POST, "/api/mentoring/accept-request").hasRole("MENTOR")
+                .requestMatchers("/api/mentoring/progress").authenticated()
+
+                .requestMatchers("/error/**").permitAll()
+
+                .requestMatchers("/api/mentor-id", "/api/mentor-id/**").hasAnyRole("MENTOR", "ADMIN")
+
+                .requestMatchers("/ws/**", "/api/rt-chat/**").permitAll()
+                .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/admin/**").permitAll()
+                .requestMatchers("/auth/**", "/auth/social/finalize").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/social-link").permitAll()
+
+                .requestMatchers("/api/mentor-review/**", "/mentor-review/**", "/mentorReview/**").permitAll()
+                .requestMatchers("/api/mentoring/accept").permitAll()
+
+                // ✅ 여기 핵심!
+                .requestMatchers(HttpMethod.GET, "/api/me").permitAll() // 익명도 접근 가능
+                .requestMatchers(HttpMethod.POST, "/api/logout").permitAll()
+
+                .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated()
+
+                .requestMatchers("/api/admin/reports/top").permitAll()
+
+                .anyRequest().authenticated()
             )
 
-            // 세션 비활성화 (JWT 방식)
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            );
-        
+            // 익명 사용자 세션 방지 + SecurityContext 명시적 저장 해제
+            .securityContext(securityContext -> securityContext.requireExplicitSave(false))
+            .anonymous(anonymous -> anonymous.disable())
+
+            // 접근 거부 시 핸들러 설정
+            .exceptionHandling(ex -> ex.accessDeniedHandler(new CustomAccessDeniedHandler()));
 
         return http.build();
     }
