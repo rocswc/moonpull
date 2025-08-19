@@ -47,7 +47,7 @@ const queryClient = new QueryClient();
 const ChatComponents = () => {
   const { chatRooms } = useChat();
   const { user  } = useAuth();   // ✅ 로그인된 유저 정보
- // useFcm({ currentUser: user });       
+ useFcm({ currentUser: user });       
   return (
     <>
       <UserListDrawer />
@@ -94,7 +94,8 @@ const App = () => {
                 <Route path="/mentte" element={<PrivateRoute><MenteePage /></PrivateRoute>} />
                 <Route path="/chatbot" element={<PrivateRoute><MyChatBot /></PrivateRoute>} />       
                 <Route path="/chat-interface" element={<PrivateRoute><ChatInterface /></PrivateRoute>} />
-
+				<Route path="/auth" element={<AuthPage />} />
+				
                 {/* 결제 */}
                 <Route path="/payment/checkout" element={<PrivateRoute><Checkout /></PrivateRoute>} />
                 <Route path="/payment/success" element={<PrivateRoute><Success /></PrivateRoute>} />
