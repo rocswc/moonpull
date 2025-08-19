@@ -1,6 +1,7 @@
 package com.example.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,5 +28,15 @@ public class MentorReviewServiceImpl implements MentorReviewService {
         int result = mentorReviewDAO.insertReview(vo);
         mentorReviewDAO.updateMentorAverageScore(vo.getMentorId());
         return result;
+    }
+
+    @Override
+    public Map<String, Object> getMentorReviewStats(int mentorId) {
+        return mentorReviewDAO.getMentorReviewStats(mentorId);
+    }
+
+    @Override
+    public Map<String, Object> getMentorInfo(int mentorId) {
+        return mentorReviewDAO.getMentorInfo(mentorId);
     }
 }
