@@ -7,7 +7,7 @@ import Navigation from "@/components/Navigation";
 
 
 // API Base URL
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = 'https://localhost:5001/api';
 
 // 실제 API 함수들
 const api = {
