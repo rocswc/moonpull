@@ -2,32 +2,38 @@ package com.example.VO;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL) // ✅ null 값은 응답에서 제외
 public class ReportVO {
     private Integer reportId;
     private Integer reporterId;
     private Integer targetUserId;
-    
 
-    private String reportType; // ✅ CHAT or GENERAL
-    private String reasonCode; // ✅ EX: 욕설, 도배 등
+    private String reportType; // CHAT or GENERAL
+    private String reasonCode; // 욕설, 도배 등
     private String reason;
 
     private String status;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // ✅ 직렬화 안전
     private LocalDateTime createdAt;
 
-    private Long chatMessageId; // ✅ CHAT 신고일 경우 사용
+    private Long chatMessageId;
 
-    private Integer banDays;        // ✅ 정지 일수
-    private String banReason;       // ✅ 정지 상세 사유
-    private LocalDateTime banExpireAt; // ✅ 정지 만료일
+    private Integer banDays;
+    private String banReason;
 
-    private Boolean appealRequested;  // ✅ 이의제기 여부
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime banExpireAt;
 
-    // 편의를 위한 추가 필드
-    private Long  reportCount;
+    private Boolean appealRequested;
+
+    // 편의 필드
+    private Long reportCount;
     private String reporterNickname;
     private String targetNickname;
     private boolean targetBanned;

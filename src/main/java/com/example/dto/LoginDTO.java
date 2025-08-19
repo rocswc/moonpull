@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 public class LoginDTO {
-    @JsonAlias({"login_id", "loginId"}) // 둘 다 허용
+    @JsonAlias({"login_id", "loginId","loginid"}) // 둘 다 허용
     private String loginId;
     private String password;
 }

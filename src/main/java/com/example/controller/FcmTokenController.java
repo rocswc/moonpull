@@ -16,12 +16,14 @@ public class FcmTokenController {
 
     @PostMapping("/register")
     public ResponseEntity<Void> register(@RequestBody RegisterReq req) {
+    	System.out.println("👉 받은 userId=" + req.getUserId() + ", token=" + req.getToken());
         service.register(req.getUserId(), req.getToken());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/unregister")
     public ResponseEntity<Void> unregister(@RequestBody UnregisterReq req) {
+    	System.out.println("👉 받은 token=" + req.getToken());
         service.unregister(req.getToken());
         return ResponseEntity.ok().build();
     }

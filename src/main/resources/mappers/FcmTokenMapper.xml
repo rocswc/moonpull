@@ -25,4 +25,13 @@
     WHERE token = #{token}
   </delete>
 
+	<delete id="deleteByUserId" parameterType="int">
+  DELETE FROM fcm_token
+  WHERE user_id = #{userId}
+</delete>
+
+
 </mapper>
+
+
+

@@ -61,23 +61,23 @@ const BanModal = ({ open, onClose, user, onSuccess }) => {
     }
   };
 
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>블랙리스트 지정</DialogTitle>
           <DialogDescription>
-            <p>
-              <strong>{user?.name}</strong> ({user?.email}) 사용자에게 블랙리스트 정지 처리를 적용합니다.
-            </p>
+            <strong>{user?.name}</strong> ({user?.email}) 사용자에게 블랙리스트 정지 처리를 적용합니다.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
           <div>
             <label className="block mb-1 text-sm font-medium">정지 사유 코드</label>
-            <Input value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} />
+            <Input
+              value={reasonCode}
+              onChange={(e) => setReasonCode(e.target.value)}
+            />
           </div>
 
           <div>

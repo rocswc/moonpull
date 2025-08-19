@@ -35,7 +35,7 @@
   <update id="markAsRead" parameterType="int">
     UPDATE notification
     SET is_read = 1
-    WHERE notification_id = #{notificationId}
+   WHERE notification_id = #{value}
   </update>
 
   <!-- 알림 전체 읽음 처리 -->

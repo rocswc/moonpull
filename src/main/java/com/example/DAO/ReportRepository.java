@@ -16,4 +16,6 @@ public interface ReportRepository {
     void insertReport(ReportVO reportVO);
     
     List<ReportVO> getTopReportedUsers();
+    
+    int countReportsByTarget(int targetUserId); 
 }

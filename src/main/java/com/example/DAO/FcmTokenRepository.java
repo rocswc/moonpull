@@ -9,7 +9,7 @@ import com.example.VO.FcmTokenVO;
 public interface FcmTokenRepository {
 
     // XML: getTokensByUserId
-    List<FcmTokenVO> getTokensByUserId(Integer userId);
+    List<FcmTokenVO> getTokensByUserId(Integer  userId);
 
     // XML: insertToken
     void insertToken(FcmTokenVO vo);
@@ -19,5 +19,5 @@ public interface FcmTokenRepository {
 
     // (선택) 특정 유저의 모든 토큰 제거가 필요할 때 유용
     // <delete id="deleteByUserId">DELETE FROM fcm_token WHERE user_id = #{userId}</delete>
-    void deleteByUserId(Integer userId);
+    void deleteByUserId(Integer  userId);
 }

@@ -9,7 +9,7 @@ public class FcmTokenVO {
 
 	
 	  private Long tokenId;
-	    private Integer userId;
+	    private Integer  userId;
 	    private String token;
 	    private LocalDateTime createdAt;
 	    private LocalDateTime lastUsedAt;

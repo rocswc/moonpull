@@ -1,9 +1,12 @@
 package com.example.controller;
 
+import com.example.VO.FcmTokenVO;
 import com.example.VO.ReportVO;
+import com.example.service.FcmPushService;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import com.example.DAO.FcmTokenRepository;
 import com.example.DAO.ReportRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -19,10 +22,11 @@ import java.util.List;
 public class ReportController {
 
     private final ReportRepository reportRepository;
-
+    private final FcmTokenRepository fcmTokenRepository;
+    private final FcmPushService fcmPushService;
     // ✅ 신고 등록
     @PostMapping("/admin/report")
-    public ResponseEntity<Void> submitReport(@RequestBody ReportVO reportVO) {
+    public ResponseEntity<Void> submitReport(@RequestBody ReportVO reportVO ) {
         System.out.println("🚨 신고 요청 들어옴: " + reportVO);
 
         if (reportVO.getTargetUserId() != null && reportVO.getTargetUserId() == 0) {
@@ -33,7 +37,18 @@ public class ReportController {
         
 
         reportRepository.insertReport(reportVO);
-        
+        int count = reportRepository.countReportsByTarget(reportVO.getTargetUserId());
+        System.out.println("📊 신고 누적 횟수 = " + count);
+        if (count >= 3) {
+            List<FcmTokenVO> tokens = fcmTokenRepository.getTokensByUserId(reportVO.getTargetUserId());
+            for (FcmTokenVO tokenVO : tokens) {
+                fcmPushService.sendMessage(
+                    tokenVO.getToken(),
+                    "🚨 신고 누적 알림",
+                    "당신은 현재 " + count + "회 이상 신고되었습니다."
+                );
+            }
+        }
         System.out.println("🪵 프론트에서 넘어온 신고 데이터:");
         System.out.println("targetUserId = " + reportVO.getTargetUserId());
         

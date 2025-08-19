@@ -5,6 +5,7 @@ import "@/lib/axiosConfig"; // ← 전역 설정(베이스URL, withCredentials, 
 
 // 서버에서 내려주는 사용자 응답 타입
 type ServerUser = {
+	userId?: number;
   loginId?: string;
   nickname?: string;
   roles?: string[] | string;
@@ -16,6 +17,7 @@ type MeResponse =
   | ({ authenticated: true } & ServerUser);
 
 interface User {
+	id: number;
   nickname: string;
   role: string;
 }
@@ -57,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     if (role.startsWith("ROLE_")) role = role.slice(5);
 
-    return { nickname: displayName, role };
+    return { id: data.userId ? Number(data.userId) : -1, nickname: displayName, role };
   };
 
   useEffect(() => {

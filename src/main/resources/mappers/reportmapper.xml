@@ -62,4 +62,11 @@
   LIMIT 3
 </select>
 
+
+<select id="countReportsByTarget" parameterType="int" resultType="int">
+  SELECT COUNT(*)
+  FROM report
+  WHERE target_user_id = #{value}
+</select>
+
 </mapper>

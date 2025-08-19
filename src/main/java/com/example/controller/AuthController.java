@@ -38,6 +38,7 @@ public class AuthController {
         return Map.of(
             "authenticated", true,
             "loginId", user.getUsername(),
+            "userId", user.getMemberVO().getUserId(),
             "roles", roles,
             "nickname", user.getMemberVO().getNickname()
         );

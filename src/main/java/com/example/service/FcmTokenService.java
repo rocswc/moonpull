@@ -12,7 +12,7 @@ import com.example.VO.FcmTokenVO;
 public class FcmTokenService {
     private final FcmTokenRepository repo;
 
-    public void register(Integer userId, String token) {
+    public void register(Integer  userId, String token) {
         FcmTokenVO vo = new FcmTokenVO();
         vo.setUserId(userId);
         vo.setToken(token);
@@ -23,7 +23,7 @@ public class FcmTokenService {
         repo.deleteToken(token);
     }
 
-    public List<FcmTokenVO> tokensOf(Integer userId) {
+    public List<FcmTokenVO> tokensOf(Integer  userId) {
         return repo.getTokensByUserId(userId);
     }
 }
