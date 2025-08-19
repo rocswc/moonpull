@@ -9,4 +9,6 @@ import java.util.List;
 @Mapper
 public interface MyMentorListRepository {
     List<MyMentorListDTO> findByMenteeId(@Param("menteeId") int menteeId);
+
+    int endMentoring(@Param("progressId") int progressId);
 }

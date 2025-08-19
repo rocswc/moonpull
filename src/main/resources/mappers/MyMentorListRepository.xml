@@ -5,28 +5,31 @@
 
 <mapper namespace="com.example.DAO.MyMentorListRepository">
 
-  <resultMap id="MentorProgressMap" type="com.example.dto.MyMentorListDTO">
-    <result property="mentoring_progress_id" column="mentoring_progress_id" />
-    <result property="mentor_id" column="mentor_id" />
-    <result property="mentor_name" column="mentor_name" />
-    <result property="chat_id" column="chat_id" />
-    <result property="connection_status" column="connection_status" />
-    <result property="start_date" column="start_date" />
-    <result property="end_date" column="end_date" />
-  </resultMap>
-
-  <select id="findByMenteeId" parameterType="int" resultMap="MentorProgressMap">
+  <!-- 진행중 멘토링 조회 -->
+  <select id="findByMenteeId" parameterType="int" resultType="com.example.dto.MyMentorListDTO">
     SELECT 
-      mp.mentoring_progress_id,
-      mp.mentor_id,
-      m.name AS mentor_name,
-      mp.chat_id,
-      mp.connection_status,
-      mp.start_date,
-      mp.end_date
+      mp.mentoring_progress_id AS progressId,
+      m.mentor_id AS mentorId,
+      m.name AS mentorName,
+      m.intro AS mentorIntro,
+      m.career,
+      GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') AS specialty
     FROM mentoring_progress mp
     JOIN mentor m ON mp.mentor_id = m.mentor_id
+    LEFT JOIN mentor_subject ms ON m.mentor_id = ms.mentor_id
+    LEFT JOIN subject s ON ms.subject_id = s.subject_id
     WHERE mp.mentee_id = #{menteeId}
+      AND mp.connection_status = 'in_progress'
+    GROUP BY mp.mentoring_progress_id, m.mentor_id, m.name, m.intro, m.career
   </select>
+
+  <!-- 멘토링 종료 -->
+  <update id="endMentoring" parameterType="int">
+    UPDATE mentoring_progress
+    SET connection_status = 'ended',
+        end_date = NOW()
+    WHERE mentoring_progress_id = #{progressId}
+      AND connection_status = 'in_progress'
+  </update>
 
 </mapper>
