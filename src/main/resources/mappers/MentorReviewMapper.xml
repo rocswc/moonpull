@@ -20,11 +20,35 @@
     <update id="updateMentorAverageScore">
         UPDATE mentor
         SET score = (
-            SELECT ROUND(AVG(rating), 1)
+            SELECT COALESCE(ROUND(AVG(rating), 1), 0)
             FROM mentor_review
             WHERE mentor_id = #{mentorId}
         )
         WHERE mentor_id = #{mentorId}
     </update>
+
+    <!-- 멘토별 리뷰 통계 조회 -->
+    <select id="getMentorReviewStats" resultType="map">
+        SELECT 
+            #{mentorId} as mentor_id,
+            COALESCE(ROUND(AVG(rating), 1), 0) as averageScore,
+            COUNT(*) as reviewCount,
+            COALESCE(SUM(rating), 0) as totalScore,
+            COALESCE(ROUND(AVG(rating), 1), 0) as displayScore
+        FROM mentor_review 
+        WHERE mentor_id = #{mentorId}
+    </select>
+
+    <!-- 멘토 정보 조회 -->
+    <select id="getMentorInfo" resultType="map">
+        SELECT 
+            m.mentor_id,
+            m.introduction,
+            COALESCE(m.score, 0) as averageRating,
+            mem.name
+        FROM mentor m
+        JOIN member mem ON m.user_id = mem.user_id
+        WHERE m.mentor_id = #{mentorId}
+    </select>
 
 </mapper>
