@@ -15,12 +15,6 @@ interface Message {
   timestamp: string;
 }
 
-interface ChatMessageResponse {
-  senderId: string;
-  content: string;
-  timestamp: string;
-}
-
 interface Teacher {
   name: string;
   subject: string;
@@ -39,22 +33,29 @@ const Chat = () => {
     avatar: "?",
   });
 
-  // 황규영의 user_id (18) 사용
-  const menteeUserId = 18; // 황규영의 user_id
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 1. 멘토 정보 조회
+  // 1. chatId 설정 (teacherId가 실제로는 chatId)
+  useEffect(() => {
+    if (teacherId) {
+      const chatIdValue = parseInt(teacherId);
+      setChatId(chatIdValue);
+      console.log("✅ chatId 설정:", chatIdValue);
+    }
+  }, [teacherId]);
+
+  // 2. 멘토 정보 조회 (chatId로 조회)
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
-        console.log("�� teacherId param:", teacherId);
-        console.log("📡 Fetching mentor info from:", `/api/mentor/${teacherId}`);
-
-        const res = await fetch(`/api/mentor/${teacherId}`, { credentials: "include" });
+        console.log("📡 mentor info 요청:", `/api/mentoring/mentorByChatId?chatId=${chatId}`);
+        const res = await fetch(`/api/mentoring/mentorByChatId?chatId=${chatId}`, {
+          credentials: "include"
+        });
         if (!res.ok) throw new Error("멘토 정보 로드 실패");
 
         const data = await res.json();
-        console.log("��‍🏫 mentor response data:", data);
+        console.log("✅ mentor response:", data);
 
         setTeacher({
           name: data.name,
@@ -66,75 +67,70 @@ const Chat = () => {
       }
     };
 
-    if (teacherId) fetchTeacher();
-  }, [teacherId]);
+    if (chatId) fetchTeacher();
+  }, [chatId]);
 
-  // 2. chatId 조회 (새로운 API 사용)
-  useEffect(() => {
-    const fetchChatId = async () => {
-      try {
-        console.log(`📡 [요청] chatId 요청: menteeUserId=${menteeUserId}, mentorUserId=${teacherId}`);
-        // 새로운 API 사용 - user_id로 조회
-        const res = await fetch(`/api/mentoring/chatIdByUserId?menteeUserId=${menteeUserId}&mentorUserId=${teacherId}`);
-        const data = await res.json();
-
-        if (!res.ok || !("chatId" in data) || data.chatId === -1) {
-          console.warn("⚠️ chatId 없음 또는 잘못된 응답:", data);
-          return;
-        }
-
-        console.log("✅ [응답] chatId:", data.chatId);
-        setChatId(data.chatId);
-      } catch (err) {
-        console.error("❌ [오류] chatId 조회 실패:", err);
-      }
-    };
-
-    if (teacherId) fetchChatId();
-  }, [teacherId, menteeUserId]);
-
-  // 3. 메시지 목록 조회
+  // 3. 메시지 목록 조회 (MentoringChatroomController 사용)
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        console.log("📡 [요청] 메시지 불러오기 - chatId:", chatId);
-        const res = await fetch(`/api/chat/messages?roomId=${chatId}`, {
+        console.log("📡 메시지 불러오기 - chatId:", chatId);
+        const res = await fetch(`/api/mentoring/messages?roomId=${chatId}`, {
           credentials: "include",
         });
 
-        const data: ChatMessageResponse[] = await res.json();
-        console.log("✅ [응답] 메시지 개수:", data.length);
+        if (!res.ok) {
+          console.warn("⚠️ 메시지 API 응답 오류:", res.status);
+          setMessages([]);
+          return;
+        }
 
-        const formatted: Message[] = data.map((msg, index) => ({
-          id: index + 1,
-          sender: msg.senderId === "student" ? "student" : "teacher",
-          content: msg.content,
-          timestamp: new Date(msg.timestamp).toLocaleTimeString("ko-KR", {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          }),
-        }));
+        const data = await res.json();
+        console.log("✅ 메시지 응답:", data);
 
-        setMessages(formatted);
+        // MentoringChatroom에서 content가 있으면 메시지로 표시
+        if (data.content) {
+          const formatted: Message[] = [{
+            id: 1,
+            sender: "student", // 기본적으로 학생이 보낸 것으로 가정
+            content: data.content,
+            timestamp: data.sentAt ? new Date(data.sentAt).toLocaleTimeString("ko-KR", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }) : new Date().toLocaleTimeString("ko-KR", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }),
+          }];
+
+          console.log("✅ 포맷된 메시지 개수:", formatted.length);
+          setMessages(formatted);
+        } else {
+          console.log("📭 저장된 메시지 없음");
+          setMessages([]);
+        }
       } catch (err) {
         console.error("❌ [오류] 메시지 불러오기 실패:", err);
+        setMessages([]);
       }
     };
 
     if (chatId !== null) fetchMessages();
   }, [chatId]);
 
+  // 스크롤 맨 아래로
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 4. 메시지 전송
+  // 4. 메시지 전송 (MentoringChatroomController 사용)
   const handleSendMessage = async () => {
     if (!message.trim() || chatId === null) return;
 
     const timestamp = new Date().toISOString();
-    console.log("📤 [보내기] 메시지:", message);
+    console.log("�� 보내기:", message);
 
     const newMessage: Message = {
       id: messages.length + 1,
@@ -151,7 +147,8 @@ const Chat = () => {
     setMessage("");
 
     try {
-      const response = await fetch("/api/chat/messages", {
+      // MentoringChatroomController의 /api/mentoring/messages 사용
+      const response = await fetch("/api/mentoring/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -163,12 +160,12 @@ const Chat = () => {
         }),
       });
       if (!response.ok) throw new Error("메시지 저장 실패");
-      console.log("✅ [저장] 메시지 전송 완료");
+      console.log("✅ 메시지 저장 완료");
     } catch (err) {
       console.error("❌ [오류] 메시지 저장 실패:", err);
     }
 
-    // 💬 가상 답변 (테스트용)
+    // 💬 테스트용 가상 답변
     setTimeout(() => {
       const responses = [
         "좋은 질문입니다. 자세히 설명드릴게요.",
@@ -233,10 +230,20 @@ const Chat = () => {
                       </Avatar>
                     )}
                     <div className="space-y-1">
-                      <div className={`px-4 py-2 rounded-2xl ${msg.sender === "student" ? "bg-primary text-primary-foreground ml-auto" : "bg-muted text-foreground"}`}>
+                      <div
+                        className={`px-4 py-2 rounded-2xl ${
+                          msg.sender === "student"
+                            ? "bg-primary text-primary-foreground ml-auto"
+                            : "bg-muted text-foreground"
+                        }`}
+                      >
                         <p className="text-sm">{msg.content}</p>
                       </div>
-                      <p className={`text-xs text-muted-foreground ${msg.sender === "student" ? "text-right" : "text-left"}`}>
+                      <p
+                        className={`text-xs text-muted-foreground ${
+                          msg.sender === "student" ? "text-right" : "text-left"
+                        }`}
+                      >
                         {msg.timestamp}
                       </p>
                     </div>
