@@ -15,8 +15,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 
 import com.example.DAO.UserRepository;
 import com.example.jwt.JwtFilter;
@@ -25,7 +25,10 @@ import com.example.jwt.LoginFilter;
 import com.example.security.CustomAccessDeniedHandler;
 import com.example.service.SessionService;
 
-import jakarta.servlet.*;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpSession;
@@ -66,26 +69,28 @@ public class SecurityConfig {
 
     // 🌐 CORS 설정
     @Bean
-    public CorsFilter corsFilter() {
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-            "http://localhost:3000",
+        // 정확한 오리진만 나열 (* 금지)
+        config.setAllowedOrigins(List.of(
             "http://localhost:8888",
+            "http://localhost:3000",
             "http://192.168.56.1:8888",
             "http://192.168.0.27:8888",
-            "https://localhost:3000",
             "https://localhost:8888",
+            "https://localhost:3000",
             "https://192.168.56.1:8888",
             "https://192.168.0.27:8888"
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        // 리다이렉트 헤더는 쓰지 말자. Set-Cookie만 노출
         config.setExposedHeaders(List.of("Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-        return new CorsFilter(source);
+        return source;
     }
 
     // ✅ 로그인 필터 (세션 저장 포함)
@@ -106,22 +111,36 @@ public class SecurityConfig {
         return (ServletRequest request, ServletResponse response, FilterChain chain) -> {
             HttpServletRequest req = (HttpServletRequest) request;
             String uri = req.getRequestURI();
+            String method = req.getMethod();
 
             boolean isApiRequest = uri.startsWith("/api/");
             boolean isAnonymous = req.getSession(false) == null;
 
-            // 로그인/회원가입 요청은 세션 허용
+            // ✅ 소셜 연동/로그인/회원가입 등 세션 필요한 경로
             boolean allowSession =
-                uri.equals("/api/login") ||
-                uri.equals("/auth/login") ||
-                uri.startsWith("/api/join");
+            	    uri.equals("/api/login") ||
+            	    uri.equals("/auth/login") ||
+            	    uri.startsWith("/api/join") ||
+            	    uri.startsWith("/api/auth/social-link") ||
+            	    uri.startsWith("/auth/") ||
+            	    uri.startsWith("/ws/") || uri.startsWith("/api/rt-chat/");
+
+
+            // ✅ 인증이 필요한 대표 엔드포인트 (읽기라도 요청저장 필요할 수 있음)
+            //    + 쓰기 요청(POST/PUT/DELETE)은 전부 세션 허용
+            boolean isWrite = !"GET".equalsIgnoreCase(method);
+            if (isWrite ||
+                uri.startsWith("/api/user") ||
+                uri.startsWith("/api/profile/update") ||
+                uri.startsWith("/api/mentoring") ||
+                uri.startsWith("/api/me")) {
+                allowSession = true;
+            }
 
             if (isAnonymous && isApiRequest && !allowSession) {
                 chain.doFilter(new HttpServletRequestWrapper(req) {
-                    @Override
-                    public HttpSession getSession() { return null; }
-                    @Override
-                    public HttpSession getSession(boolean create) { return null; }
+                    @Override public HttpSession getSession() { return null; }
+                    @Override public HttpSession getSession(boolean create) { return null; }
                 }, response);
             } else {
                 chain.doFilter(request, response);
@@ -129,12 +148,11 @@ public class SecurityConfig {
         };
     }
 
-
     // 🔒 보안 설정
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {})
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(httpBasic -> httpBasic.disable())
@@ -184,12 +202,17 @@ public class SecurityConfig {
                 .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/admin/**").permitAll()
+                
+                
                 .requestMatchers("/auth/**", "/auth/social/finalize").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/social-link").permitAll()
+                .requestMatchers("/api/auth/social-link/**").permitAll()
+                // 구글/카카오 콜백 명시적으로 열고 싶으면 추가(권장)
+                .requestMatchers("/auth/google/callback", "/auth/kakao/callback").permitAll()
 
                 .requestMatchers("/api/mentor-review/**", "/mentor-review/**", "/mentorReview/**").permitAll()
                 .requestMatchers("/api/mentoring/accept").permitAll()
 
+                
                 // ✅ 여기 핵심!
                 .requestMatchers(HttpMethod.GET, "/api/me").permitAll() // 익명도 접근 가능
                 .requestMatchers(HttpMethod.POST, "/api/logout").permitAll()
