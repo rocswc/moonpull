@@ -134,7 +134,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     (async () => {
       try {
         // 현재 로그인 사용자
-        const meRes = await fetch("/api/user", { credentials: "include" });
+        const meRes = await fetch(`${API_ORIGIN}/api/user`, { credentials: "include" });
         const me = await meRes.json();
         if (me?.userId) setCurrentUser(mapServerUser(me));
         else setCurrentUser(undefined);
@@ -178,7 +178,9 @@ useEffect(() => {
       setUsers(prev =>
         prev.map(u => ({
           ...u,
-          isOnline: u.loginId ? onlineLoginIds.includes(u.loginId) : u.isOnline,
+          isOnline:
+            (u.loginId && onlineLoginIds.includes(u.loginId)) ||
+            (onlineLoginIds.includes(String(u.id))), // ← 보강(서버가 id를 줄 때 대비)
         })),
       );
     } catch (e) {
@@ -196,7 +198,7 @@ useEffect(() => {
 
   const client = new StompClient({
     // SockJS factory를 사용: 자동 폴백/재연결 제공
-    webSocketFactory: () => new SockJS(ROUTES.WS_HTTP_URL) as any,
+    webSocketFactory: () => new SockJS(ROUTES.WS_HTTP_URL, undefined, { withCredentials: true }) as any,
     reconnectDelay: 3000,
 
     // ✅ JWT/세션 환경이면 CONNECT 헤더도 함께 보냄
@@ -282,13 +284,80 @@ useEffect(() => {
         `${ROUTES.TOPIC_PREFIX}/presence`,
         (frame: IMessage) => {
           try {
-            const p = JSON.parse(frame.body) as { status: "ONLINE" | "OFFLINE"; loginId: string };
-            setUsers((prev) =>
-              prev.map((u) => (u.loginId === p.loginId ? { ...u, isOnline: p.status === "ONLINE" } : u))
-            );
+                const p = JSON.parse(frame.body) as {
+                  status: "ONLINE" | "OFFLINE";
+                  loginId?: string;
+                  userId?: string | number;
+                };
+                setUsers(prev =>
+                  prev.map(u => {
+                    const match =
+                      (p.loginId && u.loginId === p.loginId) ||
+                      (p.userId && String(u.id) === String(p.userId));
+                    return match ? { ...u, isOnline: p.status === "ONLINE" } : u;
+                  })
+                );
           } catch {/* ignore */}
         }
       );
+
+
+
+
+
+
+
+ // ⛳ 온라인 스냅샷 재동기화 (연결 직후 1회)
+ (async () => {
+   try {
+     const res = await fetch(`${API_ORIGIN}/api/rt-chat/online`, {
+       credentials: "include",
+       headers: { ...AUTH_HEADERS },
+     });
+     if (!res.ok) return;
+     const onlineLoginIds: string[] = await res.json();
+     setUsers(prev =>
+       prev.map(u => ({
+         ...u,
+         isOnline:
+           (u.loginId && onlineLoginIds.includes(u.loginId)) ||
+           onlineLoginIds.includes(String(u.id)),
+       })),
+     );
+   } catch {}
+ })();
+
+
+
+
+
+// 3-bis) ✅ 나 자신의 온라인 상태를 서버에 알림 + UI에 즉시 반영
+try {
+  // 서버 @MessageMapping("/presence") 에 맞춰 경로 설정
+  client.publish({
+    destination: `${ROUTES.APP_PREFIX}/presence/online`, // ✅ 서버 @MessageMapping("/presence/online")
+    body: "{}",
+  });
+
+  // 내 아이콘을 바로 초록불로
+  setUsers(prev =>
+    prev.map(u =>
+      u.loginId === currentUser?.loginId ? { ...u, isOnline: true } : u
+    )
+  );
+} catch (e) {
+  console.warn("presence announce failed", e);
+}
+
+
+
+
+
+
+
+
+
+
 
       // 언서브 핸들러 보관
       roomSubscriptions.current["__requests__"] = () => sub1.unsubscribe();
@@ -311,6 +380,95 @@ useEffect(() => {
     stompRef.current = null;
   };
 }, [currentUser?.id]);
+
+
+// 로그아웃 이벤트 수신 → 즉시 오프라인 처리 + STOMP 끊기
+useEffect(() => {
+  const onAppLogout = () => {
+    // 1) 내 화면에서 즉시 사라지도록 낙관적 업데이트
+    setUsers(prev =>
+      prev.map(u =>
+        currentUser?.loginId && u.loginId === currentUser.loginId
+          ? { ...u, isOnline: false }
+          : u
+      )
+    );
+
+    // 2) 서버에 presence OFFLINE 알림 후 즉시 끊기
+    try {
+      const c = stompRef.current;
+      if (c?.connected) {
+        c.publish({ destination: `${ROUTES.APP_PREFIX}/presence/offline`, body: "{}" });
+        c.deactivate(); // socket 내려주기
+      }
+    } catch {/* ignore */}
+  };
+
+
+  window.addEventListener("app:logout", onAppLogout);
+  return () => window.removeEventListener("app:logout", onAppLogout);
+}, [currentUser?.loginId]);
+
+
+
+useEffect(() => {
+  const onAppLogin = async (e: any) => {
+    const idFromEvent = e?.detail?.loginId;
+
+    // 0) ✅ 로그인 직후 currentUser를 갱신해서 소켓 useEffect가 돌게 함
+    try {
+      const meRes = await fetch(`${API_ORIGIN}/api/user`, { credentials: "include" });
+      if (meRes.ok) {
+        const me = await meRes.json();
+        if (me?.userId) setCurrentUser(mapServerUser(me)); // ← 이게 핵심
+      }
+    } catch {}
+
+    // 1) 내 화면을 즉시 초록불로(낙관적)
+    if (idFromEvent) {
+      setUsers(prev => prev.map(u => u.loginId === idFromEvent ? { ...u, isOnline: true } : u));
+    }
+
+    // 2) 이미 연결돼 있으면 ONLINE 바로 송신 (경로 통일!)
+    try {
+      const c = stompRef.current;
+      if (c?.connected) {
+        c.publish({ destination: `${ROUTES.APP_PREFIX}/presence/online`, body: "{}" });
+      }
+    } catch {}
+
+// 3) 연결 여부와 무관하게 스냅샷으로 한 번 더 보정
+ try {
+   const res = await fetch(`${API_ORIGIN}/api/rt-chat/online`, {
+     credentials: "include",
+     headers: { ...AUTH_HEADERS },
+   });
+   if (res.ok) {
+     const onlineLoginIds: string[] = await res.json();
+     setUsers(prev =>
+       prev.map(u => ({
+         ...u,
+         isOnline:
+           (u.loginId && onlineLoginIds.includes(u.loginId)) ||
+           onlineLoginIds.includes(String(u.id)),
+       })),
+     );
+   }
+ } catch {}
+
+
+
+  };
+
+  window.addEventListener("app:login", onAppLogin);
+  return () => window.removeEventListener("app:login", onAppLogin);
+}, []);
+
+
+
+
+
+
 
 
 // 방 토픽 구독 & 메시지 수신 시 상태 반영

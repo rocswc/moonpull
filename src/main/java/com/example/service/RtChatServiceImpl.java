@@ -1,31 +1,21 @@
 package com.example.service;
-
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.example.DAO.ChatMessageDocRepo;
-import com.example.DAO.ChatMessageRepository2;
 import com.example.DAO.ChatRoomRepository;
 import com.example.VO.ChatMessage;
 import com.example.VO.ChatRoom;
 import com.mongodb.lang.Nullable;
-
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 
 @Service 
 @RequiredArgsConstructor
@@ -34,8 +24,11 @@ public class RtChatServiceImpl implements RtChatService {
     private final ChatRoomRepository roomRepository;
     private final ChatMessageDocRepo messageRepo;
     private final MongoTemplate mongoTemplate;
-    //private final ChatMessageRepository2 msgRepository;
 
+    private final ConcurrentMap<String, Integer> onlineCount = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, String> sessionToUser = new ConcurrentHashMap<>();
+    
+    
     @Transactional
     public ChatRoom createRoomIfAbsent(long a, long b, String field) {
         long uMin = Math.min(a, b);
@@ -62,20 +55,9 @@ public class RtChatServiceImpl implements RtChatService {
       
       // save 시 Mongo가 ObjectId를 만들고, Spring Data가 그 값을 String으로 채워서 반환
       ChatMessage saved = messageRepo.save(doc);
-      
-      // (선택) RDB의 last_message / last_message_at 갱신 로직이 있다면 여기서 수행
-      // chatRoomRepository.updateLastMessage(roomId, content, Timestamp.from(saved.getCreatedAt()));
       return saved; // saved.getId()에 Mongo가 만든 _id 문자열이 들어있음
     }
 
-      
-//    public List<ChatMessage> list(long roomId, int limit) {
-//        return messageRepo
-//        	      .findByChatroomIdOrderByCreatedAtDesc(roomId, PageRequest.of(0, limit))
-//        	      .getContent();
-//    }
-    
-    
     @Override
     public List<ChatMessage> getMessages(long roomId, Long beforeId, int size) {
         int limit = Math.max(1, Math.min(size, 200));
@@ -88,27 +70,42 @@ public class RtChatServiceImpl implements RtChatService {
         return docs;
     }
     
+    /** 세션 연결 시 호출: 최초 0->1이면 true 반환(브로드캐스트 필요) */
+    public boolean markOnline(String userId, String sessionId) {
+        sessionToUser.put(sessionId, userId);
+        int after = onlineCount.merge(userId, 1, Integer::sum);
+        return after == 1;
+    }
+
+    /** 세션 해제 시 호출: 1->0이 되면 true 반환 */
+    public boolean decrement(String userId, String sessionId) {
+        sessionToUser.remove(sessionId);
+        return onlineCount.compute(userId, (k, v) -> {
+            if (v == null) return null;
+            int n = v - 1;
+            return n <= 0 ? null : n;
+        }) == null;
+    }
+
+    /** 강제 OFF (로그아웃 버튼/수동 호출용) */
+    public boolean forceOffline(String userId) {
+        boolean wasOnline = onlineCount.remove(userId) != null;
+        // 해당 유저의 세션 키들도 정리(선택)
+        sessionToUser.entrySet().removeIf(e -> userId.equals(e.getValue()));
+        return wasOnline;
+    }
+
+    public String resolveUserBySession(String sessionId) {
+        return sessionToUser.get(sessionId);
+    }
+
+    /** 초기 동기화용 */
+    public List<String> getOnlineUserIds() {
+        return onlineCount.entrySet().stream()
+                .filter(e -> e.getValue() != null && e.getValue() > 0)
+                .map(Map.Entry::getKey)
+                .toList();
+    }
     
-    
-    
-    
-    
-    
-    
-    
-    
-//    @Transactional
-//    public ChatMessage saveMessage(long roomId, long senderId, String content) {
-//        ChatMessage m = new ChatMessage();
-//        m.setChatroomId((int) roomId);
-//        m.setSenderId((int) senderId);
-//        m.setContent(content);
-//        msgRepository.insert(m);
-//        return m;
-//    }
-//
-//    public List<ChatMessage> getMessages(long roomId, Long beforeId, int limit) {
-//        return msgRepository.findByRoomPaged(roomId, beforeId, limit);
-//    }
-		
+
 }
