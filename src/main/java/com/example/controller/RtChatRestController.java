@@ -15,8 +15,11 @@ import org.springframework.messaging.simp.user.SimpUser;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -29,15 +32,23 @@ public class RtChatRestController {
     private final MemberRepository memberRepository; // 👈 member 테이블 조회
     private final SimpUserRegistry userRegistry;
     
- // 현재 온라인인 STOMP 사용자들의 principal name(loginId) 목록
     @GetMapping("/online")
     public ResponseEntity<List<String>> online(@AuthenticationPrincipal CustomUserDetails me) {
-        List<String> online = userRegistry.getUsers()
-            .stream().map(SimpUser::getName)
-            // 내 자신을 빼고 싶으면 아래 라인 유지, 아니면 제거
-            .filter(name -> me == null || !name.equals(me.getUsername()))
-            .toList();
-        return ResponseEntity.ok(online);
+        // ✅ 서비스의 실시간 맵 기반 스냅샷
+        List<String> ids = rtChatService.getOnlineUserIds();
+
+        // (선택) 본인 제외
+        if (me != null) {
+            ids = ids.stream()
+                     .filter(id -> !id.equals(me.getUsername()))
+                     .toList();
+        }
+
+        return ResponseEntity.ok()
+            .header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            .header("Pragma", "no-cache")
+            .header("Expires", "0")
+            .body(ids);
     }
     
     @PostMapping("/rooms")
@@ -109,17 +120,18 @@ public class RtChatRestController {
         return ResponseEntity.ok(opened);
     }
 
-    // CHANGED: 거절(선택)
     @PostMapping("/requests/{requestId}/reject")
     public ResponseEntity<?> reject(
             @AuthenticationPrincipal CustomUserDetails me,
             @PathVariable String requestId,
             @RequestBody ChatRequestDtos.AcceptRequest body) {
 
-        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated"); // CHANGED
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated");
 
         Member fromM = memberRepository.findById(body.fromUserId()).orElseThrow();
-        broker.convertAndSendToUser(fromM.getNickname(), "/queue/request-rejected", requestId);
+
+        // ✅ loginId 사용
+        broker.convertAndSendToUser(fromM.getLoginId(), "/queue/request-rejected", requestId);
         return ResponseEntity.ok().build();
     }
 
@@ -134,5 +146,5 @@ public class RtChatRestController {
         vo.setMajor(nvl(e.getMajor(), "미지정"));
         return vo;
     }
-    
+      
 }
