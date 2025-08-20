@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { initializeApp } from "firebase/app";
 
-// ✅ Firebase 설정 (서비스워커에 있는 거랑 똑같이)
 const firebaseConfig = {
   apiKey: "AIzaSyAef74zQ5OpMzYEPnjFb7QacrCFa_Z1_lg",
   authDomain: "moonpool-b2fc6.firebaseapp.com",
@@ -13,7 +12,6 @@ const firebaseConfig = {
   appId: "1:192091954185:web:330c6b051ba21a049facd8",
 };
 
-// FCM 인스턴스
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
@@ -24,74 +22,132 @@ type Noti = {
   isRead: 0 | 1;
 };
 
+type User = {
+  authenticated: boolean;
+  loginId: string;
+  userId: number;
+  roles: string[];
+  nickname: string;
+};
+
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<Noti[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [lastReadId, setLastReadId] = useState<number | null>(null);
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
 
-  // ✅ 알림 리스트 불러오기
-  const load = async () => {
-    const [cntRes, listRes] = await Promise.all([
-      axios.get<number>("/api/admin/notifications/unread-count"),
-      axios.get<Noti[]>("/api/admin/notifications?size=10"),
-    ]);
-    setUnread(cntRes.data);
-    setItems(listRes.data);
+  const loadUser = async () => {
+    try {
+      const res = await axios.get<User>("/api/me", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        withCredentials: true,
+      });
+      setUser(res.data);
+    } catch (err) {
+      console.error("❌ 유저 정보 불러오기 실패:", err);
+    }
   };
 
-  // ✅ 알림 읽음 처리
+  const load = async () => {
+    try {
+      const [cntRes, listRes] = await Promise.all([
+        axios.get<number>("/api/admin/notifications/unread-count"),
+        axios.get<Noti[]>("/api/admin/notifications?size=10"),
+      ]);
+      setUnread(cntRes.data);
+      setItems(listRes.data);
+    } catch (err) {
+      console.error("❌ 알림 불러오기 실패:", err);
+    }
+  };
+
   const markAsRead = async (id: number) => {
     await axios.post(`/api/admin/notifications/${id}/read`);
-    await load();
+    const updated = items.map((item) =>
+      item.notificationId === id ? { ...item, isRead: 1 } : item
+    );
+    setItems(updated);
+    setUnread((prev) => Math.max(0, prev - 1));
+    setLastReadId(id);
   };
 
   const markAllAsRead = async () => {
     await axios.post(`/api/admin/notifications/read-all`);
-    await load();
+    const updated = items.map((item) => ({ ...item, isRead: 1 }));
+    setItems(updated);
+    setUnread(0);
   };
 
-  // ✅ 브라우저에서 FCM 토큰 요청 + 서버에 등록
-  const requestPermissionAndRegisterToken = async () => {
+  const requestPermissionAndRegisterToken = async (user: User) => {
     try {
       const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        console.warn("❌ 알림 권한 거부됨");
-        return;
-      }
+      if (permission !== "granted") return;
 
       const token = await getToken(messaging, {
-        vapidKey: "너의-웹푸시-VAPID-키", // Firebase 콘솔 → Cloud Messaging → 키
+        vapidKey:
+          "BOnD3Ps-iZs-0h17or7HwRFS8S1xxpKFZvO7LFPZD0J43NtmPX_mLYitKUgHm9U8YjmEpF4e--OZlBE7crjpyL4",
       });
 
-      console.log("✅ FCM Token:", token);
-
-      // 서버에 저장 (userId는 세션 기반으로 서버가 알 수 있게)
-      await axios.post("/api/fcm/register", { token });
+      await axios.post(
+        "/api/admin/fcm/register",
+        {
+          userId: user.userId,
+          token,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          withCredentials: true,
+        }
+      );
     } catch (err) {
-      console.error("FCM 토큰 등록 실패:", err);
+      console.error("❌ FCM 토큰 등록 실패:", err);
     }
   };
 
   useEffect(() => {
-    load();
-    requestPermissionAndRegisterToken();
+    const init = async () => {
+      await loadUser();
+      await load();
+    };
+    init();
 
-    // ✅ 포그라운드 알림 수신
     onMessage(messaging, (payload) => {
-      console.log("📩 실시간 메시지:", payload);
-
-      // UI 즉시 반영
-      const newMsg = {
-        notificationId: Date.now(), // 임시 ID
+      const newMsg: Noti = {
+        notificationId: Date.now(),
         message: payload.notification?.body || "새 알림",
         createdAt: new Date().toISOString(),
         isRead: 0,
-      } as Noti;
-
+      };
       setItems((prev) => [newMsg, ...prev]);
       setUnread((prev) => prev + 1);
     });
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      requestPermissionAndRegisterToken(user);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (lastReadId !== null) {
+      setTimeout(() => {
+        scrollBoxRef.current?.scrollTo({ 
+          top: scrollBoxRef.current.scrollHeight, 
+          behavior: "smooth" 
+        });
+      }, 100);
+      setLastReadId(null);
+    }
+  }, [items, lastReadId]);
+
+  const sortedItems = [...items].sort((a, b) => a.isRead - b.isRead);
 
   return (
     <div className="relative">
@@ -116,19 +172,23 @@ export default function NotificationBell() {
               모두 읽음
             </button>
           </div>
-          <div className="max-h-80 overflow-auto">
-            {items.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground">알림이 없습니다.</div>
+          <div ref={scrollBoxRef} id="noti-scroll-box" className="max-h-80 overflow-auto">
+            {sortedItems.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                알림이 없습니다.
+              </div>
             ) : (
-              items.map((n) => (
+              sortedItems.map((n) => (
                 <div
                   key={n.notificationId}
-                  className="px-3 py-2 border-b last:border-b-0"
+                  className={`px-3 py-2 border-b last:border-b-0 ${
+                    n.isRead ? "bg-gray-50 text-gray-400 italic" : ""
+                  }`}
                 >
                   <div className="flex items-start gap-2">
                     <div
-                      className={`mt-1 w-2 h-2 rounded-full ${
-                        n.isRead ? "bg-muted" : "bg-blue-500"
+                      className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
+                        n.isRead ? "bg-gray-300" : "bg-blue-500"
                       }`}
                     />
                     <div className="flex-1">
