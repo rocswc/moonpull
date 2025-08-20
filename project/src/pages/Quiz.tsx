@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, RotateCcw, BookOpen, TrendingUp, Award, Clock, ChevronRight, Wifi, WifiOff, AlertCircle, Hash, ChevronUp, ChevronDown } from "lucide-react";
 import Navigation from "@/components/Navigation";
-
+import axios from "axios";
 
 // API Base URL
 const API_BASE_URL = 'https://localhost:5001/api';
+const WRONG_API = 'https://localhost:8080/api/wrong-answers'; // 주소/포트만 맞추세요
 
 // 실제 API 함수들
 const api = {
@@ -109,7 +110,8 @@ const CBTQuizSystem = () => {
   const [currentRandomQuestion, setCurrentRandomQuestion] = useState(null);
   const [loading, setLoading] = useState(false);
   const [practiceQuestionsAnswered, setPracticeQuestionsAnswered] = useState(0);
-  
+  const [userId, setUserId] = useState('');
+
   // Results state for exam mode
   const [examResults, setExamResults] = useState([]);
 
@@ -128,6 +130,14 @@ const CBTQuizSystem = () => {
       
       await loadSubjects();
       setCurrentStep('subjects');
+      
+      //오답을 전송하기 위한 현재 로그인한 사용자 id검색
+      const userRes = (await axios.get("/api/user")).data.user;
+      setUserId(userRes.userId)
+      console.log("갑갑해")
+      console.log(userRes.userId)
+
+
     } catch (error) {
       console.error('❌ 서버 연결 실패:', error);
       setIsConnected(false);
@@ -283,13 +293,32 @@ const CBTQuizSystem = () => {
       setScore(prev => ({
         correct: prev.correct + (isCorrect ? 1 : 0),
         wrong: prev.wrong + (!isCorrect ? 1 : 0)
-      }));
-      
+      }));    
       const newAnsweredCount = practiceQuestionsAnswered + 1;
       setPracticeQuestionsAnswered(newAnsweredCount);
       
       setShowExplanation(true);
       
+      if (!isCorrect && currentRandomQuestion) {
+        const payload = {
+          school: selectedSchool,
+          grade: String(selectedGrade),
+          subject: selectedSubject.name,
+          question: currentRandomQuestion.question,
+          passage: currentRandomQuestion.passage || '',
+          choices: currentRandomQuestion.choices,
+          correctAnswerIndex: currentRandomQuestion.answer,
+          explanation: currentRandomQuestion.explanation || '',
+          userAnswer: currentAnswer !== null ? String(currentAnswer + 1) : '미선택',
+          isCorrect: false
+        };
+        fetch(WRONG_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+      }
+
       console.log(`완료된 문제: ${newAnsweredCount} / ${questionCount}`);
     }
   };
@@ -343,6 +372,28 @@ const CBTQuizSystem = () => {
     });
     
     setExamResults(results);
+    const wrongPayload = results
+      .filter(r => !r.isCorrect)
+      .map(r => ({
+        school: selectedSchool,
+        grade: String(selectedGrade),
+        subject: selectedSubject.name,
+        question: r.question,
+        passage: '',
+        choices: r.choices,
+        correctAnswerIndex: r.correctAnswer,
+        explanation: r.explanation || '',
+        userAnswer: r.userAnswer !== null ? String(r.userAnswer + 1) : '미선택',
+        isCorrect: false
+      }));
+
+    if (wrongPayload.length) {
+      fetch(`${WRONG_API}/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wrongPayload)
+      }).catch(() => {});
+    }
     setCurrentStep('results');
   };
 
