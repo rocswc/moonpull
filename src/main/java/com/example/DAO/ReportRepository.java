@@ -3,6 +3,7 @@ package com.example.DAO;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import com.example.VO.ReportVO;
 
@@ -13,9 +14,10 @@ public interface ReportRepository {
     List<ReportVO> getAllReports();
 
     // 신고 등록
-    void insertReport(ReportVO reportVO);
+    int insertReport(ReportVO reportVO);
     
     List<ReportVO> getTopReportedUsers();
     
-    int countReportsByTarget(int targetUserId); 
+
+int countReportsByTarget(@Param("targetUserId") int targetUserId);
 }

@@ -65,8 +65,8 @@
 
 <select id="countReportsByTarget" parameterType="int" resultType="int">
   SELECT COUNT(*)
-  FROM report
-  WHERE target_user_id = #{value}
+  FROM `report`
+  WHERE target_user_id = #{targetUserId}
 </select>
 
 </mapper>
