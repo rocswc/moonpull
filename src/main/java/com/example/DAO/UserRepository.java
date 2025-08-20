@@ -9,25 +9,42 @@ import com.example.VO.MemberVO;
 
 import java.util.Optional;
 
+// ✅ 추가 import
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.repository.query.Param;
+
 public interface UserRepository extends JpaRepository<MemberVO, Integer> {
-	
-    Boolean existsByLoginid(String loginid); // 11
+
+    // 중복 확인
+    Boolean existsByLoginid(String loginid);
     Boolean existsByEmail(String email);
     Boolean existsByNickname(String nickname);
-    Boolean existsByPhonenumber(String phonenumber); //  전화번호 중복 확인용
-    
-    //loginid를 받아 DB 테이블에서 회원을 조회하는 메소드 작성
+    Boolean existsByPhonenumber(String phonenumber);
+
+    // loginid로 회원 조회
     Optional<MemberVO> findByLoginid(String loginid);
+
+    // 마지막 로그인 시간 갱신
     @Modifying
     @Transactional
     @Query("UPDATE MemberVO m SET m.lastLogin = CURRENT_TIMESTAMP WHERE m.loginid = :loginid")
     int updateLastLogin(String loginid);
+
+    // 이메일로 회원 조회
     Optional<MemberVO> findByEmail(String email);
+
+    // 이메일 대소문자 무시 조회
+    Optional<MemberVO> findByEmailIgnoreCase(String email);
+
+    // 소셜 계정 조회
     Optional<MemberVO> findBySocialIdAndSocialType(String socialId, String socialType);
+
+    // 소셜 계정 존재 여부
     boolean existsBySocialIdAndSocialType(String socialId, String socialType);
-    
-    
 
-
+    // ✅ 추가: 행 잠금 (연동 시 동시성 문제 방지)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MemberVO m WHERE m.userId = :id")
+    Optional<MemberVO> lockByUserId(@Param("id") Integer id);
 }
- 

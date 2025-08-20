@@ -13,10 +13,12 @@ const Navigation = () => {
 
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
+  const handleLogout = async () => {
+     await logout();
+     navigate("/", { replace: true });
+     // 필요하면 전체 리로드로 세션 싱크 강제
+     // window.location.href = "/";
+   };
 
   // 로그인 상태 체크 후 이동 or 모달 띄우기
   const handleNavigation = (path: string) => {
