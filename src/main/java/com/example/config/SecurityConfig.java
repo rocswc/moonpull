@@ -223,7 +223,7 @@ public class SecurityConfig {
 
                 .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated()
-
+                .requestMatchers(HttpMethod.POST, "/api/mentoring/terminate/**").authenticated() //8/20
                 .requestMatchers("/api/admin/reports/top").permitAll()
 
                 .anyRequest().authenticated()
