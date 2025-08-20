@@ -1,10 +1,11 @@
 package com.example.controller;
 
 import com.example.VO.NotificationVO;
-
+import com.example.security.CustomUserDetails;
 import com.example.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,28 +18,28 @@ public class NotificationController {
     private final NotificationService service;
 
     // 안 읽은 알림 개수
-    @GetMapping("/unread-count")
-    public ResponseEntity<Long> getUnreadCount() {
-        return ResponseEntity.ok(service.getUnreadCount());
+    @GetMapping("/unread-count") 
+    public long getUnreadCount(@AuthenticationPrincipal CustomUserDetails user) {
+        return service.getUnreadCount(user.getUserId());
     }
 
-    // 알림 목록 조회 (최신순, size 제한)
+    // ✅ 최신 알림 목록
     @GetMapping
-    public ResponseEntity<List<NotificationVO>> getNotifications(@RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(service.getLatest(size));
+    public List<NotificationVO> getLatest(
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return service.getLatest(user.getUserId(), size);
     }
 
-    // 특정 알림 읽음 처리
+    // ✅ 특정 알림 읽음 처리
     @PostMapping("/{id}/read")
-    public ResponseEntity<Void> markAsRead(@PathVariable Long id) {
+    public void markAsRead(@PathVariable Integer id) {
         service.markAsRead(id);
-        return ResponseEntity.ok().build();
     }
 
-    // 전체 알림 읽음 처리
+    // ✅ 전체 알림 읽음 처리
     @PostMapping("/read-all")
-    public ResponseEntity<Void> markAllAsRead() {
-        service.markAllAsRead();
-        return ResponseEntity.ok().build();
+    public void markAllAsRead(@AuthenticationPrincipal CustomUserDetails user) {
+        service.markAllAsRead(user.getUserId());
     }
 }
