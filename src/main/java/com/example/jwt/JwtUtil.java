@@ -109,4 +109,13 @@ public class JwtUtil {
             .signWith(secretKey)
             .compact();
     }
+ // ✅ 여기 아래에 추가!
+    public String generateToken(com.example.VO.MemberVO member) {
+        Integer userId = member.getUserId();
+        Set<String> roles = Set.of(member.getRoles()); // "MENTOR", "ADMIN" 등
+        int sessionVersion = member.getSessionVersion();
+        Duration ttl = Duration.ofHours(1); // 1시간 유효
+
+        return createAccess(userId, roles, sessionVersion, ttl);
+    }
 }

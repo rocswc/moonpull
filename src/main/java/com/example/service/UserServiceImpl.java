@@ -2,7 +2,7 @@ package com.example.service;
 
 import com.example.VO.MemberVO;
 import com.example.DAO.UserRepository;
-import com.example.dto.KakaoUserDTO;
+import com.example.dto.SocialUserDTO;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
 
     // ===== 소셜 처리 (필요 시 구현) =====
     @Override
-    public void processKakaoLogin(KakaoUserDTO userInfo) {
+    public void processKakaoLogin(SocialUserDTO userInfo) {
         // TODO: 필요 시 구현
     }
 

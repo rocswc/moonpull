@@ -64,7 +64,6 @@ public class AuthController {
             .httpOnly(true)
             .secure(true)
             .sameSite("None") // CORS 환경이면 반드시 필요
-            .domain("192.168.56.1")
             .path("/")
             .maxAge(0)
             .build();

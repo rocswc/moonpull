@@ -1,23 +1,20 @@
 package com.example.controller;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.VO.MemberVO;
 import com.example.jwt.JwtUtil;
 import com.example.service.UserService;
-import com.example.service.SessionService; // ★ 세션 서비스
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/auth/social")
@@ -25,55 +22,29 @@ public class SocialFinalizeController {
 
     private final UserService userService;
     private final JwtUtil jwtUtil;
-    private final SessionService sessionService; // ★
 
-    public SocialFinalizeController(UserService userService, JwtUtil jwtUtil, SessionService sessionService) {
+    public SocialFinalizeController(UserService userService, JwtUtil jwtUtil) {
         this.userService = userService;
         this.jwtUtil = jwtUtil;
-        this.sessionService = sessionService;
     }
 
     @PostMapping("/finalize")
-    public ResponseEntity<Void> finalizeLogin(@RequestBody SocialFinalizeReq req,
-                                              HttpServletRequest request) {
-        var opt = userService.getBySocialIdAndType(req.socialId(), req.provider());
+    public ResponseEntity<Void> finalizeLogin(@RequestBody SocialFinalizeReq req) {
+        // Optional 반환이 전제입니다.
+        Optional<MemberVO> opt = userService.getBySocialIdAndType(req.socialId(), req.provider());
         if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         MemberVO m = opt.get();
-        Integer userId = m.getUserId();
+        String jwt = jwtUtil.generateToken(m); // ★ sub = m.getId() 여야 /api/user 통과
 
-        // roles CSV -> Set<String>
-        Set<String> roles = (m.getRoles() == null || m.getRoles().isBlank())
-                ? Set.of()
-                : Arrays.stream(m.getRoles().split(","))
-                        .map(String::trim).filter(s -> !s.isEmpty())
-                        .collect(Collectors.toSet());
-
-        int sessionVersion = (m.getSessionVersion() == null) ? 0 : m.getSessionVersion();
-
-        // ★ 서버 세션 생성 (refresh 정보 서버측 보관)
-        HttpSession httpSession = request.getSession(true);
-        sessionService.create(
-                httpSession,
-                userId,
-                roles,
-                sessionVersion,
-                Duration.ofDays(14),   // refresh TTL
-                30 * 60                // 세션 유휴 만료(30분)
-        );
-
-        // ★ 짧은 Access 발급 (10분 권장)
-        String access = jwtUtil.createAccess(userId, roles, sessionVersion, Duration.ofMinutes(10));
-
-        // ★ 교차 도메인 → SameSite=None; Secure
-        ResponseCookie cookie = ResponseCookie.from("jwt", access)
-        		.httpOnly(true)
-                .secure(true)              // 로컬에서 https면 true 유지
-                .sameSite("None")           // ← 여기 Lax
+        ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
+                .httpOnly(true)
+                .secure(true)           // SameSite=None이면 HTTPS 필수
+                .sameSite("None")
                 .path("/")
-                .maxAge(Duration.ofMinutes(10))
+                .maxAge(Duration.ofDays(7))
                 .build();
 
         return ResponseEntity.ok()
@@ -81,5 +52,6 @@ public class SocialFinalizeController {
                 .build();
     }
 
+    // JDK 17
     public record SocialFinalizeReq(String provider, String socialId, String state) {}
 }
