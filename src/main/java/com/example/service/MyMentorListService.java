@@ -15,7 +15,7 @@ public class MyMentorListService {
         this.repository = repository;
     }
 
-    // 진행중 멘토링 불러오기2
+    // 진행중 멘토링 불러오기
     public List<MyMentorListDTO> getActiveMentorings(int menteeId) {
         return repository.findByMenteeId(menteeId);
     }

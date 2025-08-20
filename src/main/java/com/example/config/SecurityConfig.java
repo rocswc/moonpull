@@ -193,6 +193,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/mentoring/requests").hasRole("MENTOR")
                 .requestMatchers(HttpMethod.POST, "/api/mentoring/accept-request").hasRole("MENTOR")
                 .requestMatchers("/api/mentoring/progress").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/mentoring/terminate/**").authenticated() //8/20
 
                 .requestMatchers("/error/**").permitAll()
 

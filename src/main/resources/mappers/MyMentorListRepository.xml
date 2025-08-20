@@ -3,24 +3,21 @@
   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.example.DAO.MyMentorListRepository">
+<mapper namespace="com.example.DAO.MyMentorListMapper">
 
-  <!-- 진행중 멘토링 조회 -->
+  <!-- 진행 중 멘토링 불러오기 -->
   <select id="findByMenteeId" parameterType="int" resultType="com.example.dto.MyMentorListDTO">
-    SELECT 
+    SELECT
       mp.mentoring_progress_id AS progressId,
-      m.mentor_id AS mentorId,
-      m.name AS mentorName,
-      m.intro AS mentorIntro,
-      m.career,
-      GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') AS specialty
+      mt.id AS mentorId,
+      mt.name AS mentorName,
+      mt.intro AS mentorIntro,
+      mt.career AS career,
+      mt.specialty AS specialty
     FROM mentoring_progress mp
-    JOIN mentor m ON mp.mentor_id = m.mentor_id
-    LEFT JOIN mentor_subject ms ON m.mentor_id = ms.mentor_id
-    LEFT JOIN subject s ON ms.subject_id = s.subject_id
+    JOIN mentor mt ON mp.mentor_id = mt.id
     WHERE mp.mentee_id = #{menteeId}
       AND mp.connection_status = 'in_progress'
-    GROUP BY mp.mentoring_progress_id, m.mentor_id, m.name, m.intro, m.career
   </select>
 
   <!-- 멘토링 종료 -->

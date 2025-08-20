@@ -56,7 +56,8 @@ public class MentoringChatroomService {
         mentoringChatroomRepository.save(chatroom);
         int chatId = Math.toIntExact(chatroom.getChat_id());
 
-        MentoringProgress progress = mentoringProgressRepository.findByMenteeIdAndMentorId(menteeId, mentorId);
+        MentoringProgress progress = mentoringProgressRepository.findByMenteeIdAndMentorId(menteeId, mentorId)
+                .orElse(null);
         if (progress != null) {
             progress.setChatId(chatId);
             progress.setConnectionStatus("in_progress");

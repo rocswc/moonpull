@@ -40,7 +40,8 @@ public class MentoringChatroomController {
             @RequestParam int menteeId,
             @RequestParam int mentorId
     ) {
-        MentoringProgress progress = mentoringProgressRepository.findByMenteeIdAndMentorId(menteeId, mentorId);
+        MentoringProgress progress = mentoringProgressRepository.findByMenteeIdAndMentorId(menteeId, mentorId)
+                .orElse(null);
         if (progress == null || progress.getChatId() == null) {
             return ResponseEntity.status(404).body(Map.of("chatId", -1));
         }
@@ -69,7 +70,7 @@ public class MentoringChatroomController {
         MentoringProgress progress = mentoringProgressRepository.findByMenteeIdAndMentorId(
                 mentee.getMenteeId().intValue(), 
                 mentor.getMentorId().intValue()
-        );
+        ).orElse(null);
         
         if (progress == null || progress.getChatId() == null) {
             return ResponseEntity.status(404).body(Map.of("chatId", -1));

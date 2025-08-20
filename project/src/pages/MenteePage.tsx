@@ -37,12 +37,25 @@ interface Mentor {
   intro: string;
 }
 
+interface Question {
+  questionId: number;
+  title: string;
+  content: string;
+  status: string;
+  answerContent?: string;
+}
+
 const MenteePage = () => {
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [activeList, setActiveList] = useState<MentoringProgress[]>([]);
   const [endedList, setEndedList] = useState<MentoringProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useChat();
+
+  // ✅ 질문 관련 state 추가
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
 
   // 멘토 목록 가져오기
   const fetchMyMentors = async () => {
@@ -144,6 +157,25 @@ const MenteePage = () => {
       console.error("신고 실패", err);
       alert("신고 처리 중 오류가 발생했습니다.");
     }
+  };
+
+  // ✅ 질문 등록 함수 추가
+  const handleSubmitQuestion = () => {
+    if (!newTitle.trim() || !newContent.trim()) {
+      alert("제목과 내용을 입력해주세요.");
+      return;
+    }
+
+    const newQuestion: Question = {
+      questionId: Date.now(),
+      title: newTitle,
+      content: newContent,
+      status: "PENDING",
+    };
+
+    setQuestions((prev) => [...prev, newQuestion]);
+    setNewTitle("");
+    setNewContent("");
   };
 
   const wrongAnswers = [
@@ -256,7 +288,48 @@ const MenteePage = () => {
                   <MessageCircle className="w-5 h-5" /> 내 질문 현황
                 </CardTitle>
               </CardHeader>
-              <CardContent>질문 목록 (답변 대기 / 완료 구분, 수정/삭제 기능 등)</CardContent>
+              <CardContent className="space-y-6">
+                
+                {/* ✅ 질문 입력 폼 */}
+                <div className="space-y-3 p-4 border rounded-md bg-background">
+                  <input
+                    type="text"
+                    placeholder="제목을 입력하세요"
+                    className="w-full p-2 border rounded-md"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
+                  <textarea
+                    placeholder="질문 내용을 입력하세요"
+                    className="w-full p-2 border rounded-md h-24"
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                  />
+                  <Button onClick={handleSubmitQuestion}>질문 등록</Button>
+                </div>
+
+                {/* ✅ 질문 목록 */}
+                <div className="space-y-3">
+                  {questions.length === 0 ? (
+                    <p className="text-muted-foreground">등록된 질문이 없습니다.</p>
+                  ) : (
+                    questions.map((q) => (
+                      <div key={q.questionId} className="p-3 border rounded-md">
+                        <div className="flex justify-between items-center">
+                          <h3 className="font-medium">{q.title}</h3>
+                          <Badge variant={q.status === "PENDING" ? "secondary" : "default"}>
+                            {q.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{q.content}</p>
+                        {q.answerContent && (
+                          <p className="mt-2 text-green-600 text-sm">답변: {q.answerContent}</p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
             </Card>
           </TabsContent>
 
@@ -313,10 +386,11 @@ const MenteePage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
         </Tabs>
       </div>
     </div>
   );
 };
-
+//1
 export default MenteePage;

@@ -166,7 +166,7 @@ const MentorPage: React.FC = () => {
     }
   };
 
-  /** 요청 거절 */
+  /** 요청 거절 1*/
   const handleReject = async (requestId: number) => {
     try {
       await axios.post("/api/mentoring/reject-request", null, { params: { requestId } });

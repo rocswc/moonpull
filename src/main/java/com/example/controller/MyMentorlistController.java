@@ -29,16 +29,23 @@ public class MyMentorlistController {
 
     // 멘토링 종료
     @PostMapping("/end/{progressId}")
-    public ResponseEntity<String> endMentoring(@RequestParam("progressId") int progressId) {
+    public ResponseEntity<String> endMentoring(@PathVariable("progressId") int progressId) {
         log.info("👉 멘토링 종료 요청: progressId={}", progressId);
 
-        int updated = service.endMentoring(progressId);
-        log.info("👉 DB 업데이트 결과: updated={}", updated);
+        try {
+            int updated = service.endMentoring(progressId);
+            log.info("👉 DB 업데이트 결과: updated={}", updated);
 
-        if (updated > 0) {
-            return ResponseEntity.ok("멘토링 종료 성공");
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 progressId 없음");
+            if (updated > 0) {
+                return ResponseEntity.ok("멘토링 종료 성공");
+            } else {
+                log.warn("⚠️ 해당 progressId={}를 찾을 수 없거나 이미 종료된 상태입니다.", progressId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 progressId 없음 또는 이미 종료됨");
+            }
+        } catch (Exception e) {
+            log.error("❌ 멘토링 종료 중 오류 발생: progressId={}, error={}", progressId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("멘토링 종료 중 오류 발생");
         }
     }
 }
+
