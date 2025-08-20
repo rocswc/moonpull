@@ -1,7 +1,7 @@
 package com.example.service;
 
 import com.example.VO.MemberVO;
-import com.example.dto.KakaoUserDTO;
+import com.example.dto.SocialUserDTO;
 
 import java.util.Optional;
 import java.util.Set;
@@ -17,7 +17,7 @@ public interface UserService {
     Optional<MemberVO> getById(Integer id);
 
     // 소셜 회원 처리(필요하면 유지)
-    void processKakaoLogin(KakaoUserDTO userInfo);
+    void processKakaoLogin(SocialUserDTO userInfo);
 
     // 유틸
     Set<String> parseRoles(String rolesCsv);

@@ -116,15 +116,18 @@ public class SecurityConfig {
             boolean isApiRequest = uri.startsWith("/api/");
             boolean isAnonymous = req.getSession(false) == null;
 
-            // ✅ 소셜 연동/로그인/회원가입 등 세션 필요한 경로
+            // ✅ 여기를 수정해야 함!! ✅
             boolean allowSession =
-            	    uri.equals("/api/login") ||
-            	    uri.equals("/auth/login") ||
-            	    uri.startsWith("/api/join") ||
-            	    uri.startsWith("/api/auth/social-link") ||
-            	    uri.startsWith("/auth/") ||
-            	    uri.startsWith("/ws/") || uri.startsWith("/api/rt-chat/");
-
+                uri.equals("/api/login") ||
+                uri.equals("/auth/login") ||
+                uri.startsWith("/api/join") ||
+                uri.startsWith("/api/auth/social-link") ||
+                uri.startsWith("/ws/") ||
+                uri.startsWith("/api/rt-chat/") ||
+                uri.startsWith("/auth/") || 
+                //  요 두 줄 추가!!
+                uri.equals("/auth/google/callback") ||
+                uri.equals("/auth/kakao/callback");
 
             // ✅ 인증이 필요한 대표 엔드포인트 (읽기라도 요청저장 필요할 수 있음)
             //    + 쓰기 요청(POST/PUT/DELETE)은 전부 세션 허용
@@ -212,6 +215,7 @@ public class SecurityConfig {
 
                 .requestMatchers("/api/mentor-review/**", "/mentor-review/**", "/mentorReview/**").permitAll()
                 .requestMatchers("/api/mentoring/accept").permitAll()
+                .requestMatchers("/api/wrong-answers/**").permitAll()
 
                 
                 // ✅ 여기 핵심!
@@ -220,7 +224,7 @@ public class SecurityConfig {
 
                 .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated()
-
+                .requestMatchers(HttpMethod.POST, "/api/mentoring/terminate/**").authenticated() //8/20
                 .requestMatchers("/api/admin/reports/top").permitAll()
 
                 .anyRequest().authenticated()

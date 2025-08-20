@@ -41,6 +41,7 @@ import Opictest from "./pages/Opictest";
 import React from "react";
 import { useFcm } from "./fcm";
 import NotificationBell from "@/components/NotificationBell";
+import OAuthCallbackPage from "@/components/socialLogin/OAuthCallbackPage";
 
 const queryClient = new QueryClient();
 
@@ -75,11 +76,13 @@ const AppInner = () => {
         {/* 로그인/회원가입 */}
         <Route path="/auth/login" element={<AuthPage />} />
         <Route path="/auth/signup" element={<AuthPage />} />
-        <Route path="/auth/social-join" element={<SocialJoinPage />} />
+        <Route path="/auth/:provider/callback" element={<OAuthCallbackPage />} />
+		<Route path="/auth/social-join" element={<SocialJoinPage />} />
 	
         {/* 메인 페이지 */}
         <Route path="/" element={<Index />} />
-		<Route path="/auth/link"        element={<SocialJoinPage />} />
+		
+		
         {/* 로그인 필요한 페이지들 */}
         <Route path="/pricing" element={<PrivateRoute><Pricing /></PrivateRoute>} />
         <Route path="/matching" element={<PrivateRoute><Matching /></PrivateRoute>} />

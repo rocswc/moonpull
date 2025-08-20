@@ -12,7 +12,7 @@ import axios, { AxiosError } from "axios";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import KakaoLoginButton from "@/components/socialLogin/KakaoLoginButton";
-import GoogleLoginButton from "@/components/socialLogin/GoogleLoginButton";
+import NaverLoginButton from "@/components/socialLogin/NaverLoginButton";
 
 //흐름 요약 
 //사용자가 소셜 로그인 시도
@@ -578,7 +578,7 @@ const AuthPage = () => {
               </div>
 
 			  <div className="space-y-3">
-			    <GoogleLoginButton />
+			    <NaverLoginButton />
 			    <KakaoLoginButton />
 			  </div>
 

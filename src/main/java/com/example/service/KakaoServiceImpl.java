@@ -1,15 +1,11 @@
 package com.example.service;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import com.example.dto.KakaoUserDTO;
+import com.example.dto.SocialUserDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -38,34 +34,41 @@ public class KakaoServiceImpl implements KakaoService {
                       "&client_id=" + clientId +
                       "&redirect_uri=" + redirectUri +
                       "&code=" + code +
-                      "&client_secret=" + clientSecret;  // client_secret 추가
+                      "&client_secret=" + clientSecret;
 
         HttpEntity<String> request = new HttpEntity<>(body, headers);
 
         ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, request, String.class);
 
-        // 응답 JSON에서 access_token만 추출
         ObjectMapper mapper = new ObjectMapper();
         JsonNode rootNode = mapper.readTree(response.getBody());
-        String accessToken = rootNode.path("access_token").asText();
-
-        return accessToken;
+        return rootNode.path("access_token").asText();
     }
 
     @Override
-    public KakaoUserDTO getUserInfo(String accessToken) throws Exception {
+    public SocialUserDTO getUser(String accessToken) throws Exception {
         RestTemplate restTemplate = new RestTemplate();
 
-        String userInfoUrl = "https://kapi.kakao.com/v2/user/me";
+        String meUrl = "https://kapi.kakao.com/v2/user/me";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
-
         HttpEntity<String> request = new HttpEntity<>(headers);
 
-        ResponseEntity<KakaoUserDTO> response = restTemplate.exchange(
-            userInfoUrl, HttpMethod.GET, request, KakaoUserDTO.class);
+        ResponseEntity<String> res = restTemplate.exchange(meUrl, HttpMethod.GET, request, String.class);
 
-        return response.getBody();
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(res.getBody());
+
+        String socialId = root.path("id").asText();
+        JsonNode acc  = root.path("kakao_account");
+        JsonNode prof = acc.path("profile");
+
+        String email   = acc.path("email").asText(null);
+        String name    = prof.path("nickname").asText(null);
+        String img     = prof.path("profile_image_url").asText(null);
+
+        // ✅ 5개 인자 모두 전달
+        return new SocialUserDTO(socialId, "KAKAO", email, name, img);
     }
 }

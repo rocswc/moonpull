@@ -5,22 +5,34 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Phone, Tag, Calendar, GraduationCap, BookOpen, ArrowLeft } from "lucide-react";
+import { Mail, User, Phone, Tag, Calendar, GraduationCap, BookOpen, IdCard, ArrowLeft } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+
+//흐름 요약 
+//사용자가 소셜 로그인 시도
+//서버가 소셜 프로바이더에서 프로필(이메일, social_id, social_type) 받음
+//B에 같은 이메일의 일반 계정이 있는지 확인
+//있으면: “연동할래?” 플래그를 내려 프론트에 표시
+//없으면: 신규 소셜가입 플로우로 진행
+//사용자가 연동 동의 → 서버에 “연동하기” API 호출
+//보안상 본인확인(비번, OTP, 이메일 코드 중 택1) 한 번 거침
+//서버가 기존 계정에 해당 소셜을 연결
+//이후엔 소셜 로그인만으로 같은 계정에 로그인 가능
 
 const SocialJoinPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const { login } = useAuth();
+  const { login } = useAuth(); // ✅ AuthContext 로그인 함수
 
   const [submitting, setSubmitting] = useState(false);
-  const [phoneRaw, setPhoneRaw] = useState("");
+  const [phoneRaw, setPhoneRaw] = useState("");                 // 숫자만 보관하는 전화번호 상태
 
-  // 연동 모달
+  // ✨ 연동 모달 상태 + 입력값
   const [linkOpen, setLinkOpen] = useState(false);
+  const [linkLoginId, setLinkLoginId] = useState("");
   const [linkPassword, setLinkPassword] = useState("");
   const [linkSubmitting, setLinkSubmitting] = useState(false);
 
@@ -32,7 +44,7 @@ const SocialJoinPage = () => {
     email: "",
     name: "",
     nickname: "",
-    phone_number: "",
+    phone_number: "", // ← 항상 숫자만
     birthday: "",
     gender: "",
     roles: "",
@@ -50,7 +62,7 @@ const SocialJoinPage = () => {
   };
   const providerLabel = providerLabelMap[providerParam] || "소셜";
 
-  // ✅ 쿼리스트링 → 초기값 세팅
+  // 쿼리스트링 → 초기값 세팅
   useEffect(() => {
     const provider = params.get("provider")?.toUpperCase() || "";
     const socialId = params.get("socialId") || "";
@@ -73,14 +85,6 @@ const SocialJoinPage = () => {
     }));
   }, [location.search, navigate]);
 
-  // ✅ 추가: 링크 토큰이 있으면 모달 자동 오픈
-  useEffect(() => {
-    if (params.get("token")) {
-      setLinkOpen(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search]);
-
   // 화면 표시용 포맷터 (하이픈)
   const formatPhone = (d: string) => {
     const s = d.slice(0, 11);
@@ -89,11 +93,11 @@ const SocialJoinPage = () => {
     return `${s.slice(0, 3)}-${s.slice(3, 7)}-${s.slice(7)}`;
   };
 
-  // 전화번호 onChange — 숫자만 상태에 저장
+  // 전화번호 전용 onChange — 숫자만 상태에 저장
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
-    setPhoneRaw(digits);
-    setFormData((p) => ({ ...p, phone_number: digits }));
+    setPhoneRaw(digits); // 화면 포맷용
+    setFormData((p) => ({ ...p, phone_number: digits })); // formData에는 숫자만
   };
 
   // 공통 입력 핸들러 (파일/전화번호 제외)
@@ -106,45 +110,67 @@ const SocialJoinPage = () => {
     setFormData((p) => ({ ...p, [name]: value }));
   };
 
-  // ✅ 기존 계정 연동(토큰 방식) — 현재 URL 쿼리 그대로 붙여서 POST
+  // ✨ 기존 계정과 소셜 계정 연동 API 호출 (독립 함수)
+  // 기존 계정과 소셜 계정 연동 (수정본)
   const linkExistingAccount = async () => {
-    if (!linkPassword.trim()) {
-      alert("비밀번호를 입력하세요.");
+    if (!linkLoginId.trim() || !linkPassword.trim()) {
+      alert("아이디와 비밀번호를 입력하세요.");
+      return;
+    }
+    if (!formData.social_type || !formData.social_id) {
+      alert("소셜 정보가 없습니다. 다시 시도하세요.");
       return;
     }
 
     setLinkSubmitting(true);
     try {
-      const qs = location.search || ""; // "?provider=...&socialId=...&token=..."
+      // 1) 연동 호출 (이 API는 로그인/쿠키 발급을 하지 않음)
+      await axios.post(
+        "/api/auth/social-link",
+        {
+          loginId: linkLoginId.trim(),
+          password: linkPassword,
+          socialType: formData.social_type,
+          socialId: formData.social_id,
+        },
+        { withCredentials: true }
+      );
 
-	  const res = await axios.post(
-	     `/api/auth/social-link/verify-password${qs}`,
-	     { password: linkPassword },
-	     { withCredentials: true }
-	   );
-	   // 서버는 { success/ok, message } 형태로 200 반환
-	   if ((res.data?.success ?? res.data?.ok) === true) {
-	     // (선택) 내 정보 갱신
-		  try {
-		        const me = await axios.get("/api/user", { withCredentials: true }).then(r => r.data);
-		        login?.(me);
-		      } catch (e) {
-		        // 로그인 컨텍스트 갱신 실패는 무시 (쿠키는 이미 설정됨)
-		      }
-	     navigate("/", { replace: true });
-	     return;
+      // 2A) (선택1) 자동 로그인까지 해주고 /api/user 조회
+      await axios.post(
+        "/api/login",
+        { loginId: linkLoginId.trim(), password: linkPassword },
+        { withCredentials: true }
+      );
+      
+      setLinkOpen(false);
+      navigate("/", { replace: true });
+
+      // ※ 자동 로그인을 원치 않으면 2B로 대체:
+      // alert("계정 연동이 완료됐습니다. 로그인해 주세요.");
+      // setLinkOpen(false);
+      // navigate("/auth/login", { replace: true });
+
+	  } catch (err: unknown) {
+	    // axios 에러인지부터 구분
+	    if (axios.isAxiosError(err)) {
+	      const st = err.response?.status;
+	      const isLinkCall = err.config?.url?.includes("/api/auth/social-link");
+
+	      const msg =
+	        isLinkCall && st === 403 ? "비밀번호가 올바르지 않습니다."
+	        : isLinkCall && st === 409 ? "이미 다른 계정에 연동된 소셜입니다."
+	        : err.response?.data?.message || "연동에 실패했습니다.";
+
+	      alert(msg);
+	    } else {
+	      // 비-axios 에러 안전 처리
+	      console.error(err);
+	      alert("알 수 없는 오류가 발생했습니다.");
+	    }
+	  } finally {
+	    setLinkSubmitting(false);
 	  }
-	  
-  } catch (err: any) {
-      const s = err?.response?.status;
-      const msg = err?.response?.data?.message ?? err?.response?.data?.error;
-      if (s === 401) alert("비밀번호가 올바르지 않습니다.");
-      else if (s === 410) alert("연동 토큰이 만료되었습니다. 다시 시도하세요.");
-      else if (s === 409) alert(msg ?? "이미 다른 소셜로 연동되어 있습니다.");
-      else alert(msg ?? "연동 처리 중 오류가 발생했습니다.");
-    } finally {
-      setLinkSubmitting(false);
-    }
   };
 
   // 닉네임 중복 확인
@@ -163,11 +189,12 @@ const SocialJoinPage = () => {
     }
   };
 
-  // 폼 제출 (신규 소셜 가입)
+  // 폼 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
 
+    // 필수값 검증
     if (!formData.name.trim()) return alert("이름을 입력하세요.");
     if (!formData.nickname.trim()) return alert("닉네임을 입력하세요.");
     if (!formData.phone_number.trim()) return alert("전화번호를 입력하세요.");
@@ -188,6 +215,7 @@ const SocialJoinPage = () => {
     try {
       setSubmitting(true);
 
+      // 서버 컨트롤러가 @RequestPart("joinDTO")로 받으므로 Blob(JSON)로 담아 전송
       const joinDTO = {
         login_id: formData.login_id,
         is_social: formData.is_social,
@@ -204,12 +232,16 @@ const SocialJoinPage = () => {
         major: formData.major,
       };
 
-	  const form = new FormData();
-	   Object.entries(joinDTO).forEach(([k, v]) => form.append(k, String(v ?? "")));
-	   if (formData.roles === "MENTOR" && formData.graduation_file) {
-	     form.append("graduation_file", formData.graduation_file);
-	   }
-	   await axios.post("/api/join", form, { withCredentials: true });
+      const form = new FormData();
+      form.append("joinDTO", new Blob([JSON.stringify(joinDTO)], { type: "application/json" }));
+      if (formData.roles === "MENTOR" && formData.graduation_file) {
+        form.append("graduation_file", formData.graduation_file);
+      }
+
+      // 1) 회원가입
+      await axios.post("/api/join", form, { withCredentials: true });
+
+      // 2) 서버가 쿠키를 세팅했다면, 내 정보 가져와서 컨텍스트 갱신
       try {
         const me = await axios.get("/api/user", { withCredentials: true }).then((r) => r.data);
         login?.(me);
@@ -217,6 +249,7 @@ const SocialJoinPage = () => {
       } catch {
         navigate("/auth/login", { replace: true });
       }
+      return;
     } catch (error) {
       console.error(error);
       const data =
@@ -248,21 +281,21 @@ const SocialJoinPage = () => {
               <p className="text-muted-foreground">소셜 로그인 후 추가 정보를 입력해주세요.</p>
             </div>
 
-            {/* 기존 계정 연동 섹션 */}
+            {/* ✨ 기존 계정 연동 섹션 */}
             <div className="rounded-2xl border p-4">
               <div className="mb-2 text-lg font-semibold">이미 계정이 있나요?</div>
               <p className="text-sm text-muted-foreground">
                 기존 이메일/아이디로 가입한 계정이 있다면 비밀번호 확인 후 소셜 계정과 연동할 수 있어요.
               </p>
               <div className="mt-3">
-                <Button
-                  variant="hero"
-                  onClick={() => setLinkOpen(true)}
-                  disabled={!formData.social_type || !formData.social_id}
-                  title={!formData.social_type || !formData.social_id ? "provider/socialId가 없습니다." : ""}
-                >
-                  기존 계정과 연동
-                </Button>
+			  <Button
+			    variant="hero"   // ← 회원가입 버튼과 동일 보라색
+			    onClick={() => setLinkOpen(true)}
+			    disabled={!formData.social_type || !formData.social_id}
+			    title={!formData.social_type || !formData.social_id ? "provider/socialId가 없습니다." : ""}  
+			  >
+			    기존 계정과 연동
+			  </Button>
               </div>
             </div>
 
@@ -313,8 +346,8 @@ const SocialJoinPage = () => {
                       name="phone_number"
                       placeholder="전화번호"
                       inputMode="numeric"
-                      value={formatPhone(phoneRaw)}
-                      onChange={handlePhoneChange}
+                      value={formatPhone(phoneRaw)} // 화면에는 하이픈
+                      onChange={handlePhoneChange} // 상태에는 숫자만
                       className="pl-10"
                       required
                     />
@@ -441,7 +474,7 @@ const SocialJoinPage = () => {
               </CardContent>
             </Card>
 
-            {/* 연동 모달 */}
+            {/* ✨ 연동 모달 */}
             <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
@@ -452,6 +485,11 @@ const SocialJoinPage = () => {
                   <div className="text-sm text-muted-foreground">
                     제공자: <span className="font-medium">{formData.social_type || "-"}</span>
                   </div>
+                  <Input
+                    placeholder="로그인 아이디"
+                    value={linkLoginId}
+                    onChange={(e) => setLinkLoginId(e.target.value)}
+                  />
                   <Input
                     type="password"
                     placeholder="비밀번호"
