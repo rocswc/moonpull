@@ -7,8 +7,8 @@ import lombok.Data;
 
 @Data
 public class NotificationVO {
-	  private Long notificationId;
-	    private Long userId;
+	  private Integer notificationId;
+	    private Integer userId;
 	    private String message;
 	    private LocalDateTime createdAt;
 	    private boolean isRead;

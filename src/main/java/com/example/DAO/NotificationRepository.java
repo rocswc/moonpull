@@ -9,11 +9,11 @@ public interface NotificationRepository {
 
     void insertNotification(NotificationVO notification);
 
-    List<NotificationVO> getNotificationsByUser(int userId);
+    List<NotificationVO> getNotificationsByUser(Integer userId);
 
-    int countUnreadNotifications(int userId);
+    int countUnreadNotifications(Integer userId);
 
-    void markAsRead(int notificationId);
+    void markAsRead(Integer notificationId);
 
-    void markAllAsRead(int userId);
+    void markAllAsRead(Integer userId);
 }
