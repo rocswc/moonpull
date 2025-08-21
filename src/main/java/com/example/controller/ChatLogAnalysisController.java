@@ -1,9 +1,9 @@
 package com.example.controller;
 
-import java.io.IOException;
-import java.time.ZoneId;
-import java.util.*;
-
+import com.example.VO.NotificationVO;
+import com.example.service.FcmPushService;
+import com.example.service.NotificationService;
+import lombok.RequiredArgsConstructor;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -20,7 +20,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import lombok.RequiredArgsConstructor;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -28,6 +31,8 @@ import lombok.RequiredArgsConstructor;
 public class ChatLogAnalysisController {
 
     private final RestHighLevelClient client;
+    private final NotificationService notificationService;
+    private final FcmPushService fcmPushService;
 
     @GetMapping("/spam-stats")
     public List<Map<String, Object>> getSpamActivity() throws IOException {
@@ -41,11 +46,11 @@ public class ChatLogAnalysisController {
         );
 
         DateHistogramAggregationBuilder dateHistogram = AggregationBuilders
-        	    .dateHistogram("by_minute")
-        	    .field("@timestamp")
-        	    .calendarInterval(DateHistogramInterval.MINUTE)  // 시간 → 분 단위로 변경
-        	    .timeZone(ZoneId.of("Asia/Seoul"))
-        	    .minDocCount(1);
+            .dateHistogram("by_minute")
+            .field("@timestamp")
+            .calendarInterval(DateHistogramInterval.MINUTE)
+            .timeZone(ZoneId.of("Asia/Seoul"))
+            .minDocCount(1);
 
         TermsAggregationBuilder bySenderAgg = AggregationBuilders
             .terms("by_sender")
@@ -55,7 +60,7 @@ public class ChatLogAnalysisController {
             .subAggregation(
                 AggregationBuilders.terms("by_content")
                     .field("content.keyword")
-                    .minDocCount(2) // 반복 메시지만
+                    .minDocCount(2)
                     .size(100)
             );
 
@@ -64,11 +69,12 @@ public class ChatLogAnalysisController {
         searchRequest.source(sourceBuilder);
 
         SearchResponse response = client.search(searchRequest, RequestOptions.DEFAULT);
-        System.out.println("✅ Elasticsearch 응답 원본:\n" + response); // 콘솔 출력
-        return parseSpamResponse(response);
+
+        return parseAndNotifySpam(response);
     }
 
-    private List<Map<String, Object>> parseSpamResponse(SearchResponse response) {
+    // ✅ 여기에 알림 저장 + FCM 발송 로직도 포함
+    private List<Map<String, Object>> parseAndNotifySpam(SearchResponse response) {
         List<Map<String, Object>> finalData = new ArrayList<>();
 
         try {
@@ -84,27 +90,38 @@ public class ChatLogAnalysisController {
                     for (Terms.Bucket contentBucket : contentAgg.getBuckets()) {
                         long count = contentBucket.getDocCount();
 
+                        String senderIdStr = senderBucket.getKeyAsString();
+                        String content = contentBucket.getKeyAsString();
+                        Integer senderId = Integer.parseInt(senderIdStr);
+
                         Map<String, Object> entry = new HashMap<>();
                         entry.put("time", time);
-                        entry.put("sender", senderBucket.getKeyAsString());
-                        entry.put("message", contentBucket.getKeyAsString());
+                        entry.put("sender", senderIdStr);
+                        entry.put("message", content);
                         entry.put("count", count);
                         finalData.add(entry);
 
-                        // 🔍 콘솔 출d력
-                        System.out.printf("📌 시간: %s | 사용자: %s | 메시지: \"%s\" | 반복횟수: %d회\n",
-                                time,
-                                senderBucket.getKeyAsString(),
-                                contentBucket.getKeyAsString(),
-                                count);
+                        // ✅ DB 저장
+                        NotificationVO noti = new NotificationVO();
+                        noti.setUserId(senderId);
+                        noti.setMessage("[스팸 감지] " + content + " (시간: " + time + ")");
+                        noti.setCreatedAt(LocalDateTime.now());
+                        noti.setRead(false);
+                        notificationService.insertNotification(noti);
+
+                        // ✅ FCM 푸시 발송
+                        fcmPushService.sendPushToUser(senderId, noti.getMessage());
+
+                        System.out.printf("📌 시간: %s | 사용자: %s | 메시지: \"%s\" | 반복: %d회\n",
+                            time, senderIdStr, content, count);
                     }
                 }
             }
+
         } catch (Exception e) {
             System.err.println("❌ 스팸 응답 파싱 중 오류 발생: " + e.getMessage());
         }
 
         return finalData;
     }
-
 }

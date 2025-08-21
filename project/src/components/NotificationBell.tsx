@@ -35,14 +35,16 @@ export default function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<Noti[]>([]);
   const [user, setUser] = useState<User | null>(null);
-  const [lastReadId, setLastReadId] = useState<number | null>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
 
   const loadUser = async () => {
     try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
       const res = await axios.get<User>("/api/me", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
         withCredentials: true,
       });
@@ -66,20 +68,27 @@ export default function NotificationBell() {
   };
 
   const markAsRead = async (id: number) => {
-    await axios.post(`/api/admin/notifications/${id}/read`);
-    const updated = items.map((item) =>
-      item.notificationId === id ? { ...item, isRead: 1 } : item
-    );
-    setItems(updated);
-    setUnread((prev) => Math.max(0, prev - 1));
-    setLastReadId(id);
+    try {
+      await axios.post(`/api/admin/notifications/${id}/read`);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.notificationId === id ? { ...item, isRead: 1 } : item
+        )
+      );
+      setUnread((prev) => Math.max(0, prev - 1));
+    } catch (e) {
+      console.error("❌ 개별 알림 읽음 처리 실패", e);
+    }
   };
 
   const markAllAsRead = async () => {
-    await axios.post(`/api/admin/notifications/read-all`);
-    const updated = items.map((item) => ({ ...item, isRead: 1 }));
-    setItems(updated);
-    setUnread(0);
+    try {
+      await axios.post(`/api/admin/notifications/read-all`);
+      setItems((prev) => prev.map((item) => ({ ...item, isRead: 1 })));
+      setUnread(0);
+    } catch (e) {
+      console.error("❌ 전체 알림 읽음 처리 실패", e);
+    }
   };
 
   const requestPermissionAndRegisterToken = async (user: User) => {
@@ -91,6 +100,8 @@ export default function NotificationBell() {
         vapidKey:
           "BOnD3Ps-iZs-0h17or7HwRFS8S1xxpKFZvO7LFPZD0J43NtmPX_mLYitKUgHm9U8YjmEpF4e--OZlBE7crjpyL4",
       });
+
+      if (!token) return;
 
       await axios.post(
         "/api/admin/fcm/register",
@@ -117,6 +128,7 @@ export default function NotificationBell() {
     };
     init();
 
+    // FCM 실시간 알림 수신 처리
     onMessage(messaging, (payload) => {
       const newMsg: Noti = {
         notificationId: Date.now(),
@@ -124,9 +136,21 @@ export default function NotificationBell() {
         createdAt: new Date().toISOString(),
         isRead: 0,
       };
-      setItems((prev) => [newMsg, ...prev]);
+      setItems((prev) => {
+        const exists = prev.some((x) => x.message === newMsg.message && x.createdAt === newMsg.createdAt);
+        return exists ? prev : [newMsg, ...prev];
+      });
       setUnread((prev) => prev + 1);
     });
+
+    const interval = setInterval(() => {
+      load();
+      axios.get("/api/admin/spam-stats").catch((e) =>
+        console.error("❌ 반복 메시지 감지 실패", e)
+      );
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -134,20 +158,6 @@ export default function NotificationBell() {
       requestPermissionAndRegisterToken(user);
     }
   }, [user]);
-
-  useEffect(() => {
-    if (lastReadId !== null) {
-      setTimeout(() => {
-        scrollBoxRef.current?.scrollTo({ 
-          top: scrollBoxRef.current.scrollHeight, 
-          behavior: "smooth" 
-        });
-      }, 100);
-      setLastReadId(null);
-    }
-  }, [items, lastReadId]);
-
-  const sortedItems = [...items].sort((a, b) => a.isRead - b.isRead);
 
   return (
     <div className="relative">
@@ -172,17 +182,21 @@ export default function NotificationBell() {
               모두 읽음
             </button>
           </div>
-          <div ref={scrollBoxRef} id="noti-scroll-box" className="max-h-80 overflow-auto">
-            {sortedItems.length === 0 ? (
+          <div
+            ref={scrollBoxRef}
+            id="noti-scroll-box"
+            className="max-h-80 overflow-auto"
+          >
+            {items.length === 0 ? (
               <div className="p-4 text-sm text-muted-foreground">
                 알림이 없습니다.
               </div>
             ) : (
-              sortedItems.map((n) => (
+              items.map((n) => (
                 <div
                   key={n.notificationId}
                   className={`px-3 py-2 border-b last:border-b-0 ${
-                    n.isRead ? "bg-gray-50 text-gray-400 italic" : ""
+                    n.isRead ? "bg-gray-100 text-gray-500 italic" : ""
                   }`}
                 >
                   <div className="flex items-start gap-2">
