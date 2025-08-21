@@ -18,6 +18,15 @@ public class WrongAnswerController {
 
     private final WrongAnswerService wrongAnswerService;
 
+    // 목록 조회: /api/wrong-answers?userId=1&subject=Math (subject 생략 가능)
+    @GetMapping
+    public ResponseEntity<List<WrongAnswerVO>> list(
+            @RequestParam Long userId,
+            @RequestParam(required = false) String subject
+    ) {
+        return ResponseEntity.ok(wrongAnswerService.list(userId, subject));
+    }
+    
     /** 오답 단건 저장 (정답이면 204 반환) */
     @PostMapping
     public ResponseEntity<?> createWrongAnswer(@Valid @RequestBody WrongAnswerCreateRequestDTO request) {
@@ -35,5 +44,5 @@ public class WrongAnswerController {
         List<WrongAnswerVO> saved = wrongAnswerService.saveWrongBatch(requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
-    
+
 }
