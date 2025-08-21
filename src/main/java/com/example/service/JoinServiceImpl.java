@@ -10,10 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.DAO.MemberSocialRepository;     // ⬅️ 추가
 import com.example.DAO.MentorRepository;
 import com.example.DAO.UserRepository;
-import com.example.VO.MemberSocialVO;               // ⬅️ 추가
 import com.example.VO.MemberVO;
 import com.example.VO.MentorVO;
 import com.example.dto.JoinDTO;
@@ -23,19 +21,16 @@ public class JoinServiceImpl implements JoinService {
 
     private final MentorRepository mentorRepository;
     private final UserRepository userRepository;
-    private final MemberSocialRepository memberSocialRepository; 
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Autowired
     public JoinServiceImpl(
             MentorRepository mentorRepository,
             UserRepository userRepository,
-            MemberSocialRepository memberSocialRepository,          
             BCryptPasswordEncoder bCryptPasswordEncoder
     ) {
         this.mentorRepository = mentorRepository;
         this.userRepository = userRepository;
-        this.memberSocialRepository = memberSocialRepository;       
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
     }
 
@@ -59,9 +54,9 @@ public class JoinServiceImpl implements JoinService {
     @Override
     @Transactional
     public void joinProcess(JoinDTO joinDTO) {
-        boolean isSocial = Boolean.TRUE.equals(joinDTO.getIsSocial()); // DTO에 필드 추가했으면 그대로 사용
+        boolean isSocial = Boolean.TRUE.equals(joinDTO.getIsSocial());
 
-        // 1) 회원 생성/저장
+        // 1) 회원 생성
         MemberVO user = new MemberVO();
 
         if (isSocial) {
@@ -83,7 +78,12 @@ public class JoinServiceImpl implements JoinService {
         user.setBirthday(joinDTO.getBirthday());
         user.setGender(joinDTO.getGender());
 
-        // 졸업증명서 업로드 (네 코드 그대로 유지)
+        // ✅ 소셜 정보 필드 직접 세팅
+        user.setIsSocial(isSocial);
+        user.setSocialType(joinDTO.getSocialType());
+        user.setSocialId(joinDTO.getSocialId());
+
+        // 졸업증명서 업로드
         MultipartFile graduationFile = joinDTO.getGraduationFile();
         if (graduationFile != null && !graduationFile.isEmpty()) {
             String uploadDir = new File("src/main/resources/static/uploads").getAbsolutePath();
@@ -104,19 +104,9 @@ public class JoinServiceImpl implements JoinService {
             user.setGraduationFile(null);
         }
 
-        userRepository.save(user); // PK 확보
+        userRepository.save(user);
 
-        // 2) 소셜이면 링크(member_social) 저장
-        if (isSocial) {
-            MemberSocialVO link = MemberSocialVO.builder()
-                    .member(user)
-                    .socialType(joinDTO.getSocialType()) // DTO에 추가해둔 값
-                    .socialId(joinDTO.getSocialId())
-                    .build();
-            memberSocialRepository.save(link); 
-        }
-
-        // 3) 멘토 지원자 처리
+        // 2) 멘토 지원자 처리
         if ("MENTOR".equalsIgnoreCase(joinDTO.getRoles())) {
             MentorVO mentor = new MentorVO();
             mentor.setUserId(user.getUserId());

@@ -31,6 +31,11 @@ public interface UserRepository extends JpaRepository<MemberVO, Integer> {
     @Query("UPDATE MemberVO m SET m.lastLogin = CURRENT_TIMESTAMP WHERE m.loginid = :loginid")
     int updateLastLogin(String loginid);
 
+    Optional<MemberVO> findBySocialTypeAndSocialId(String socialType, String socialId);
+
+    boolean existsBySocialTypeAndSocialId(String socialType, String socialId);
+    
+
     // 이메일로 회원 조회
     Optional<MemberVO> findByEmail(String email);
 

@@ -2,7 +2,6 @@ package com.example.service;
 
 import com.example.VO.MemberVO;
 import com.example.DAO.UserRepository;
-import com.example.DAO.MemberSocialRepository;   // ⬅️ 추가
 import com.example.dto.SocialUserDTO;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,32 +17,25 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final MemberSocialRepository memberSocialRepository;   // ⬅️ 추가
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
-                           MemberSocialRepository memberSocialRepository, // ⬅️ 추가
                            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.memberSocialRepository = memberSocialRepository;       // ⬅️ 추가
         this.passwordEncoder = passwordEncoder;
     }
 
     // ===== 존재 여부 =====
     @Override
     public boolean existsBySocialIdAndType(String socialId, String socialType) {
-        // repo 시그니처: existsBySocialTypeAndSocialId(type, id)
-        return memberSocialRepository.existsBySocialTypeAndSocialId(socialType, socialId);
+        return userRepository.existsBySocialTypeAndSocialId(socialType, socialId);
     }
 
     // ===== 조회 =====
     @Override
     public Optional<MemberVO> getBySocialIdAndType(String socialId, String socialType) {
-        // repo 시그니처: findBySocialTypeAndSocialId(type, id)
-        return memberSocialRepository
-                .findBySocialTypeAndSocialId(socialType, socialId)
-                .map(link -> link.getMember());
+        return userRepository.findBySocialTypeAndSocialId(socialType, socialId);
     }
 
     @Override
@@ -78,5 +70,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean matchesPassword(String raw, String hash) {
         return hash != null && passwordEncoder.matches(raw, hash);
+    }
+    
+    @Override
+    public boolean existsByPhone(String phone) {
+        if (phone == null) return false;
+        // 숫자만 비교하고 싶으면 아래 한 줄 사용
+        String digits = phone.replaceAll("\\D", "");
+        return userRepository.existsByPhonenumber(digits); // ← 리포지토리 메서드명과 필드명 맞추세요
+        // 만약 컬럼/필드가 phoneNumber 라면: existsByPhoneNumber(digits)
     }
 }

@@ -42,8 +42,10 @@ import React from "react";
 import { useFcm } from "./fcm";
 import NotificationBell from "@/components/NotificationBell";
 import OAuthCallbackPage from "@/components/socialLogin/OAuthCallbackPage";
+import SocialLoginWrapper from "@/components/socialLogin/SocialLoginWrapper";
 
 const queryClient = new QueryClient();
+
 
 const ChatComponents = () => {
   const { chatRooms } = useChat();
@@ -76,9 +78,10 @@ const AppInner = () => {
         {/* 로그인/회원가입 */}
         <Route path="/auth/login" element={<AuthPage />} />
         <Route path="/auth/signup" element={<AuthPage />} />
-        <Route path="/auth/:provider/callback" element={<OAuthCallbackPage />} />
+		<Route path="/auth/:provider/callback" element={<OAuthCallbackPage />} />
 		<Route path="/auth/social-join" element={<SocialJoinPage />} />
-	
+        <Route path="/auth/social/phone/:provider" element={<SocialLoginWrapper />} />
+		
         {/* 메인 페이지 */}
         <Route path="/" element={<Index />} />
 		

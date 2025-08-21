@@ -13,6 +13,7 @@ import Navigation from "@/components/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import KakaoLoginButton from "@/components/socialLogin/KakaoLoginButton";
 import NaverLoginButton from "@/components/socialLogin/NaverLoginButton";
+import SocialPhoneModal from "@/components/socialLogin/SocialPhoneModal"; // ★ 추가
 
 //흐름 요약 
 //사용자가 소셜 로그인 시도
@@ -29,12 +30,16 @@ const AuthPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isLoggedIn, login } = useAuth();
-
+  const [phoneOpen, setPhoneOpen] = useState(false);              // ★ 모달 상태
+    const [phoneProvider, setPhoneProvider] = useState<string>(""); // ★ 어떤 프로바이더인지
   const [isLogin, setIsLogin] = useState(location.pathname.includes("/login"));
   const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     login_id: "",
+    is_social: false,
+    social_type: "",
+    social_id: "",
     nickname: "",
     name: "",
     birthday: "",
@@ -72,6 +77,9 @@ const AuthPage = () => {
   const resetToLogin = () => {
     setFormData({
       login_id: "",
+      is_social: false,
+      social_type: "",
+      social_id: "",
       nickname: "",
       name: "",
       birthday: "",
@@ -88,6 +96,35 @@ const AuthPage = () => {
     navigate("/auth/login");
   };
 
+  // ★★★ ① 여기 추가: 모달 열고/닫기 + 쿼리 정리
+   const handlePhoneOpenChange = (v: boolean) => {
+     setPhoneOpen(v);
+     if (!v) {
+       const qs = new URLSearchParams(location.search);
+       qs.delete("provider");
+       qs.delete("socialId");
+       qs.delete("email");
+       qs.delete("name");
+       qs.delete("needPhone");
+       navigate(
+         { pathname: location.pathname, search: qs.toString() ? `?${qs}` : "" },
+         { replace: true }
+       );
+     }
+   };
+
+   // ★★★ ② 여기 추가: 콜백 후 로그인 화면에서 모달 자동 오픈
+   useEffect(() => {
+     const qs = new URLSearchParams(location.search);
+     const p = (qs.get("provider") || "").toUpperCase();
+     const sid = qs.get("socialId");
+     const needPhone = qs.get("needPhone");
+     if (location.pathname.includes("/auth/login") && p && (sid || needPhone)) {
+       setPhoneProvider(p);
+       setPhoneOpen(true);
+     }
+   }, [location.pathname, location.search]);
+  
   const validatePassword = (password: string) =>
     /^(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/.test(password);
 
@@ -126,7 +163,7 @@ const AuthPage = () => {
       nickname: "닉네임",
     };
     if (!value) {
-      toast.warning(`${labels[type]}를 먼저 입력하세요.`);
+      alert(`${labels[type]}를 먼저 입력하세요.`);
       return;
     }
     try {
@@ -134,14 +171,9 @@ const AuthPage = () => {
         params: { type, value },
         withCredentials: true,
       });
-
-      if (res.data.exists) {
-        toast.error(`이미 사용 중인 ${labels[type]}입니다.`);
-      } else {
-        toast.success(`사용 가능한 ${labels[type]}입니다.`);
-      }
+      alert(res.data.exists ? `이미 사용 중인 ${labels[type]}입니다.` : `사용 가능한 ${labels[type]}입니다.`);
     } catch {
-      toast.error("중복 확인 중 오류가 발생했습니다.");
+      alert("중복 확인 중 오류가 발생했습니다.");
     }
   };
 
@@ -170,6 +202,9 @@ const AuthPage = () => {
         const joinPayload = {
           login_id: formData.login_id,
           password: formData.password,
+          is_social: formData.is_social,
+          social_type: formData.social_type || null,
+          social_id: formData.social_id || null,
           name: formData.name,
           nickname: formData.nickname,
           birthday: formData.birthday,
@@ -187,37 +222,26 @@ const AuthPage = () => {
           form.append("graduation_file", formData.graduation_file);
         }
 
-		await axios.post("/api/join", form, {
-		   withCredentials: true,
-		   // 전역에 application/json 걸려있어도 FormData일 땐 자동 boundary로 보내게 만듦
-		   headers: { "Content-Type": undefined },
-		 });
+        await axios.post("/api/join", form, {
+          withCredentials: true,
+        });
 
         alert("회원가입이 완료되었습니다.");
         resetToLogin();
-		
+      } else {
+        const res = await axios.post("/api/login", {
+          loginId: formData.login_id,
+          password: formData.password,
+        }, { withCredentials: true });
+		if (res.data.token) {
+		   localStorage.setItem("token", res.data.token);
+		   login(res.data); // AuthContext의 로그인 처리 함수
+		   navigate("/");
 		 } else {
-		   // 1) 로그인 요청 (세션 쿠키 발급)
-		   await axios.post(
-		     "/api/login",
-		     { loginId: formData.login_id, password: formData.password },
-		     { withCredentials: true }
-		   );
-		
-		   // 2) 세션이 실제로 붙었는지 /api/me 로 확인
-		   const meRes = await axios.get("/api/me", {
-		     headers: { "Cache-Control": "no-store" },
-		     withCredentials: true,
-		   });
-		
-		   if (meRes.data && meRes.data.authenticated === true) {
-		     // AuthContext.login(ServerUser) 규격에 맞게 그대로 넘겨도 됨
-		     login(meRes.data);
-		     navigate("/");
-		   } else {
-		     alert("인증 실패: 세션이 생성되지 않았습니다.");
-		   }
+		   alert("토큰이 응답에 포함되지 않았습니다.");
 		 }
+       
+      }
 	  } 	  catch (error) {
 	         let msg = "알 수 없는 오류가 발생했습니다.";
 
@@ -590,6 +614,12 @@ const AuthPage = () => {
 
             </CardContent>
           </Card>
+		  {/* ★★★ ③ 여기 추가: 카드 아래에서 모달 렌더 */}
+		           <SocialPhoneModal
+		             provider={phoneProvider}
+		             open={phoneOpen}
+		             onOpenChange={handlePhoneOpenChange}
+		           />
         </div>
       </div>
     </>
