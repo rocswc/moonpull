@@ -1,11 +1,13 @@
 package com.example.controller;
 
+import com.example.VO.ChatMessage;
 import com.example.VO.FcmTokenVO;
 import com.example.VO.NotificationVO;
 import com.example.VO.ReportVO;
 import com.example.service.FcmPushService;
 import com.example.service.FcmTokenService;
 import com.example.service.NotificationService;
+import com.example.service.RtChatService;
 import com.example.DAO.ReportRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +25,7 @@ public class ReportController {
     private final FcmTokenService fcmTokenService;
     private final FcmPushService fcmPushService;
     private final NotificationService notificationService;
-
+    private final RtChatService rtChatService;
     // ✅ 신고 등록
     @PostMapping("/admin/report")
     public ResponseEntity<?> submitReport(@RequestBody ReportVO reportVO) {
@@ -98,4 +100,17 @@ public class ReportController {
         ));
         return list;
     }
+     
+    @GetMapping("/api/admin/report/{reportId}/context")
+    public ResponseEntity<List<ChatMessage>> getReportedMessageContext(@PathVariable Integer reportId) {
+        ReportVO report = reportRepository.getReportById(reportId); // 🧠 이 메서드는 별도로 만들어야 함
+        if (report == null || report.getChatMessageId() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<ChatMessage> context = rtChatService.getContextMessages(report.getChatMessageId(), 10, 10);
+        return ResponseEntity.ok(context);
+    }
+    
+    
 }

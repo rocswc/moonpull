@@ -11,4 +11,6 @@ import org.springframework.data.domain.Pageable;
 public interface ChatMessageDocRepo extends MongoRepository<ChatMessage, String> {
 	  Page<ChatMessage> findByChatroomIdOrderByCreatedAtDesc(long roomId, Pageable pageable);
 	  Page<ChatMessage> findByChatroomIdAndCreatedAtLessThanOrderByCreatedAtDesc(long roomId, Instant before, Pageable pageable);
+	  Page<ChatMessage> findByChatroomIdAndCreatedAtGreaterThanOrderByCreatedAtAsc(long roomId, Instant createdAt, Pageable pageable);
+
 }
