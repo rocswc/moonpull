@@ -112,6 +112,7 @@ const CBTQuizSystem = () => {
   const [practiceQuestionsAnswered, setPracticeQuestionsAnswered] = useState(0);
   const [userId, setUserId] = useState('');
 
+
   // Results state for exam mode
   const [examResults, setExamResults] = useState([]);
 
@@ -300,8 +301,14 @@ const CBTQuizSystem = () => {
       setShowExplanation(true);
       
       if (!isCorrect && currentRandomQuestion) {
+        console.log("중갑김")
+        console.log(userId)
+        console.log(currentRandomQuestion.id)
+
         const payload = {
           school: selectedSchool,
+          userId: userId,
+          questionId:currentRandomQuestion.id,
           grade: String(selectedGrade),
           subject: selectedSubject.name,
           question: currentRandomQuestion.question,
