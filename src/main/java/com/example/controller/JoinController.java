@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.DAO.MemberSocialRepository; // ⬅ 추가
 import com.example.DAO.UserRepository;
 import com.example.dto.JoinDTO;
 import com.example.service.JoinService;
@@ -26,12 +25,11 @@ public class JoinController {
 
     private final JoinService joinService;
     private final UserRepository userRepository;
-    private final MemberSocialRepository memberSocialRepository;
 
-    public JoinController(JoinService joinService, UserRepository userRepository, MemberSocialRepository memberSocialRepository){
+
+    public JoinController(JoinService joinService, UserRepository userRepository){
 				this.joinService = joinService;
 				this.userRepository = userRepository;
-				this.memberSocialRepository = memberSocialRepository;    // ⬅ 추가
 				}
 
     // 회원가입 처리 API (multipart/form-data)
@@ -59,7 +57,7 @@ public class JoinController {
             //  소셜 로그인 ID 중복 검사
          // 변경 후
             if (Boolean.TRUE.equals(joinDTO.getIsSocial()) &&
-                memberSocialRepository.existsBySocialTypeAndSocialId(joinDTO.getSocialType(), joinDTO.getSocialId())) {
+            	    userRepository.existsBySocialTypeAndSocialId(joinDTO.getSocialType(), joinDTO.getSocialId())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "이미 가입된 소셜 계정입니다."));
             }
 

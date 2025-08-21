@@ -78,6 +78,23 @@ public class SocialAuthController {
                 + "&state=" + state;
 
         response.sendRedirect(naverAuthUrl);
+    }  
+    
+    // ✅ 카카오 프로퍼티 주입
+    @Value("${oauth.kakao.client-id}")
+    private String kakaoClientId;
+
+    @Value("${oauth.kakao.redirect-uri}")
+    private String kakaoRedirectUri;
+
+    // ✅ 카카오 로그인 시작
+    @GetMapping("/kakao/login")
+    public void kakaoLogin(HttpServletResponse response) throws IOException {
+        String url = "https://kauth.kakao.com/oauth/authorize"
+                + "?response_type=code"
+                + "&client_id=" + kakaoClientId
+                + "&redirect_uri=" + URLEncoder.encode(kakaoRedirectUri, StandardCharsets.UTF_8);
+        response.sendRedirect(url);
     }
 
     // ✅ 콜백 처리
@@ -130,13 +147,12 @@ public class SocialAuthController {
                         .build();
             }
 
-            // 신규 회원 → 소셜가입 페이지로
-            String joinUrl = FRONT_BASE + "/auth/social-join"
+         // 신규 회원 → 로그인 페이지로 보낸 뒤 모달 띄움
+            String joinUrl = FRONT_BASE + "/auth/login"
                     + "?provider=" + enc(socialType)
                     + "&socialId=" + enc(user.getSocialId())
                     + "&email="    + enc(user.getEmail())
                     + "&name="     + enc(user.getName());
-
             return ResponseEntity.status(HttpStatus.SEE_OTHER)
                     .location(URI.create(joinUrl))
                     .build();

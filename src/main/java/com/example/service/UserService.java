@@ -22,4 +22,8 @@ public interface UserService {
     // 유틸
     Set<String> parseRoles(String rolesCsv);
     boolean matchesPassword(String raw, String hash);
+    
+    // DB에 해당 전화번호가 존재하는지 
+    boolean existsByPhone(String phone);
+    
 }

@@ -122,6 +122,7 @@ public class SecurityConfig {
                 uri.equals("/auth/login") ||
                 uri.startsWith("/api/join") ||
                 uri.startsWith("/api/auth/social-link") ||
+                uri.equals("/api/auth/check-phone") ||
                 uri.startsWith("/ws/") ||
                 uri.startsWith("/api/rt-chat/") ||
                 uri.startsWith("/auth/") || 
@@ -210,14 +211,18 @@ public class SecurityConfig {
                 
                 .requestMatchers("/auth/**", "/auth/social/finalize").permitAll()
                 .requestMatchers("/api/auth/social-link/**").permitAll()
+                
                 // 구글/카카오 콜백 명시적으로 열고 싶으면 추가(권장)
                 .requestMatchers("/auth/google/callback", "/auth/kakao/callback").permitAll()
 
                 .requestMatchers("/api/mentor-review/**", "/mentor-review/**", "/mentorReview/**").permitAll()
                 .requestMatchers("/api/mentoring/accept").permitAll()
                 .requestMatchers("/api/wrong-answers/**").permitAll()
-
                 
+                 // 소셜 전화번호 확인 엔드포인트 허용
+                 .requestMatchers(HttpMethod.GET, "/api/auth/check-phone").permitAll()
+                 .requestMatchers("/check-phone").permitAll()
+                 
                 // ✅ 여기 핵심!
                 .requestMatchers(HttpMethod.GET, "/api/me").permitAll() // 익명도 접근 가능
                 .requestMatchers(HttpMethod.POST, "/api/logout").permitAll()
