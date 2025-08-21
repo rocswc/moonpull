@@ -126,28 +126,22 @@ const WrongNotePage = () => {
             </div>
 
             <Card className="shadow-elegant">
-              <CardHeader>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <CardHeader>
                   <TabsList className="grid w-full grid-cols-2 bg-muted/50">
-                    <TabsTrigger value="view" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <BookOpen className="h-4 w-4" />
-                      틀린문제보기
-                    </TabsTrigger>
-                    <TabsTrigger value="retry" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                      <RotateCcw className="h-4 w-4" />
-                      다시풀기
-                    </TabsTrigger>
+                    <TabsTrigger value="view">📚 오답 목록</TabsTrigger>
+                    <TabsTrigger value="retry">🔁 재도전</TabsTrigger>
                   </TabsList>
-                </Tabs>
-              </CardHeader>
-              <CardContent className="p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                </CardHeader>
+
+                <CardContent className="p-6">
                   <TabsContent value="view" className="mt-0">
                     <ViewWrongAnswers
                       questions={filteredQuestions}
-                      onRetryAll={handleRetryAll}
+                      onRetryAll={handleRetryAll} // 누르면 activeTab="retry"
                     />
                   </TabsContent>
+
                   <TabsContent value="retry" className="mt-0">
                     <RetryMode
                       questions={incompleteQuestions}
@@ -155,8 +149,8 @@ const WrongNotePage = () => {
                       onBackToView={() => setActiveTab("view")}
                     />
                   </TabsContent>
-                </Tabs>
-              </CardContent>
+                </CardContent>
+              </Tabs>
             </Card>
 
             <div className="text-center mt-8">

@@ -3,23 +3,31 @@ import com.example.VO.WrongAnswerVO;
 import com.example.dto.WrongAnswerCreateRequestDTO;
 import com.example.DAO.WrongAnswerRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class WrongAnswerServiceImpl implements WrongAnswerService {
     private final WrongAnswerRepository repository;
-
+ 
     public WrongAnswerVO saveIfWrong(WrongAnswerCreateRequestDTO req) {
         if (Boolean.TRUE.equals(req.getIsCorrect())) {
-            // 정답이면 저장하지 않음
-            return null;
+            return null; // 정답이면 저장 안 함
         }
 
-        // answer가 비어 있고, correctAnswerIndex가 들어오면 보기 텍스트로 매핑
+        // 1) 정답 텍스트 보정
         List<String> answer = req.getAnswer();
-        if ((answer == null || answer.isEmpty()) 
+        if ((answer == null || answer.isEmpty())
                 && req.getCorrectAnswerIndex() != null
                 && req.getChoices() != null
                 && req.getCorrectAnswerIndex() >= 0
@@ -27,18 +35,24 @@ public class WrongAnswerServiceImpl implements WrongAnswerService {
             answer = List.of(req.getChoices().get(req.getCorrectAnswerIndex()));
         }
 
-        WrongAnswerVO doc = WrongAnswerVO.builder()
-                .school(req.getSchool())
-                .grade(req.getGrade())
-                .subject(req.getSubject())
-                .question(req.getQuestion())
-                .passage(req.getPassage())
-                .choices(req.getChoices())
-                .answer(answer)                    // <- 서버에서 보정된 answer 사용
-                .explanation(req.getExplanation())
-                .userAnswer(req.getUserAnswer())
-                .isCorrect(false)                  // 어차피 오답만 저장
-                .build();
+        // 2) ★ 같은 사용자+같은 문항은 1건만 유지 (upsert)
+        WrongAnswerVO doc = repository.findByUserIdAndQuestionId(req.getUserId(), req.getQuestionId())
+                .orElse(WrongAnswerVO.builder()
+                        .userId(req.getUserId())          // ★ 추가
+                        .questionId(req.getQuestionId())  // ★ 추가
+                        .build());
+
+        // 3) 필드 세팅/갱신
+        doc.setSchool(req.getSchool());
+        doc.setGrade(req.getGrade());
+        doc.setSubject(req.getSubject());
+        doc.setQuestion(req.getQuestion());
+        doc.setPassage(req.getPassage());
+        doc.setChoices(req.getChoices());
+        doc.setAnswer(answer);
+        doc.setExplanation(req.getExplanation());
+        doc.setUserAnswer(req.getUserAnswer());
+        doc.setCorrect(false); // 항상 활성 오답로 유지(맞추면 따로 true로 바꾸거나 삭제)
 
         return repository.save(doc);
     }
@@ -49,4 +63,13 @@ public class WrongAnswerServiceImpl implements WrongAnswerService {
                 .filter(doc -> doc != null)
                 .toList();
     }
+    
+    @Override
+    public List<WrongAnswerVO> list(Long userId, String subject) {
+        if (subject == null || subject.isBlank()) {
+            return repository.findByUserIdOrderByCreatedAtDesc(userId);
+        }
+        return repository.findByUserIdAndSubjectOrderByCreatedAtDesc(userId, subject);
+    }
+    
 }
