@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # MongoDB 연결 설정 - 데이터베이스 이름을 'quiz'로 변경
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://192.168.0.40:27017')
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://192.168.0.27:27017')
 DATABASE_NAME = 'quiz'  # 변경됨
 
 try:
