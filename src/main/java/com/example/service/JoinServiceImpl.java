@@ -7,10 +7,13 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.DAO.MemberSocialRepository;     // ⬅️ 추가
 import com.example.DAO.MentorRepository;
 import com.example.DAO.UserRepository;
+import com.example.VO.MemberSocialVO;               // ⬅️ 추가
 import com.example.VO.MemberVO;
 import com.example.VO.MentorVO;
 import com.example.dto.JoinDTO;
@@ -18,107 +21,111 @@ import com.example.dto.JoinDTO;
 @Service
 public class JoinServiceImpl implements JoinService {
 
-	@Override
-	public void saveFile(MultipartFile file) {
-		String uploadDir = "D:/졸업증명서";
-		File dir = new File(uploadDir);
-		if (!dir.exists()) {
-			dir.mkdirs();
-		}
+    private final MentorRepository mentorRepository;
+    private final UserRepository userRepository;
+    private final MemberSocialRepository memberSocialRepository; 
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
-		String originalFilename = file.getOriginalFilename();
-		String safeFilename = UUID.randomUUID().toString() + "_"
-				+ originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+    @Autowired
+    public JoinServiceImpl(
+            MentorRepository mentorRepository,
+            UserRepository userRepository,
+            MemberSocialRepository memberSocialRepository,          
+            BCryptPasswordEncoder bCryptPasswordEncoder
+    ) {
+        this.mentorRepository = mentorRepository;
+        this.userRepository = userRepository;
+        this.memberSocialRepository = memberSocialRepository;       
+        this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+    }
 
-		File targetFile = new File(dir, safeFilename);
-		try {
-			file.transferTo(targetFile);
-		} catch (IOException e) {
-			throw new RuntimeException("파일 저장 실패", e);
-		}
-	}
+    @Override
+    public void saveFile(MultipartFile file) {
+        String uploadDir = "D:/졸업증명서";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
 
-	private final MentorRepository mentorRepository;
-	private final UserRepository userRepository;
-	private final BCryptPasswordEncoder bCryptPasswordEncoder;
+        String originalFilename = file.getOriginalFilename();
+        String safeFilename = UUID.randomUUID().toString() + "_" +
+                (originalFilename == null ? "file" : originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_"));
 
-	@Autowired
-	public JoinServiceImpl(MentorRepository mentorRepository, UserRepository userRepository,
-			BCryptPasswordEncoder bCryptPasswordEncoder) {
-		this.mentorRepository = mentorRepository;
-		this.userRepository = userRepository;
-		this.bCryptPasswordEncoder = bCryptPasswordEncoder;
-	}
+        try {
+            file.transferTo(new File(dir, safeFilename));
+        } catch (IOException e) {
+            throw new RuntimeException("파일 저장 실패", e);
+        }
+    }
 
-	@Override
-	public void joinProcess(JoinDTO joinDTO) {
-		MemberVO user = new MemberVO();
-		user.setIsSocial(joinDTO.getIsSocial() != null && joinDTO.getIsSocial());
+    @Override
+    @Transactional
+    public void joinProcess(JoinDTO joinDTO) {
+        boolean isSocial = Boolean.TRUE.equals(joinDTO.getIsSocial()); // DTO에 필드 추가했으면 그대로 사용
 
-		if (user.getIsSocial()) {
-			user.setSocialType(joinDTO.getSocialType());
-			user.setSocialId(joinDTO.getSocialId());
-			user.setLoginid(null);
-			user.setPasswordhash(null);
-		} else {
-			user.setLoginid(joinDTO.getLoginId());
-			user.setPasswordhash(bCryptPasswordEncoder.encode(joinDTO.getPassword()));
-		}
+        // 1) 회원 생성/저장
+        MemberVO user = new MemberVO();
 
-		// ✅ 공통 정보 세팅
-		user.setName(joinDTO.getName());
-		user.setNickname(joinDTO.getNickname());
-		user.setRoles("ROLE_" + joinDTO.getRoles());
-		user.setPhonenumber(joinDTO.getPhoneNumber());
-		user.setEmail(joinDTO.getEmail());
-		user.setIsBanned(false);
-		user.setUniversity(joinDTO.getUniversity());
-		user.setMajor(joinDTO.getMajor());
+        if (isSocial) {
+            user.setLoginid(null);
+            user.setPasswordhash(null);
+        } else {
+            user.setLoginid(joinDTO.getLoginId());
+            user.setPasswordhash(bCryptPasswordEncoder.encode(joinDTO.getPassword()));
+        }
 
-		// ✅ 생년월일 및 성별 설정
-		user.setBirthday(joinDTO.getBirthday()); // 예: "19991111"
-		user.setGender(joinDTO.getGender()); // 예: "M" 또는 "F"
+        // 공통 정보
+        user.setName(joinDTO.getName());
+        user.setNickname(joinDTO.getNickname());
+        user.setRoles("ROLE_" + joinDTO.getRoles());
+        user.setPhonenumber(joinDTO.getPhoneNumber());
+        user.setEmail(joinDTO.getEmail());
+        user.setUniversity(joinDTO.getUniversity());
+        user.setMajor(joinDTO.getMajor());
+        user.setBirthday(joinDTO.getBirthday());
+        user.setGender(joinDTO.getGender());
 
-		// ✅ 졸업증명서 업로드
-		MultipartFile graduationFile = joinDTO.getGraduationFile();
-		if (graduationFile != null && !graduationFile.isEmpty()) {
-			String uploadDir = new File("src/main/resources/static/uploads").getAbsolutePath();
-			File dir = new File(uploadDir);
-			if (!dir.exists()) {
-				dir.mkdirs();
-			}
+        // 졸업증명서 업로드 (네 코드 그대로 유지)
+        MultipartFile graduationFile = joinDTO.getGraduationFile();
+        if (graduationFile != null && !graduationFile.isEmpty()) {
+            String uploadDir = new File("src/main/resources/static/uploads").getAbsolutePath();
+            File dir = new File(uploadDir);
+            if (!dir.exists()) dir.mkdirs();
 
-			String originalFilename = graduationFile.getOriginalFilename();
-			String safeFilename = UUID.randomUUID().toString() + "_"
-					+ originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+            String original = graduationFile.getOriginalFilename();
+            String safe = UUID.randomUUID().toString() + "_" +
+                    (original == null ? "file" : original.replaceAll("[^a-zA-Z0-9\\.\\-]", "_"));
 
-			File targetFile = new File(dir, safeFilename);
-			try {
-				graduationFile.transferTo(targetFile);
-				user.setGraduationFile("/uploads/" + safeFilename);
-			} catch (IOException e) {
-				throw new RuntimeException("졸업증명서 파일 저장 실패", e);
-			}
-		} else {
-			user.setGraduationFile(null);
-		}
+            try {
+                graduationFile.transferTo(new File(dir, safe));
+                user.setGraduationFile("/uploads/" + safe);
+            } catch (IOException e) {
+                throw new RuntimeException("졸업증명서 파일 저장 실패", e);
+            }
+        } else {
+            user.setGraduationFile(null);
+        }
 
-		// ❌ 주민등록번호 관련 코드 제거됨
+        userRepository.save(user); // PK 확보
 
-		// ✅ 사용자 저장
-		userRepository.save(user);
+        // 2) 소셜이면 링크(member_social) 저장
+        if (isSocial) {
+            MemberSocialVO link = MemberSocialVO.builder()
+                    .member(user)
+                    .socialType(joinDTO.getSocialType()) // DTO에 추가해둔 값
+                    .socialId(joinDTO.getSocialId())
+                    .build();
+            memberSocialRepository.save(link); 
+        }
 
-		// ✅ 멘토 지원자 처리
-		if ("MENTOR".equalsIgnoreCase(joinDTO.getRoles())) {
-			MentorVO mentor = new MentorVO();
-			mentor.setUserId(user.getUserId());
-			mentor.setStudentCourse(joinDTO.getUniversity());
-			mentor.setSpecialite(joinDTO.getMajor());
-			mentor.setIntroduction("관리자 승인 대기 중");
-			mentor.setExperienceYear(0);
-			mentor.setStatus("PENDING");
-
-			mentorRepository.insertMentorApplication(mentor);
-		}
-	}
+        // 3) 멘토 지원자 처리
+        if ("MENTOR".equalsIgnoreCase(joinDTO.getRoles())) {
+            MentorVO mentor = new MentorVO();
+            mentor.setUserId(user.getUserId());
+            mentor.setStudentCourse(joinDTO.getUniversity());
+            mentor.setSpecialite(joinDTO.getMajor());
+            mentor.setIntroduction("관리자 승인 대기 중");
+            mentor.setExperienceYear(0);
+            mentor.setStatus("PENDING");
+            mentorRepository.insertMentorApplication(mentor);
+        }
+    }
 }

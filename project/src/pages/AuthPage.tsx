@@ -35,9 +35,6 @@ const AuthPage = () => {
 
   const [formData, setFormData] = useState({
     login_id: "",
-    is_social: false,
-    social_type: "",
-    social_id: "",
     nickname: "",
     name: "",
     birthday: "",
@@ -75,9 +72,6 @@ const AuthPage = () => {
   const resetToLogin = () => {
     setFormData({
       login_id: "",
-      is_social: false,
-      social_type: "",
-      social_id: "",
       nickname: "",
       name: "",
       birthday: "",
@@ -132,7 +126,7 @@ const AuthPage = () => {
       nickname: "닉네임",
     };
     if (!value) {
-      alert(`${labels[type]}를 먼저 입력하세요.`);
+      toast.warning(`${labels[type]}를 먼저 입력하세요.`);
       return;
     }
     try {
@@ -140,9 +134,14 @@ const AuthPage = () => {
         params: { type, value },
         withCredentials: true,
       });
-      alert(res.data.exists ? `이미 사용 중인 ${labels[type]}입니다.` : `사용 가능한 ${labels[type]}입니다.`);
+
+      if (res.data.exists) {
+        toast.error(`이미 사용 중인 ${labels[type]}입니다.`);
+      } else {
+        toast.success(`사용 가능한 ${labels[type]}입니다.`);
+      }
     } catch {
-      alert("중복 확인 중 오류가 발생했습니다.");
+      toast.error("중복 확인 중 오류가 발생했습니다.");
     }
   };
 
@@ -171,9 +170,6 @@ const AuthPage = () => {
         const joinPayload = {
           login_id: formData.login_id,
           password: formData.password,
-          is_social: formData.is_social,
-          social_type: formData.social_type || null,
-          social_id: formData.social_id || null,
           name: formData.name,
           nickname: formData.nickname,
           birthday: formData.birthday,

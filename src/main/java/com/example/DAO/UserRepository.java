@@ -37,12 +37,6 @@ public interface UserRepository extends JpaRepository<MemberVO, Integer> {
     // 이메일 대소문자 무시 조회
     Optional<MemberVO> findByEmailIgnoreCase(String email);
 
-    // 소셜 계정 조회
-    Optional<MemberVO> findBySocialIdAndSocialType(String socialId, String socialType);
-
-    // 소셜 계정 존재 여부
-    boolean existsBySocialIdAndSocialType(String socialId, String socialType);
-
     // ✅ 추가: 행 잠금 (연동 시 동시성 문제 방지)
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MemberVO m WHERE m.userId = :id")

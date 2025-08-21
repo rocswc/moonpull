@@ -13,15 +13,6 @@ public class JoinDTO {
     @JsonProperty("password")
     private String password;
 
-    @JsonProperty("is_social")
-    private Boolean isSocial;
-
-    @JsonProperty("social_type")
-    private String socialType;
-
-    @JsonProperty("social_id")
-    private String socialId;
-
     @JsonProperty("name")
     private String name;
 
@@ -50,4 +41,15 @@ public class JoinDTO {
     private String gender; // 성별 ("M" 또는 "F")
 
     private MultipartFile graduationFile;
+
+    // ✅ 소셜 로그인 관련 추가
+    @JsonProperty("is_social")
+    private Boolean isSocial;   // 소셜 여부 (true/false)
+
+    @JsonProperty("social_type")
+    private String socialType;  // KAKAO, NAVER, GOOGLE 등
+
+    @JsonProperty("social_id")
+    private String socialId;    // 소셜 플랫폼 사용자 ID
 }
+
