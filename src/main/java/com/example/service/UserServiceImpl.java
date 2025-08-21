@@ -2,6 +2,7 @@ package com.example.service;
 
 import com.example.VO.MemberVO;
 import com.example.DAO.UserRepository;
+import com.example.DAO.MemberSocialRepository;   // ⬅️ 추가
 import com.example.dto.SocialUserDTO;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,32 +18,38 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final MemberSocialRepository memberSocialRepository;   // ⬅️ 추가
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
+                           MemberSocialRepository memberSocialRepository, // ⬅️ 추가
                            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.memberSocialRepository = memberSocialRepository;       // ⬅️ 추가
         this.passwordEncoder = passwordEncoder;
     }
 
     // ===== 존재 여부 =====
     @Override
     public boolean existsBySocialIdAndType(String socialId, String socialType) {
-        return userRepository.existsBySocialIdAndSocialType(socialId, socialType);
+        // repo 시그니처: existsBySocialTypeAndSocialId(type, id)
+        return memberSocialRepository.existsBySocialTypeAndSocialId(socialType, socialId);
     }
 
     // ===== 조회 =====
     @Override
     public Optional<MemberVO> getBySocialIdAndType(String socialId, String socialType) {
-        return userRepository.findBySocialIdAndSocialType(socialId, socialType);
+        // repo 시그니처: findBySocialTypeAndSocialId(type, id)
+        return memberSocialRepository
+                .findBySocialTypeAndSocialId(socialType, socialId)
+                .map(link -> link.getMember());
     }
 
     @Override
     public Optional<MemberVO> getByEmail(String email) {
         if (email == null) return Optional.empty();
         String normalized = email.trim();
-        // DB 콜레이션에 상관없이 안전
         return userRepository.findByEmailIgnoreCase(normalized)
                 .or(() -> userRepository.findByEmail(normalized));
     }

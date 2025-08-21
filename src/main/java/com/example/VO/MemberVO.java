@@ -31,15 +31,6 @@ public class MemberVO implements Serializable {
     @Column(name = "login_id", nullable = true, unique = true, length = 50)
     private String loginid; // 로그인용 아이디 (필수, 중복 불가)
 
-    @Column(name = "is_social")
-    private Boolean isSocial; // 소셜 로그인 여부 (true = 소셜, false = 일반)
-
-    @Column(name = "social_type", length = 20)
-    private String socialType; // 소셜 플랫폼 종류 (예: KAKAO, NAVER, GOOGLE)
-
-    @Column(name = "social_id", unique = true, length = 100)
-    private String socialId; // 소셜 플랫폼 사용자 고유 ID
-
     @Column(nullable = false, length = 36)
     private String name; // 이름 (필수)
 

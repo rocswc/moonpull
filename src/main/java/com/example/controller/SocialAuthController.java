@@ -1,13 +1,22 @@
 // src/main/java/com/example/controller/SocialAuthController.java
 package com.example.controller;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.VO.MemberVO;
 import com.example.dto.SocialUserDTO;
@@ -15,6 +24,9 @@ import com.example.jwt.JwtUtil;
 import com.example.service.KakaoService;
 import com.example.service.NaverService;
 import com.example.service.UserService;
+
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/auth")
@@ -38,44 +50,76 @@ public class SocialAuthController {
     @Value("${app.frontend-base-url:https://localhost:8888}")
     private String FRONT_BASE;
 
-    @Value("${app.cookie.secure:true}")   // dev(http)면 false
+    @Value("${oauth.naver.client-id}")
+    private String naverClientId;
+
+    @Value("${oauth.naver.redirect-uri}")
+    private String naverRedirectUri;
+
+    @Value("${app.cookie.secure:true}")
     private boolean cookieSecure;
 
-    @Value("${app.cookie.samesite:NONE}") // dev(http)면 LAX
+    @Value("${app.cookie.samesite:NONE}")
     private String cookieSameSite;
 
+    // ✅ 네이버 로그인 시작 URL
+    @GetMapping("/naver/login")
+    public void naverLogin(HttpServletResponse response, HttpSession session) throws IOException {
+        // state 값 생성 후 세션/Redis 등에 저장
+        String state = UUID.randomUUID().toString();
+        session.setAttribute("OAUTH_STATE", state);
+
+        String redirectUriEnc = URLEncoder.encode(naverRedirectUri, StandardCharsets.UTF_8);
+
+        String naverAuthUrl = "https://nid.naver.com/oauth2.0/authorize"
+                + "?response_type=code"
+                + "&client_id=" + naverClientId
+                + "&redirect_uri=" + redirectUriEnc
+                + "&state=" + state;
+
+        response.sendRedirect(naverAuthUrl);
+    }
+
+    // ✅ 콜백 처리
     @GetMapping("/{provider}/callback")
     public ResponseEntity<Void> callback(@PathVariable String provider,
                                          @RequestParam String code,
-                                         @RequestParam(required = false) String state) {
+                                         @RequestParam(required = false) String state,
+                                         HttpSession session) {
         try {
             final String socialType = provider.toUpperCase();
 
-            // provider별 사용자 정보 공통 DTO로 획득
+            // state 검증
+            if ("NAVER".equals(socialType)) {
+                String savedState = (String) session.getAttribute("OAUTH_STATE");
+                if (savedState == null || !savedState.equals(state)) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                }
+            }
+
             SocialUserDTO user = switch (socialType) {
                 case "KAKAO" -> {
                     String token = kakaoService.getAccessToken(code);
                     yield kakaoService.getUser(token);
                 }
                 case "NAVER" -> {
-                    // TODO: state 검증(로그인 시작 시 저장한 state와 동일한지)
                     String token = naverService.getAccessToken(code, state);
                     yield naverService.getUser(token);
                 }
                 default -> throw new IllegalArgumentException("지원하지 않는 provider: " + provider);
             };
 
-            // 기존 소셜 회원이면 JWT 쿠키 심고 홈으로
+            // 기존 회원 → JWT 쿠키 세팅 후 홈으로
             if (userService.existsBySocialIdAndType(user.getSocialId(), socialType)) {
                 MemberVO m = userService.getBySocialIdAndType(user.getSocialId(), socialType)
                                         .orElseThrow();
 
-                String jwt = jwtUtil.generateToken(m); // sub=내부 PK 기준
+                String jwt = jwtUtil.generateToken(m);
 
                 ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
                         .httpOnly(true)
                         .secure(cookieSecure)
-                        .sameSite(cookieSameSite) // "NONE" or "LAX"
+                        .sameSite(cookieSameSite)
                         .path("/")
                         .maxAge(60L * 60 * 24 * 7)
                         .build();
@@ -86,7 +130,7 @@ public class SocialAuthController {
                         .build();
             }
 
-            // 신규 소셜 회원 → 소셜가입 페이지로 리다이렉트
+            // 신규 회원 → 소셜가입 페이지로
             String joinUrl = FRONT_BASE + "/auth/social-join"
                     + "?provider=" + enc(socialType)
                     + "&socialId=" + enc(user.getSocialId())
