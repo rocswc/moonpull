@@ -228,20 +228,17 @@ const AuthPage = () => {
 
         alert("회원가입이 완료되었습니다.");
         resetToLogin();
-      } else {
-        const res = await axios.post("/api/login", {
-          loginId: formData.login_id,
-          password: formData.password,
-        }, { withCredentials: true });
-		if (res.data.token) {
-		   localStorage.setItem("token", res.data.token);
-		   login(res.data); // AuthContext의 로그인 처리 함수
-		   navigate("/");
-		 } else {
-		   alert("토큰이 응답에 포함되지 않았습니다.");
-		 }
-       
-      }
+		} else {
+		        // ✅ 세션/HttpOnly 쿠키 기반: 로그인 성공 후 곧바로 내 정보 재조회
+		        await axios.post(
+		          "/api/login",
+		          { loginId: formData.login_id, password: formData.password },
+		          { withCredentials: true }
+		        );
+		        const me = await axios.get("/api/user", { withCredentials: true });
+		        login(me.data);             // { userId, loginId, nickname, roles ... }
+		        navigate("/", { replace: true });
+		      }
 	  } 	  catch (error) {
 	         let msg = "알 수 없는 오류가 발생했습니다.";
 
