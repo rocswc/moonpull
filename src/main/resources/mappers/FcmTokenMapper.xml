@@ -13,11 +13,12 @@
   </select>
 
   <!-- 토큰 저장 (중복 무시) -->
-  <insert id="insertToken" useGeneratedKeys="true" keyProperty="tokenId">
-    INSERT INTO fcm_token (user_id, token, created_at, last_used_at)
-    VALUES (#{userId}, #{token}, NOW(), NOW())
-    ON DUPLICATE KEY UPDATE last_used_at = NOW()
-  </insert>
+ <insert id="insertToken" parameterType="FcmTokenVO"
+        useGeneratedKeys="true" keyProperty="tokenId">
+  INSERT INTO fcm_token (user_id, token, created_at, last_used_at)
+  VALUES (#{userId}, #{token}, NOW(), NOW())
+  ON DUPLICATE KEY UPDATE last_used_at = NOW()
+</insert>
 
   <!-- 토큰 삭제 -->
   <delete id="deleteToken">

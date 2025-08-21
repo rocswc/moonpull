@@ -58,21 +58,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   }, [room.messages.length]);
 
   // 창이 열려 있고 새 메시지가 오면 읽음 처리
-useEffect(() => {
-  if (!currentUser?.id) return;
-  if (room.isMinimized) return;
-  const len = room.messages.length;
-  if (len === 0) return;
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    if (room.isMinimized) return;
+    const len = room.messages.length;
+    if (len === 0) return;
 
-  const last = room.messages[len - 1];
-  const lastFromOther = String(last.senderId) !== String(currentUser.id);
+    const last = room.messages[len - 1];
+    const lastFromOther = String(last.senderId) !== String(currentUser.id);
 
-  // ✅ 같은 메시지에 대해 한 번만 읽음 처리
-  if (lastFromOther && last.id !== lastMarkedRef.current) {
-    markAsRead(room.id);
-    lastMarkedRef.current = last.id;
-  }
-}, [room.messages.length, room.isMinimized, currentUser?.id, room.id, markAsRead]);
+    // ✅ 같은 메시지 중복 읽음 방지
+    if (lastFromOther && last.id !== lastMarkedRef.current) {
+      markAsRead(room.id);
+      lastMarkedRef.current = last.id; // 마지막 처리된 메시지 id 저장
+    }
+  }, [room.messages, room.isMinimized, currentUser?.id, room.id, markAsRead]);
 
   // 최소화 풀리면 읽음 처리(기존 로직 유지)
   useEffect(() => {

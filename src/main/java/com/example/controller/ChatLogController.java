@@ -25,7 +25,7 @@ public class ChatLogController {
         logData.put("content", request.getContent());
         logData.put("timestamp", request.getTimestamp());
         logData.put("abusive", request.isAbusive());
-
+        logData.put("receiverId", request.getReceiverId());
         log.info(new ObjectMapper().writeValueAsString(logData));
     }
 }
