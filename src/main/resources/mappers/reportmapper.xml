@@ -69,4 +69,10 @@
   WHERE target_user_id = #{targetUserId}
 </select>
 
+<update id="updateReportStatus">
+  UPDATE report
+  SET status = #{status}
+  WHERE report_id = #{reportId}
+</update>
+
 </mapper>

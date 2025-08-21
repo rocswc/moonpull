@@ -20,7 +20,7 @@ public interface RtChatService {
     public String resolveUserBySession(String sessionId); 
     /** 초기 동기화용 */
     public List<String> getOnlineUserIds();
-     
+    public List<ChatMessage> getContextMessages(String messageId, int beforeCount, int afterCount);
     //public ChatMessage saveMessage(long roomId, long senderId, String content);
     //public List<ChatMessage> getMessages(long roomId, Long beforeId, int limit);
 }

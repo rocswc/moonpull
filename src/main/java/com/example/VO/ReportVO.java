@@ -22,7 +22,7 @@ public class ReportVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // ✅ 직렬화 안전
     private LocalDateTime createdAt;
 
-    private Long chatMessageId;
+    private String  chatMessageId;
 
     private Integer banDays;
     private String banReason;
