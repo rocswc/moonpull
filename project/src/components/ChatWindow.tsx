@@ -7,9 +7,66 @@ import { Badge } from "@/components/ui/badge";
 import { Minimize2, X, Send, Phone, Video, GripVertical } from "lucide-react";
 import { useChat } from "@/contexts/ChatContext";
 
-/** 🔒 Keep existing chat-log API (do not remove) **/
-const CHAT_LOG_URL = '/api/chat/log'; // ⬇️ 기존 경로가 다르면 여기만 바꾸세요. 다른 로직은 손대지 않습니다.
-function persistChatLog({roomId, senderId, receiverId, content, timestamp}: {roomId:string; senderId:string; receiverId:string; content:string; timestamp:string}) {
+// 🚨 추가: 신고 모달
+const ReportModal = ({
+  target,
+  reporterId,
+  onClose,
+}: {
+  target: { messageId: string; content: string; targetUserId: string };
+  reporterId: string;
+  onClose: () => void;
+}) => {
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    try {
+      await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reporterId,
+          targetUserId: target.targetUserId,
+          chatMessageId: target.messageId,
+          reason,
+          reportType: "CHAT",
+        }),
+      });
+      onClose();
+    } catch (err) {
+      console.error('신고 실패:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+      <div className="bg-white rounded-xl shadow-xl w-80 p-4 space-y-3">
+        <h2 className="text-lg font-semibold">채팅 신고</h2>
+        <p className="text-sm text-muted-foreground">"{target.content}"</p>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full border rounded p-2 text-sm"
+          placeholder="신고 사유 입력 (ex. 욕설, 도배 등)"
+          rows={3}
+        />
+        <div className="flex justify-end gap-2">
+          <Button onClick={onClose} variant="secondary" size="sm">취소</Button>
+          <Button onClick={handleSubmit} disabled={submitting || !reason.trim()} size="sm">신고</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 💬 로그 저장용 함수
+const CHAT_LOG_URL = '/api/chat/log';
+function persistChatLog({ roomId, senderId, receiverId, content, timestamp }: { roomId: string; senderId: string; receiverId: string; content: string; timestamp: string }) {
   try {
     const body = JSON.stringify({ roomId, senderId, receiverId, content, timestamp });
     if (navigator.sendBeacon) {
@@ -21,9 +78,9 @@ function persistChatLog({roomId, senderId, receiverId, content, timestamp}: {roo
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body,
-      }).catch(()=>{});
+      }).catch(() => { });
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 interface ChatWindowProps {
@@ -46,18 +103,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const lastMarkedRef = useRef<string | number | null>(null);
+  const [reportTarget, setReportTarget] = useState<null | { messageId: string; content: string; targetUserId: string }>(null);
 
   const otherParticipant = useMemo(() => {
     const meId = currentUser?.id?.toString();
     return room.participants.find(p => p.id.toString() !== meId) || room.participants[0];
   }, [room.participants, currentUser?.id]);
 
-  // 스크롤 항상 하단으로
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.messages.length]);
 
-  // 창이 열려 있고 새 메시지가 오면 읽음 처리
   useEffect(() => {
     if (!currentUser?.id) return;
     if (room.isMinimized) return;
@@ -67,14 +123,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
     const last = room.messages[len - 1];
     const lastFromOther = String(last.senderId) !== String(currentUser.id);
 
-    // ✅ 같은 메시지 중복 읽음 방지
     if (lastFromOther && last.id !== lastMarkedRef.current) {
       markAsRead(room.id);
-      lastMarkedRef.current = last.id; // 마지막 처리된 메시지 id 저장
+      lastMarkedRef.current = last.id;
     }
   }, [room.messages, room.isMinimized, currentUser?.id, room.id, markAsRead]);
 
-  // 최소화 풀리면 읽음 처리(기존 로직 유지)
   useEffect(() => {
     if (!room.isMinimized && room.unreadCount > 0) {
       markAsRead(room.id);
@@ -84,9 +138,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const handleSendMessage = () => {
     const text = message.trim();
     if (!text) return;
-    sendMessage(room.id, text); // ✅ STOMP 전송(백엔드에 맞춤)
+    sendMessage(room.id, text);
 
-    // 🧾 채팅 로그(기존 로깅 유지)
     const receiverId = otherParticipant?.id?.toString() ?? '';
     persistChatLog({
       roomId: room.id.toString(),
@@ -218,11 +271,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                         <div className={`px-2 py-1 rounded-lg text-xs ${isMine ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted text-foreground'}`}>
                           <p>{msg.content}</p>
                         </div>
-                        <p className={`text-xs text-muted-foreground ${isMine ? 'text-right' : 'text-left'}`}>{time}</p>
+                        <div className="flex items-center justify-between">
+                          <p className={`text-xs text-muted-foreground ${isMine ? 'text-right' : 'text-left'}`}>{time}</p>
+                          {!isMine && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-4 w-4 p-0"
+                              onClick={() => setReportTarget({
+                                messageId: String(msg.id),
+                                content: msg.content,
+                                targetUserId: String(msg.senderId),
+                              })}
+                            >
+                              <span className="text-xs text-red-500">🚨</span>
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       {isMine && (
                         <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs bg-secondary">나</AvatarFallback>
+                          <AvatarFallback className="text-xs bg-secondary">
+                            나
+                          </AvatarFallback>
                         </Avatar>
                       )}
                     </div>
@@ -249,6 +320,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
           </div>
         </div>
       </Card>
+
+      {reportTarget && (
+        <ReportModal
+          target={reportTarget}
+          onClose={() => setReportTarget(null)}
+          reporterId={String(currentUser?.id ?? '')}
+        />
+      )}
     </div>
   );
 };

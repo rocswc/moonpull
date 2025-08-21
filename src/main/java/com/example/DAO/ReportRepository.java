@@ -20,4 +20,5 @@ public interface ReportRepository {
     
 
 int countReportsByTarget(@Param("targetUserId") int targetUserId);
+ReportVO getReportById(@Param("reportId") Integer reportId);
 }
