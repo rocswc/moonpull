@@ -2,16 +2,16 @@ package com.example.jwt;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Date;
 import java.util.Set;
-import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import com.example.VO.MemberVO;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -115,7 +115,51 @@ public class JwtUtil {
         Set<String> roles = Set.of(member.getRoles()); // "MENTOR", "ADMIN" 등
         int sessionVersion = member.getSessionVersion();
         Duration ttl = Duration.ofHours(1); // 1시간 유효
-
         return createAccess(userId, roles, sessionVersion, ttl);
     }
+    // 콜백 → IP 서버로 전달할 "아주 짧은 TTL의 일회성 토큰" TTL(초)
+    @Value("${app.one-time-exchange-ttl-seconds:60}")
+    private int oneTimeExchangeTtlSeconds;
+
+    /** 콜백(https://localhost:8080)에서 만들어서 JS로 IP 서버에 전달할 "일회성 교환 토큰" */
+    public String createOneTimeExchangeToken(Integer userId, String rolesCsv, int sessionVersion) {
+        // rolesCsv: "MENTEE" 또는 "MENTEE,ADMIN" 같은 문자열(비어있으면 USER로 대체)
+        java.util.Set<String> roles =
+            java.util.Arrays.stream( (rolesCsv == null ? "" : rolesCsv).split(",") )
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.toSet());
+        if (roles.isEmpty()) roles = java.util.Set.of("USER");
+
+        return createAccess(
+            userId,
+            roles,
+            sessionVersion,
+            java.time.Duration.ofSeconds(oneTimeExchangeTtlSeconds) // 매우 짧게
+        );
+    }
+
+    // IP 서버에서 일회성 토큰 검증 → MemberVO로 복구 (쿠키 심기 직전 사용) 
+    public MemberVO verifyOneTimeExchangeToken(String token) {
+        io.jsonwebtoken.Claims claims;
+        try {
+            claims = parse(token).getPayload(); // 서명/만료 검증
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            throw new RuntimeException("One-time exchange token expired", e);
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+            throw new RuntimeException("Invalid one-time exchange token", e);
+        }
+
+        Integer userId = Integer.valueOf(claims.getSubject());
+        String rolesStr = claims.get("roles", String.class);
+        Object verObj = claims.get("ver");
+        int sessionVersion = (verObj instanceof Number n) ? n.intValue() : 0;
+
+        MemberVO m = new MemberVO();
+        m.setUserId(userId);
+        try { m.setRoles(rolesStr); } catch (Throwable ignore) {}
+        try { m.setSessionVersion(sessionVersion); } catch (Throwable ignore) {}
+        return m;
+    }
+    
+    
 }

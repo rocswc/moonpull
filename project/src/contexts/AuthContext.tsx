@@ -11,10 +11,7 @@ type ServerUser = {
   roles?: string[] | string;
 };
 
-// /api/me 응답: 인증 실패 or 성공
-type MeResponse =
-  | { authenticated: false }
-  | ({ authenticated: true } & ServerUser);
+
 
 interface User {
 	id: number;
@@ -65,14 +62,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const res = await axios.get<MeResponse>("/api/me", {
-          headers: { "Cache-Control": "no-store" },
-        });
-        if (res.data.authenticated === false) {
+        const cfg = { headers: { "Cache-Control": "no-store" as const }, withCredentials: true as const };
+
+        // /api/me 와 /api/user 를 동시에 호출 → 하나라도 200이면 사용
+        const [meRes, userRes] = await Promise.allSettled([
+          axios.get("/api/me", cfg),
+          axios.get("/api/user", cfg),
+        ]);
+
+        let data: any = null;
+        if (meRes.status === "fulfilled" && meRes.value?.status === 200) {
+          data = meRes.value.data;
+        } else if (userRes.status === "fulfilled" && userRes.value?.status === 200) {
+          data = userRes.value.data;
+        }
+
+        // /api/me 형식({ authenticated: false|true, ...})도, /api/user 형식(바로 유저필드)도 처리
+        const explicitlyUnauth =
+          data && typeof data.authenticated === "boolean" && data.authenticated === false;
+
+        if (!data || explicitlyUnauth) {
           setUser(null);
           setIsLoggedIn(false);
         } else {
-          setUser(mapServerUser(res.data));
+          setUser(mapServerUser(data as any));
           setIsLoggedIn(true);
         }
       } catch {

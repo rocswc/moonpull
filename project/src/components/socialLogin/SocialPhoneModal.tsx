@@ -64,7 +64,6 @@ export default function SocialPhoneModal({ provider, open, onOpenChange }: Props
       if (exists) qsOut.set("mode", "link");
 
       navigate(`/auth/social-join?${qsOut.toString()}`, { replace: true });
-      onOpenChange(false);
     } catch (e) {
       console.error(e);
       alert("전화번호 확인 중 오류가 발생했습니다.");
