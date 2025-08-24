@@ -9,6 +9,7 @@ import com.example.dto.SocialLinkResponse;
 import com.example.service.SocialLinkService;
 import com.example.service.UserService;           // ★ 추가 (또는 UserRepository 써도 됨)
 
+//ㅅㅂ 왜케 안되지
 @RestController
 @RequestMapping("/api/auth")
 public class SocialLinkController {
