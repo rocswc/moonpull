@@ -3,17 +3,8 @@ import com.example.VO.WrongAnswerVO;
 import com.example.dto.WrongAnswerCreateRequestDTO;
 import com.example.DAO.WrongAnswerRepository;
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -82,60 +73,7 @@ public class WrongAnswerServiceImpl implements WrongAnswerService {
     
     @Override
     public List<WrongAnswerVO> list(Long userId, String subject) {
-        System.out.println("🔧 [Service] list 호출됨: userId=" + userId + ", subject=" + subject);
-        
-        try {
-            List<WrongAnswerVO> result;
-            
-            if (subject == null || subject.isBlank()) {
-                System.out.println("🔧 [Service] userId로만 조회 시도: " + userId);
-                System.out.println("🔧 [Service] Repository 호출 직전");
-                result = repository.findByUserIdOrderByCreatedAtDesc(userId);
-                System.out.println("🔧 [Service] Repository 호출 완료");
-            } else {
-                System.out.println("🔧 [Service] userId + subject로 조회 시도: " + userId + ", " + subject);
-                System.out.println("🔧 [Service] Repository 호출 직전");
-                result = repository.findByUserIdAndSubjectOrderByCreatedAtDesc(userId, subject);
-                System.out.println("🔧 [Service] Repository 호출 완료");
-            }
-            
-            System.out.println("🔧 [Service] Repository 조회 결과 개수: " + (result != null ? result.size() : "null"));
-            
-            if (result != null && !result.isEmpty()) {
-                System.out.println("🔧 [Service] 첫 번째 결과: " + result.get(0));
-            }
-            
-            return result;
-        } catch (Exception e) {
-            System.err.println("❌ [Service] list 메서드 오류: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
-    }
 
-    @Override
-    public List<WrongAnswerVO> listAll() {
-        System.out.println("🔧 [Service] listAll 호출됨 - 모든 오답노트 조회");
-        try {
-            System.out.println("🔧 [Service] Repository 호출 직전");
-            List<WrongAnswerVO> allData = repository.findAll();
-            System.out.println("🔧 [Service] Repository 호출 완료");
-            System.out.println("🔧 [Service] 전체 데이터 개수: " + allData.size());
-            
-            if (!allData.isEmpty()) {
-                System.out.println("🔧 [Service] 첫 번째 데이터: " + allData.get(0));
-                System.out.println("🔧 [Service] 첫 번째 데이터의 userId: " + allData.get(0).getUserId());
-                System.out.println("🔧 [Service] 첫 번째 데이터의 userId 타입: " + allData.get(0).getUserId().getClass().getName());
-            } else {
-                System.out.println("🔧 [Service] 데이터가 없습니다. MongoDB 연결을 확인해주세요.");
-            }
-            
-            return allData;
-        } catch (Exception e) {
-            System.err.println("❌ [Service] listAll 메서드 오류: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
     }
     
 }

@@ -83,5 +83,14 @@ public class WrongAnswerController {
         List<WrongAnswerVO> saved = wrongAnswerService.saveWrongBatch(requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
-
+ 
+    // ✅ 오답 해결(soft delete 대체): /api/wrong-answers/{id}/resolve?correct=true
+    @PostMapping("/{id}/resolve")
+    public ResponseEntity<Void> resolveByPost(@PathVariable String id,
+                                              @RequestParam(defaultValue = "true") boolean correct) {
+        wrongAnswerService.markCorrect(id, correct);
+        return ResponseEntity.noContent().build();
+    }
+    
+    
 }
