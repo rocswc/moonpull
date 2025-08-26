@@ -9,4 +9,8 @@ public class ChatRoom {
     private Long participant2_Id; // 큰  ID
     private LocalDateTime created_at;
     private String field;
+    
+    public Long getId() {
+        return this.chatroomId;
+    }
 }

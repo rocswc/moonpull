@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Data;
 
 @Data
@@ -21,8 +23,8 @@ public class ReportVO {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // ✅ 직렬화 안전
     private LocalDateTime createdAt;
-
-    private String  chatMessageId;
+    @JsonProperty("chatMessageId")
+    private Long   chatMessageId;
 
     private Integer banDays;
     private String banReason;
@@ -31,7 +33,7 @@ public class ReportVO {
     private LocalDateTime banExpireAt;
 
     private Boolean appealRequested;
-
+    private String chatMessageMongoId;
     // 편의 필드
     private Long reportCount;
     private String reporterNickname;
