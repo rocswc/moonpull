@@ -1,9 +1,7 @@
 package com.example.controller;
 
-import java.time.Duration;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,32 +18,26 @@ public class CookieFinalizeController {
         this.jwtUtil = jwtUtil;
     }
 
-    public static class TokenReq { public String token; }
+    public static class TokenReq {
+        public String token;
+    }
 
     @PostMapping("/finalize-cookie")
-    public ResponseEntity<Void> finalizeCookie(@RequestBody TokenReq req) {
+    public ResponseEntity<Void> finalizeCookie(@RequestBody TokenReq req, HttpServletRequest request) {
         if (req == null || req.token == null || req.token.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
 
-        // 1) one-time 토큰 검증 → 사용자 복원
-        MemberVO m = jwtUtil.verifyOneTimeExchangeToken(req.token);
+        // 1️⃣ 토큰 검증 → 사용자 복원
+        MemberVO user = jwtUtil.verifyOneTimeExchangeToken(req.token);
+        if (user == null) {
+            return ResponseEntity.status(401).build();
+        }
 
-        // 2) 실제 로그인용 JWT 발급 (원래 쓰던 generateToken)
-        String jwt = jwtUtil.generateToken(m);
+        // 2️⃣ 세션 생성 및 속성 저장 (Spring이 알아서 SESSION 쿠키 내려줌)
+        HttpSession session = request.getSession(true);
+        session.setAttribute("userId", user.getUserId());
 
-        // 3) 여기 "호스트=192.168.56.1"로 호출되므로 여기서 쿠키 심으면 됨
-        ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
-                // domain() 절대 넣지 마세요 (host-only cookie)
-                .httpOnly(true)
-                .secure(true)       // SameSite=None을 쓰려면 HTTPS 필수
-                .sameSite("None")
-                .path("/")
-                .maxAge(Duration.ofDays(7))
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .build();
+        return ResponseEntity.ok().build();
     }
 }

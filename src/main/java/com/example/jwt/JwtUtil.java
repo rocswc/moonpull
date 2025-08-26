@@ -160,6 +160,19 @@ public class JwtUtil {
         try { m.setSessionVersion(sessionVersion); } catch (Throwable ignore) {}
         return m;
     }
+ // 콜백 서버에서 IP서버로 넘길 "브릿지 티켓" 생성 (멤버 객체 편의 래퍼)
+    public String generateBridgeTicket(MemberVO m) {
+        Integer userId = m.getUserId();
+        // m.getRoles()가 "MENTEE,ADMIN" 같은 CSV 문자열이라고 가정, null 안전 처리
+        String rolesCsv = (m.getRoles() == null || m.getRoles().isBlank()) ? "USER" : m.getRoles();
+        int sessionVersion = m.getSessionVersion();
+        return createOneTimeExchangeToken(userId, rolesCsv, sessionVersion);
+    }
+
+    // IP 서버에서 브릿지 티켓 검증 (기존 verifyOneTimeExchangeToken 래핑)
+    public MemberVO verifyBridgeTicket(String ticket) {
+        return verifyOneTimeExchangeToken(ticket);
+    }
     
     
 }

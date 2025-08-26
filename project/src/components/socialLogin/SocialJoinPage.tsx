@@ -26,7 +26,26 @@ const SocialJoinPage = () => {
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const { login } = useAuth(); // ✅ AuthContext 로그인 함수
+  
+  // ✅ 여기에 아래 코드 추가해
+  useEffect(() => {
+    axios
+      .get("/api/user", { withCredentials: true })
+      .then((res) => {
+        if (res.status === 200 && res.data?.userId) {
+          login(res.data);
+          navigate("/", { replace: true });
+        }
+      })
+      .catch(() => {
+        // 로그인 안 되어 있으면 무시하고 form 표시
+      });
+  }, []);
 
+
+  const linkTicket = params.get("linkTicket") || ""; // ✅ 여기에 넣어라
+  console.log("[JOIN] linkTicket =", linkTicket);
+  
   const [submitting, setSubmitting] = useState(false);
   const [phoneRaw, setPhoneRaw] = useState("");                 // 숫자만 보관하는 전화번호 상태
 
@@ -122,29 +141,51 @@ const SocialJoinPage = () => {
       return;
     }
 
+	// ✅ 로그 추가!
+	console.log("📤 연동 요청 payload =", {
+	  loginId: linkLoginId.trim(),
+	  password: linkPassword,
+	  socialType: formData.social_type,
+	  socialId: formData.social_id,
+	  phone: formData.phone_number,
+	  linkTicket,
+	});
+	
+	
     setLinkSubmitting(true);
     try {
       // 1) 연동 호출 (이 API는 로그인/쿠키 발급을 하지 않음)
-      await axios.post(
-        "/api/auth/social-link",
-        {
-          loginId: linkLoginId.trim(),
-          password: linkPassword,
-          socialType: formData.social_type,
-          socialId: formData.social_id,
-        },
-        { withCredentials: true }
-      );
+	  await axios.post(
+	    "/api/auth/social-link",
+	    {
+	      loginId: linkLoginId.trim(),
+	      password: linkPassword,
+	      socialType: formData.social_type,
+	      socialId: formData.social_id,
+	      phone: params.get("phone") || formData.phone_number,  // ✅ 이렇게 고쳐 // ✅ 백엔드에서 전화번호 매칭 확인
+	      linkTicket,                     // ✅ Redis ticket
+	    },
+	    { withCredentials: true }
+	  );
 
       // 2A) (선택1) 자동 로그인까지 해주고 /api/user 조회
-      await axios.post(
-        "/api/login",
-        { loginId: linkLoginId.trim(), password: linkPassword },
-        { withCredentials: true }
-      );
-      
-      setLinkOpen(false);
-      navigate("/", { replace: true });
+	  await axios.post(
+	    "/api/login",
+	    { loginId: linkLoginId.trim(), password: linkPassword },
+	    { withCredentials: true }
+	  );
+
+	  // ✅ 로그인 상태 수동 반영 (컨텍스트에 넣기)
+	  try {
+	    const me = await axios.get("/api/user", { withCredentials: true }).then((r) => r.data);
+	    login(me); // 🔥 핵심: 수동으로 AuthContext 상태 업데이트
+	    setLinkOpen(false);
+	    navigate("/", { replace: true });
+	  } catch {
+	    alert("로그인은 되었지만 사용자 정보를 불러오지 못했습니다.");
+	    setLinkOpen(false);
+	    navigate("/auth/login", { replace: true });
+	  }
 
       // ※ 자동 로그인을 원치 않으면 2B로 대체:
       // alert("계정 연동이 완료됐습니다. 로그인해 주세요.");
