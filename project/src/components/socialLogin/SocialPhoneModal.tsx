@@ -61,7 +61,10 @@ export default function SocialPhoneModal({ provider, open, onOpenChange }: Props
       qsOut.set("email", qsIn.get("email") || "");
       qsOut.set("name", qsIn.get("name") || "");
       qsOut.set("phone", digits);
-      if (exists) qsOut.set("mode", "link");
+	  if (exists) {
+	    qsOut.set("mode", "link");
+	    qsOut.set("linkTicket", res.data.linkTicket); // 백엔드가 내려준 값
+	  }
 
       navigate(`/auth/social-join?${qsOut.toString()}`, { replace: true });
     } catch (e) {

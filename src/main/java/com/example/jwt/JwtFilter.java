@@ -31,136 +31,134 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+//... import 동일
+
 public class JwtFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
-    private final SessionService sessionService;
+ private final JwtUtil jwtUtil;
+ private final UserRepository userRepository;
+ private final SessionService sessionService;
 
-    public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository, SessionService sessionService) {
-        this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
-        this.sessionService = sessionService;
-    }
+ public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository, SessionService sessionService) {
+     this.jwtUtil = jwtUtil;
+     this.userRepository = userRepository;
+     this.sessionService = sessionService;
+ }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+ @Override
+ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+         throws ServletException, IOException {
 
-        // 1) OPTIONS 패스
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+     // 1) OPTIONS 패스
+     if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+         filterChain.doFilter(request, response);
+         return;
+     }
 
-        // 2) 인증 예외 경로
-        String path = request.getRequestURI();
-        if (
-            path.equals("/api/login") ||
-            path.equals("/api/join") ||
-            path.equals("/api/logout") ||   
-            
-            path.equals("/api/check-duplicate") ||
-            path.equals("/api/keywords/trending") ||
-            path.equals("/api/keywords/autocomplete") ||
-            path.equals("/api/profile/check-email") ||
-            path.equals("/api/profile/check-phone") ||
-            path.equals("/api/chat/log") ||
-            path.startsWith("/api/admin/report") ||
-            path.startsWith("/api/admin/reports") ||
+     // 2) 인증 예외 경로
+     String path = request.getRequestURI();
+     if (
+         path.equals("/api/login") ||
+         path.equals("/api/join") ||
+         path.equals("/api/logout") ||   
+         path.equals("/api/check-duplicate") ||
+         path.equals("/api/keywords/trending") ||
+         path.equals("/api/keywords/autocomplete") ||
+         path.equals("/api/profile/check-email") ||
+         path.equals("/api/profile/check-phone") ||
+         path.equals("/api/chat/log") ||
+         path.startsWith("/api/admin/report") ||
+         path.startsWith("/api/admin/reports") ||
+         path.startsWith("/api/chat/") ||
+         path.startsWith("/api/teacher/") ||
+         path.startsWith("/api/mentor-id") ||
+         path.startsWith("/api/mentoring/mentorByChatId") ||
+         path.startsWith("/api/mentoring/menteeByChatId") ||
+         path.startsWith("/api/chat/messages") ||
+         path.startsWith("/api/mentor/") ||
+         path.startsWith("/api/mentors/") ||
+         path.startsWith("/api/mentoring/chatId") ||
+         path.startsWith("/admin/") ||
+         path.equals("/apply/mentor") ||
+         path.startsWith("/mentee/") ||
+         path.startsWith("/payments/") ||
+         path.startsWith("/api/mentor-review/") ||
+         path.equals("/mentorReview/insert") ||
+         path.startsWith("/mentorReview/") ||
 
-            path.startsWith("/api/chat/") ||
-            path.startsWith("/api/teacher/") ||
+         // 소셜 로그인 콜백/브릿지
+         path.startsWith("/auth/kakao/") ||
+         path.startsWith("/auth/google/") ||
+         path.startsWith("/auth/naver/") ||
+         path.startsWith("/auth/bridge")
+     ) {
+         filterChain.doFilter(request, response);
+         return;
+     }
 
-            path.startsWith("/api/mentor-id") ||
-            path.startsWith("/api/mentoring/mentorByChatId") || //  08/18
-            path.startsWith("/api/mentoring/menteeByChatId") || //  08/18
-            
-            
-            path.startsWith("/api/chat/messages") ||
+     // 3) 쿠키에서 jwt 읽기
+     String token = readCookie(request, "jwt");
+     if (token == null) token = readCookie(request, "ACCESS");
 
-            path.startsWith("/api/mentor/") ||
-            path.startsWith("/api/mentors/") ||
+     HttpSession httpSession = request.getSession(false);
+     Optional<ServerSession> sessOpt = sessionService.get(httpSession);
 
-            path.startsWith("/api/mentoring/chatId") ||
+     // 4) 토큰 유효 → 세션 있으면 버전 검사, 없으면 패스
+     if (token != null) {
+         try {
+             Claims claims = jwtUtil.parse(token).getPayload();
 
-            path.startsWith("/admin/") ||
-            path.equals("/apply/mentor") ||
-            path.startsWith("/mentee/") ||
-            path.startsWith("/payments/") ||
+             if (sessOpt.isPresent() && !versionMatches(claims, sessOpt)) {
+                 unauthorized(response); // 버전 불일치만 차단
+                 return;
+             }
 
-            path.startsWith("/api/mentor-review/") ||
-            path.equals("/mentorReview/insert") ||
-            path.startsWith("/mentorReview/") ||
+             // 세션 없어도 JWT만으로 인증 허용
+             authenticateWithClaims(claims, sessOpt);
+             filterChain.doFilter(request, response);
+             return;
 
-            // 소셜 로그인 콜백
-            path.startsWith("/auth/kakao/") ||
-            path.startsWith("/auth/google/")
-        ) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+         } catch (ExpiredJwtException ex) {
+             // 만료 → 아래 refresh 로직
+         } catch (Exception e) {
+             filterChain.doFilter(request, response); // 토큰 손상 등 → 익명
+             return;
+         }
+     }
 
-        // 3) 쿠키에서 jwt 읽기 (구 ACCESS 호환은 당분간 유지)
-        String token = readCookie(request, "jwt");
-        if (token == null) token = readCookie(request, "ACCESS");
+     // 5) 토큰 없음/만료 → 세션(refresh)로 재발급
+     if (sessOpt.isPresent()) {
+         ServerSession s = sessOpt.get();
+         if (s.refreshExpiry().isAfter(java.time.Instant.now())) {
+             sessionService.rotateRefresh(httpSession, Duration.ofDays(14));
+             String newJwt = jwtUtil.createAccess(
+                     s.userId(), s.roles(), s.sessionVersion(), Duration.ofMinutes(10));
+             setAccessCookie(response, newJwt);
+             setAuthentication(s.userId(), s.roles());
+             filterChain.doFilter(request, response);
+             return;
+         }
+     }
 
-        HttpSession httpSession = request.getSession(false);
-        Optional<ServerSession> sessOpt = sessionService.get(httpSession);
+     // 6) 익명 진행
+     filterChain.doFilter(request, response);
+ }
 
-        // 4) 토큰 유효 → 버전 일치 확인 후 인증 주입
-        if (token != null) {
-            try {
-                Claims claims = jwtUtil.parse(token).getPayload();
-                if (versionMatches(claims, sessOpt)) {
-                    authenticateWithClaims(claims, sessOpt);
-                    filterChain.doFilter(request, response);
-                    return;
-                } else {
-                    unauthorized(response); // 세션 버전 불일치 → 강제로그아웃/권한변경 대응
-                    return;
-                }
-            } catch (ExpiredJwtException ex) {
-                // 만료 → 아래 세션 기반 재발급 시도
-            } catch (Exception e) {
-                filterChain.doFilter(request, response); // 토큰 손상 등 → 익명
-                return;
-            }
-        }
+ /* ------------ helpers ------------ */
 
-        // 5) 토큰 없음/만료 → 세션(refresh)로 10분짜리 재발급
-        if (sessOpt.isPresent()) {
-            ServerSession s = sessOpt.get();
-            if (s.refreshExpiry().isAfter(java.time.Instant.now())) {
-                sessionService.rotateRefresh(httpSession, Duration.ofDays(14));
-                String newJwt = jwtUtil.createAccess(
-                	    s.userId(), s.roles(), s.sessionVersion(), Duration.ofMinutes(10));
-                setAccessCookie(response, newJwt);      // jwt 쿠키 갱신
-                setAuthentication(s.userId(), s.roles());
-                filterChain.doFilter(request, response);
-                return;
-            }
-        }
+ private String readCookie(HttpServletRequest req, String name) {
+     if (req.getCookies() == null) return null;
+     for (Cookie c : req.getCookies()) if (name.equals(c.getName())) return c.getValue();
+     return null;
+ }
 
-        // 6) 익명 진행
-        filterChain.doFilter(request, response);
-    }
-
-    /* ------------ helpers ------------ */
-
-    private String readCookie(HttpServletRequest req, String name) {
-        if (req.getCookies() == null) return null;
-        for (Cookie c : req.getCookies()) if (name.equals(c.getName())) return c.getValue();
-        return null;
-    }
-
-    private boolean versionMatches(Claims claims, Optional<ServerSession> sessOpt) {
-        if (sessOpt.isEmpty()) return false;
-        ServerSession s = sessOpt.get();
-        Object v = claims.get("ver");
-        long tokenVer = (v instanceof Number n) ? n.longValue() : Long.MIN_VALUE; // ver 없으면 하위호환이 필요하면 여기서 통과도 가능
-        return (v == null) || (tokenVer == s.sessionVersion());
-    }
+ private boolean versionMatches(Claims claims, Optional<ServerSession> sessOpt) {
+     if (sessOpt.isEmpty()) return true; // 세션 없으면 무조건 OK
+     ServerSession s = sessOpt.get();
+     Object v = claims.get("ver");
+     long tokenVer = (v instanceof Number n) ? n.longValue() : Long.MIN_VALUE;
+     return (v == null) || (tokenVer == s.sessionVersion());
+ }
 
     private void authenticateWithClaims(Claims claims, Optional<ServerSession> sessOpt) {
         Integer userId = Integer.valueOf(claims.getSubject());

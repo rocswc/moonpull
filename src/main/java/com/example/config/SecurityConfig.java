@@ -17,6 +17,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.session.web.http.CookieSerializer;
+import org.springframework.session.web.http.DefaultCookieSerializer;
 
 import com.example.DAO.UserRepository;
 import com.example.jwt.JwtFilter;
@@ -54,6 +56,20 @@ public class SecurityConfig {
         this.userRepository = userRepository;
         this.sessionService = sessionService;
     }
+ // ✅ 추가한 부분: SESSION 쿠키를 UUID로 저장하기 위한 설정
+    @Bean
+    public CookieSerializer cookieSerializer() {
+        DefaultCookieSerializer serializer = new DefaultCookieSerializer();
+        serializer.setCookieName("MOONPULL_SESSION");
+        serializer.setUseBase64Encoding(false);       // ✅ UUID 그대로
+        serializer.setSameSite("None");
+        serializer.setUseSecureCookie(true);
+        serializer.setUseHttpOnlyCookie(true);
+      
+        return serializer;
+    }
+    
+    
 
     // 🔐 로그인 인증 관리자
     @Bean
@@ -74,6 +90,7 @@ public class SecurityConfig {
         // 정확한 오리진만 나열 (* 금지)
         config.setAllowedOrigins(List.of(
             "http://localhost:8888",
+            "https://localhost:8080",
             "http://localhost:3000",
             "http://192.168.56.1:8888",
             "http://192.168.0.27:8888",
@@ -123,7 +140,7 @@ public class SecurityConfig {
                 uri.startsWith("/api/join") ||
                 uri.startsWith("/api/auth/social-link") ||
                 uri.equals("/api/auth/check-phone") ||
-                uri.startsWith("/ws/") ||
+                uri.startsWith("/wss/") ||
                 uri.startsWith("/api/rt-chat/") ||
                 uri.startsWith("/auth/") || 
                 //  요 두 줄 추가!!
@@ -207,10 +224,11 @@ public class SecurityConfig {
                 .requestMatchers("/apply/mentor").hasAnyRole("MENTEE", "ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/admin/**").permitAll()
-                
-                
+                .requestMatchers("/payments/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/mentoring/end/**").authenticated() //8/22                            
                 .requestMatchers("/auth/**", "/auth/social/finalize").permitAll()
-                .requestMatchers("/api/auth/social-link/**").permitAll()
+                .requestMatchers("/api/auth/social-link/**").permitAll()           
+                
                 
                 // 구글/카카오 콜백 명시적으로 열고 싶으면 추가(권장)
                 .requestMatchers("/auth/google/callback", "/auth/kakao/callback").permitAll()

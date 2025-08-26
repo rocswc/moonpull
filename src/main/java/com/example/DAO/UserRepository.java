@@ -41,6 +41,10 @@ public interface UserRepository extends JpaRepository<MemberVO, Integer> {
 
     // 이메일 대소문자 무시 조회
     Optional<MemberVO> findByEmailIgnoreCase(String email);
+    
+
+    // ✅ 추가: 전화번호로 회원 조회
+    Optional<MemberVO> findByPhonenumber(String phonenumber);
 
     // ✅ 추가: 행 잠금 (연동 시 동시성 문제 방지)
     @Lock(LockModeType.PESSIMISTIC_WRITE)

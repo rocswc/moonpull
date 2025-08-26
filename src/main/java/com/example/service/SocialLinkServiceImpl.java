@@ -25,30 +25,42 @@ public class SocialLinkServiceImpl implements SocialLinkService {
     @Override
     @Transactional
     public SocialLinkResponse link(SocialLinkDTO dto) {
-        MemberVO user = userRepository.findByLoginid(dto.getLoginId())
-                .orElseThrow(() -> new IllegalStateException("계정을 찾을 수 없습니다."));
-
-        if (user.getPasswordhash() == null || user.getPasswordhash().isEmpty()) {
-            throw new IllegalStateException("비밀번호가 없어 먼저 비밀번호를 설정해야 합니다.");
+        // 1. 입력값 기본 검증
+        if (dto.getLoginId() == null || dto.getPassword() == null || dto.getPhone() == null) {
+            throw new IllegalArgumentException("필수값이 누락되었습니다.");
         }
-        if (!passwordEncoder.matches(dto.getPassword(), user.getPasswordhash())) {
+
+        // 2. 전화번호로 회원 조회 (전화번호가 일치해야만 진행 가능)
+        MemberVO phoneOwner = userRepository.findByPhonenumber(dto.getPhone().trim())
+                .orElseThrow(() -> new IllegalStateException("입력한 전화번호와 일치하는 계정이 없습니다."));
+
+        // 3. 로그인 ID 일치 여부 확인
+        if (!phoneOwner.getLoginid().equals(dto.getLoginId().trim())) {
+            throw new IllegalStateException("입력한 로그인 ID가 전화번호와 일치하지 않습니다.");
+        }
+
+        // 4. 비밀번호 검증
+        if (phoneOwner.getPasswordhash() == null || !passwordEncoder.matches(dto.getPassword(), phoneOwner.getPasswordhash())) {
             throw new IllegalArgumentException("비밀번호가 올바르지 않습니다.");
         }
 
-        // 소셜 계정이 이미 다른 계정에 연동되어 있는지 확인
+        // 5. 이미 다른 계정에 연동된 소셜인지 확인
         Optional<MemberVO> existing = userRepository.findBySocialTypeAndSocialId(dto.getSocialType(), dto.getSocialId());
-        if (existing.isPresent() && !existing.get().getUserId().equals(user.getUserId())) {
+        if (existing.isPresent() && !existing.get().getUserId().equals(phoneOwner.getUserId())) {
             throw new IllegalStateException("해당 소셜 계정은 이미 다른 계정과 연동되어 있습니다.");
         }
 
-        // 본인 계정에 소셜 정보 연동
-        user.setSocialType(dto.getSocialType().trim().toUpperCase());
-        user.setSocialId(dto.getSocialId().trim());
-        user.setIsSocial(true);
-        userRepository.save(user);
+        // 6. 본인 계정에 소셜 연동
+        phoneOwner.setSocialType(dto.getSocialType().trim().toUpperCase());
+        phoneOwner.setSocialId(dto.getSocialId().trim());
+        phoneOwner.setIsSocial(true);
+
+        userRepository.save(phoneOwner);
 
         return new SocialLinkResponse(true, "소셜 계정 연동이 완료되었습니다.");
     }
+
+
 
     // memberId + provider + socialId + 비밀번호 기반 연동 (토큰 기반)
     @Override

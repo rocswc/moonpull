@@ -73,6 +73,7 @@ public class SocialJoinController {
             );
 
             ResponseCookie cookie = ResponseCookie.from("jwt", token)
+            		.domain("192.168.56.1") 
                     .httpOnly(true)
                     .secure(true)
                     .sameSite("None")

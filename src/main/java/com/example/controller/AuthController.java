@@ -46,10 +46,10 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest req, HttpServletResponse res) {
-        // 1) 서버 세션 무효화 (JDBC 세션 제거)
+        // 1) 서버 세션 무효화 (Redis 세션 제거)
         sessionService.invalidate(req.getSession(false));
 
-        // 2) jwt 쿠키 삭제
+        // 2) JWT 쿠키 삭제 (host-only)
         ResponseCookie delJwt = ResponseCookie.from("jwt", "")
             .httpOnly(true)
             .secure(true)
@@ -59,11 +59,11 @@ public class AuthController {
             .build();
         res.addHeader(HttpHeaders.SET_COOKIE, delJwt.toString());
 
-        // 3) SESSION 쿠키 삭제 추가 ★★★
+        // 3) SESSION 쿠키 삭제 (host-only)
         ResponseCookie delSession = ResponseCookie.from("SESSION", "")
             .httpOnly(true)
             .secure(true)
-            .sameSite("None") // CORS 환경이면 반드시 필요
+            .sameSite("None")
             .path("/")
             .maxAge(0)
             .build();
@@ -71,4 +71,5 @@ public class AuthController {
 
         return ResponseEntity.noContent().build();
     }
+
 }
