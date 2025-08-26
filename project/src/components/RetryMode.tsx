@@ -1,5 +1,4 @@
-// src/components/RetryMode.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,16 +9,30 @@ interface RetryModeProps {
   questions: Question[];
   onQuestionCompleted: (questionId: number) => void;
   onBackToView: () => void;
+
+  // ✅ 추가: 재도전 시작 인덱스
+  startIndex?: number;
 }
 
-const RetryMode = ({ questions, onQuestionCompleted, onBackToView }: RetryModeProps) => {
-  const [index, setIndex] = useState(0);
+const RetryMode = ({
+  questions,
+  onQuestionCompleted,
+  onBackToView,
+  startIndex,
+}: RetryModeProps) => {
+  // ✅ startIndex 반영
+  const [index, setIndex] = useState(startIndex ?? 0);
+  useEffect(() => {
+    setIndex(startIndex ?? 0);
+  }, [startIndex, questions.length]);
+
   const [answer, setAnswer] = useState("");
   const [isWrong, setIsWrong] = useState(false);
 
   const current = questions[index];
 
   const handleSubmit = () => {
+    if (!current) return;
     if (answer.trim() === current.correct) {
       onQuestionCompleted(current.id);
       setAnswer("");

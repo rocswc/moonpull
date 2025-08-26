@@ -110,7 +110,7 @@ const CBTQuizSystem = () => {
   const [currentRandomQuestion, setCurrentRandomQuestion] = useState(null);
   const [loading, setLoading] = useState(false);
   const [practiceQuestionsAnswered, setPracticeQuestionsAnswered] = useState(0);
-  const [userId, setUserId] = useState('');
+  const [userId, setUserId] = useState<number | null>(null);
 
 
   // Results state for exam mode
@@ -134,7 +134,7 @@ const CBTQuizSystem = () => {
       
       //오답을 전송하기 위한 현재 로그인한 사용자 id검색
       const userRes = (await axios.get("/api/user")).data.user;
-      setUserId(userRes.userId)
+      setUserId(Number(userRes.userId));
       console.log("갑갑해")
       console.log(userRes.userId)
 
@@ -381,18 +381,24 @@ const CBTQuizSystem = () => {
     setExamResults(results);
     const wrongPayload = results
       .filter(r => !r.isCorrect)
-      .map(r => ({
-        school: selectedSchool,
-        grade: String(selectedGrade),
-        subject: selectedSubject.name,
-        question: r.question,
-        passage: '',
-        choices: r.choices,
-        correctAnswerIndex: r.correctAnswer,
-        explanation: r.explanation || '',
-        userAnswer: r.userAnswer !== null ? String(r.userAnswer + 1) : '미선택',
-        isCorrect: false
-      }));
+      .map((r, idx) => {
+        // 결과의 인덱스/문항 번호로 원본 문항 객체를 찾습니다.
+        const q = questions[r.questionIndex - 1] ?? questions[idx];
+        return {
+          userId: userId!, // 숫자여야 함
+          questionId: String(q?._id ?? q?.id), // Mongo 문항 id (문자열)
+          school: selectedSchool,
+          grade: String(selectedGrade),
+          subject: selectedSubject.name,
+          question: r.question,
+          passage: q?.passage || '',
+          choices: r.choices,
+          correctAnswerIndex: r.correctAnswer,     // 0-based 인덱스 OK (서비스에서 검증)
+          explanation: r.explanation || '',
+          userAnswer: r.userAnswer !== null ? String(r.userAnswer + 1) : '미선택',
+          isCorrect: false
+        };
+      });
 
     if (wrongPayload.length) {
       fetch(`${WRONG_API}/batch`, {

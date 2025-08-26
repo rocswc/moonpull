@@ -3,17 +3,8 @@ import com.example.VO.WrongAnswerVO;
 import com.example.dto.WrongAnswerCreateRequestDTO;
 import com.example.DAO.WrongAnswerRepository;
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -67,9 +58,17 @@ public class WrongAnswerServiceImpl implements WrongAnswerService {
     @Override
     public List<WrongAnswerVO> list(Long userId, String subject) {
         if (subject == null || subject.isBlank()) {
-            return repository.findByUserIdOrderByCreatedAtDesc(userId);
+            return repository.findByUserIdAndIsCorrectFalseOrderByCreatedAtDesc(userId);
         }
-        return repository.findByUserIdAndSubjectOrderByCreatedAtDesc(userId, subject);
+        return repository.findByUserIdAndSubjectAndIsCorrectFalseOrderByCreatedAtDesc(userId, subject);
+    }
+    
+    @Override
+    public void markCorrect(String id, boolean correct) {
+        repository.findById(id).ifPresent(doc -> {
+            doc.setCorrect(correct);   // true면 해결됨, false면 다시 오답 활성화
+            repository.save(doc);
+        });
     }
     
 }
