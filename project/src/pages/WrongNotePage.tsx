@@ -1,28 +1,98 @@
 import Navigation from "@/components/Navigation";
 import ViewWrongAnswers from "@/components/ViewWrongAnswers";
 import RetryMode from "@/components/RetryMode";
-import { wrongAnswerQuestions, Question } from "@/data/wrongAnswers";
-
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, RotateCcw, Brain, Target, TrendingUp } from "lucide-react";
 
+import type { Question } from "@/data/wrongAnswers";
+import axios from "axios";
+
+// 백엔드 오답 API
+const WRONG_API = "https://localhost:8080/api/wrong-answers"; // 포트/도메인 맞추세요
+
+type UIQuestion = Question & { mongoId: string };
+
+// Mongo 컬럼 스키마(스크린샷 기준)
+type WrongDoc = {
+  id?: string;
+  _id?: string;
+  userId: number;
+  questionId: string;
+  subject: string;
+  school: string;
+  grade: string;          // "2"
+  question: string;
+  passage?: string;
+  choices: string[];
+  answer?: string[];      // 정답 텍스트 1개가 배열로 옴
+  explanation?: string;   // "해설: ..." 접두 가능
+  userAnswer: string;     // "1" 등
+  createdAt: string;
+  isCorrect: boolean;
+};
+
+// 과목 고정 목록(요구사항: 국어/한국사/영어)
+const SUBJECTS = ["국어", "한국사", "영어"];
 const WrongNotePage = () => {
-  const [questions, setQuestions] = useState<Question[]>(wrongAnswerQuestions);
+
+  const [questions, setQuestions] = useState<UIQuestion[]>([]);
   const [activeTab, setActiveTab] = useState("view");
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-
-  const subjects = Array.from(new Set(wrongAnswerQuestions.map((q) => q.subject)));
+  const [userId, setUserId] = useState<number | null>(null);
+  const subjects = SUBJECTS;
   const filteredQuestions = questions.filter((q) => q.subject === selectedSubject);
   const incompleteQuestions = filteredQuestions.filter((q) => !q.isCompleted);
   const completedCount = filteredQuestions.length - incompleteQuestions.length;
 
-  const handleQuestionCompleted = (questionId: number) => {
-    setQuestions((prev) =>
-      prev.map((q) => (q.id === questionId ? { ...q, isCompleted: true } : q))
+  const [viewIndex, setViewIndex] = useState(0);                 // 오답 목록에서 보고 있는 인덱스
+  const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(null);
+ 
+  // 로그인 사용자 ID 확보(프로젝트의 me/user 엔드포인트에 맞춰 조정)
+  useEffect(() => {
+    axios.get("/api/user")
+      .then(res => setUserId(Number(res.data.user.userId)))
+      .catch(() => setUserId(null));
+  }, []);
+
+ const handleQuestionCompleted = (questionId: number) => {
+    // 먼저 mongoId 확보
+    const docId = questions.find(q => q.id === questionId)?.mongoId;
+
+    // 1) 낙관적 UI 업데이트: 지우지 말고 isCompleted=true로 표시
+    setQuestions(prev =>
+      prev.map(q => q.id === questionId ? { ...q, isCompleted: true } : q)
     );
-  };
+
+   // 2) 서버 soft-resolve (isCorrect=true) 호출
+   if (docId) {
+     fetch(`${WRONG_API}/${docId}/resolve?correct=true`, { method: "POST" })
+       .catch(console.error);
+   }
+
+  // 3) 보기 탭 인덱스 이동(현재 항목은 완료됐으니 다음 미완료로 이동)
+  const idxInView = incompleteQuestions.findIndex(q => q.id === questionId);
+  if (idxInView >= 0) {
+    const nextIndex = Math.min(idxInView, Math.max(0, incompleteQuestions.length - 2));
+    setViewIndex(nextIndex);
+  }
+
+ };
+
+  useEffect(() => {
+    if (!selectedSubject || userId == null) return;
+    loadWrongAnswers(selectedSubject);
+  }, [selectedSubject, userId]);
+
+  useEffect(() => {
+    if (incompleteQuestions.length > 0) {
+      const idx = Math.min(viewIndex, incompleteQuestions.length - 1);
+      setCurrentQuestionId(incompleteQuestions[idx].id);
+    } else {
+      setCurrentQuestionId(null);
+    }
+  }, [incompleteQuestions, viewIndex]);
 
   const handleRetryAll = () => {
     setQuestions((prev) =>
@@ -32,6 +102,32 @@ const WrongNotePage = () => {
     );
     setActiveTab("retry");
   };
+
+  const loadWrongAnswers = async (subject: string) => {
+    const params = new URLSearchParams({ userId: String(userId), subject });
+    const res = await fetch(`${WRONG_API}?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const docs: WrongDoc[] = await res.json();
+
+  // Mongo → UIQuestion 매핑 (문서 id를 직접 보관)
+    const mapped: UIQuestion[] = docs.map((d, i) => ({
+      id: i + 1,                                  // UI용 숫자 id
+      mongoId: (d._id ?? d.id)!,                  // ✅ Mongo 문서 id
+      question: d.question,
+      choices: d.choices ?? [],
+      correct: Array.isArray(d.answer) && d.answer.length ? d.answer[0] : "",
+      explanation: (d.explanation || "").replace(/^해설:\s*/, ""),
+      isCompleted: false,
+      subject: d.subject,
+ }));
+ setQuestions(mapped);
+  };
+
+  const retryStartIndex = (() => {
+    if (!currentQuestionId) return 0;
+    const idx = incompleteQuestions.findIndex(q => q.id === currentQuestionId);
+    return idx >= 0 ? idx : 0;
+  })();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
@@ -44,7 +140,12 @@ const WrongNotePage = () => {
               {subjects.map((subject) => (
                 <Card
                   key={subject}
-                  onClick={() => setSelectedSubject(subject)}
+                  onClick={() => {
+                    setSelectedSubject(subject);
+                    setActiveTab("view");
+                    setViewIndex(0);
+                    setCurrentQuestionId(null);
+                   }}
                    className="cursor-pointer border-2 hover:border-primary min-h-[6rem] flex items-center justify-center"
                 >
                   <CardHeader className="p-0">
@@ -135,16 +236,26 @@ const WrongNotePage = () => {
                 </CardHeader>
 
                 <CardContent className="p-6">
-                  <TabsContent value="view" className="mt-0">
+                  <TabsContent value="view" forceMount hidden={activeTab !== "view"} className="mt-0">
                     <ViewWrongAnswers
-                      questions={filteredQuestions}
+                      key={`view-${selectedSubject ?? ''}`}   // ⬅ 과목이 바뀔 때만 초기화
+                      questions={incompleteQuestions}     // ✅ 미완료만
+                      currentIndex={viewIndex}
+                      onIndexChange={(i) => {
+                        const clamped = Math.max(0, Math.min(i, incompleteQuestions.length - 1)); // ✅ 길이 기준도 변경
+                        setViewIndex(clamped);
+                        const q = incompleteQuestions[clamped];
+                        setCurrentQuestionId(q?.id ?? null);
+                      }}
                       onRetryAll={handleRetryAll} // 누르면 activeTab="retry"
                     />
                   </TabsContent>
 
-                  <TabsContent value="retry" className="mt-0">
+                  <TabsContent value="retry" forceMount hidden={activeTab !== "retry"} className="mt-0">
                     <RetryMode
+                      key={`retry-${selectedSubject ?? ''}`}  // ⬅ 과목이 바뀔 때만 초기화
                       questions={incompleteQuestions}
+                      startIndex={retryStartIndex}      // ⬅ 여기 추가
                       onQuestionCompleted={handleQuestionCompleted}
                       onBackToView={() => setActiveTab("view")}
                     />
