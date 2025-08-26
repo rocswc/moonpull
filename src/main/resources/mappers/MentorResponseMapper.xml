@@ -5,24 +5,49 @@
 
 <mapper namespace="com.example.DAO.MentorResponseDAO">
 
-  <!-- 1. 슬러그로 멘토 목록 조회 -->
-  <select id="getMentorsBySlug" resultType="com.example.dto.MentorResponseDTO">
-    SELECT DISTINCT
+  <!-- 0. 전체 APPROVED 멘토 조회 (디버깅용) -->
+  <select id="getAllApprovedMentors" resultType="com.example.dto.MentorResponseDTO">
+    SELECT 
       m.mentor_id AS id,
-      u.user_id AS userId,
+      m.user_id AS userId,
       u.name AS name,
       m.introduction,
-      m.score AS rating,
-      m.student_count AS students,
-      CONCAT(m.experience_years, '년') AS experience
-    FROM subject s
-    JOIN mentor_subject ms ON s.subject_id = ms.subject_id
-    JOIN mentor m ON ms.mentor_id = m.mentor_id
+      COALESCE(m.score, 0) AS rating,
+      COALESCE(m.student_count, 0) AS students,
+      CONCAT(m.experience_years, '년') AS experience,
+      m.specialties
+    FROM mentor m
     JOIN member u ON m.user_id = u.user_id
-    WHERE s.slug = #{slug}
+    WHERE m.status = 'APPROVED'
+    ORDER BY m.mentor_id
   </select>
 
-  <!-- 2. 멘토별 specialties 조회 -->
+  <!-- 1. 슬러그로 멘토 목록 조회 (수정됨) -->
+  <select id="getMentorsBySlug" resultType="com.example.dto.MentorResponseDTO">
+    SELECT 
+      m.mentor_id AS id,
+      m.user_id AS userId,
+      u.name AS name,
+      m.introduction,
+      COALESCE(m.score, 0) AS rating,
+      COALESCE(m.student_count, 0) AS students,
+      CONCAT(m.experience_years, '년') AS experience,
+      m.specialties
+    FROM mentor m
+    JOIN member u ON m.user_id = u.user_id
+    WHERE m.status = 'APPROVED' 
+      AND (
+        CASE 
+          WHEN #{slug} = 'korean-history' THEN m.specialties LIKE '%한국사%'
+          WHEN #{slug} = 'korean' THEN m.specialties LIKE '%국어%'
+          WHEN #{slug} = 'english' THEN m.specialties LIKE '%영어%'
+          ELSE m.specialties LIKE CONCAT('%', #{slug}, '%')
+        END
+      )
+    ORDER BY m.mentor_id
+  </select>
+
+  <!-- 2. 멘토별 specialties 조회 (더 이상 사용하지 않음) -->
   <select id="getSpecialtiesByMentorId" resultType="string">
     SELECT specialty
     FROM mentor_specialty

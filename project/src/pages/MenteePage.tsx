@@ -33,7 +33,7 @@ interface Mentor {
   name: string;
   subject: string;
   rating: number;
-  experience: string;  // ← 백엔드에서 "10년" 이런 식으로 내려옴
+  experience: string;
   intro: string;
 }
 
@@ -43,6 +43,18 @@ interface Question {
   content: string;
   status: string;
   answerContent?: string;
+  createdAt?: string;
+  answeredAt?: string;
+}
+
+interface WrongAnswer {
+  _id: string;
+  subject: string;
+  question: string;
+  userAnswer: string;
+  answer: string;         // 정답 번호나 텍스트
+  explanation: string;    // 정답 해설
+  createdAt: string;
 }
 
 const MenteePage = () => {
@@ -52,87 +64,152 @@ const MenteePage = () => {
   const [loading, setLoading] = useState(true);
   const { currentUser } = useChat();
 
-  // ✅ 질문 관련 state 추가
+  // 질문 state
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
+  
+  // 멘티 정보
+  const [menteeInfo, setMenteeInfo] = useState<{menteeId: number, name: string} | null>(null);
 
-  // 멘토 목록 가져오기
+  // 오답노트 state
+  const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
+
+  // 멘티 정보 가져오기
+  const fetchMenteeInfo = async () => {
+    try {
+      const response = await axios.get("/api/mentee/my-info", { withCredentials: true });
+      setMenteeInfo(response.data);
+    } catch {
+      setMenteeInfo(null);
+    }
+  };
+
+  // 멘토 목록
   const fetchMyMentors = async () => {
     try {
-      const response = await axios.get("/api/mentee/my-mentors", {
-        withCredentials: true
-      });
+      const response = await axios.get("/api/mentee/my-mentors", { withCredentials: true });
       setMentors(response.data);
-    } catch (error) {
-      console.error("멘토 목록 가져오기 실패:", error);
+    } catch {
       setMentors([]);
     }
   };
 
-  // 멘토링 진행 상황 가져오기
+  // 멘토링 진행 상황
   const fetchMentoringProgress = async () => {
-    if (!currentUser) return;
-
+    if (!menteeInfo) return;
     try {
       const response = await axios.get("/api/mentoring/progress", {
-        params: { menteeId: currentUser.id },
+        params: { menteeId: menteeInfo.menteeId },
         withCredentials: true,
       });
-      
       const all: MentoringProgress[] = response.data;
-      const active = all.filter((p) => p.connection_status !== "ended");
-      const ended = all.filter((p) => p.connection_status === "ended");
-
-      setActiveList(active);
-      setEndedList(ended);
-    } catch (error) {
-      console.error("멘토링 현황 불러오기 실패:", error);
+      setActiveList(all.filter((p) => p.connection_status !== "ended"));
+      setEndedList(all.filter((p) => p.connection_status === "ended"));
+    } catch {
       setActiveList([]);
       setEndedList([]);
     }
   };
 
+  // 질문 목록
+  const fetchQuestions = async () => {
+    try {
+      const response = await axios.get("/api/questions/mentee", { withCredentials: true });
+      setQuestions(response.data);
+    } catch {
+      setQuestions([]);
+    }
+  };
+
+  // ✅ 오답노트 불러오기 (수정된 버전)
+  const fetchWrongAnswers = async () => {
+    if (!currentUser) return;  // ✅ currentUser 체크 추가
+    try {
+      const response = await axios.get("/api/wrong-answers", {
+        params: { userId: String(currentUser.id) },  // ✅ 실제 사용자 ID 사용
+        withCredentials: true,
+      });
+      console.log("📌 WrongAnswers API response:", response.data);
+      setWrongAnswers(response.data);
+    } catch {
+      setWrongAnswers([]);
+    }
+  };
+
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      await fetchMenteeInfo();
       await fetchMyMentors();
-      await fetchMentoringProgress();
+      await fetchQuestions();
       setLoading(false);
     };
-
-    if (currentUser) {
-      loadData();
-    } else {
-      setLoading(false);
-    }
+    if (currentUser) loadData();
+    else setLoading(false);
   }, [currentUser]);
 
-  // 🔥 멘토링 끝내기
-  const handleEndMentoring = async (progressId: number) => {
+  useEffect(() => {
+    if (menteeInfo) {
+      fetchMentoringProgress();
+      fetchWrongAnswers();  // ✅ 오답노트도 함께 로드
+    }
+  }, [menteeInfo]);
+
+  useEffect(() => {
+    if (menteeInfo) {
+      fetchMentoringProgress();
+      fetchQuestions();
+      fetchWrongAnswers();  // ✅ 오답노트도 함께 로드
+      const interval = setInterval(() => {
+        fetchMentoringProgress();
+        fetchQuestions();
+        fetchWrongAnswers();  // ✅ 오답노트도 함께 로드
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [menteeInfo]);
+
+  // 질문 등록
+  const handleSubmitQuestion = async () => {
+    if (!newTitle.trim() || !newContent.trim()) {
+      alert("제목과 내용을 입력해주세요.");
+      return;
+    }
+    if (activeList.length === 0) {
+      alert("멘토링 중인 멘토가 없어서 질문을 등록할 수 없습니다.");
+      return;
+    }
     try {
-      await axios.post(
-        "/api/mentoring/end",
-        null,
-        {
-          params: { progressId },
-          withCredentials: true
-        }
-      );
+      const selectedMentor = activeList[0];
+      await axios.post("/api/questions/create", {
+        mentorId: selectedMentor.mentor_id,
+        subject: "일반",
+        title: newTitle,
+        content: newContent
+      }, { withCredentials: true });
+      setNewTitle("");
+      setNewContent("");
+      await fetchQuestions();
+      alert("질문이 등록되었습니다!");
+    } catch {
+      alert("질문 등록에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
 
-      // active → ended 로컬 반영
-      setActiveList((prev) => prev.filter((p) => p.mentoring_progress_id !== progressId));
-      const endedMentor = activeList.find((p) => p.mentoring_progress_id === progressId);
-      if (endedMentor) {
-        setEndedList((prev) => [
-          ...prev, 
-          { ...endedMentor, connection_status: "ended", end_date: new Date().toISOString() }
-        ]);
+  // 멘토링 종료
+  const handleEndMentoring = async (mentorId: number) => {
+    try {
+      const mentoringProgress = activeList.find(p => p.mentor_id === mentorId);
+      if (!mentoringProgress) {
+        alert("멘토링 진행 정보를 찾을 수 없습니다.");
+        return;
       }
-
+      await axios.post(`/api/mentoring/end/${mentoringProgress.mentoring_progress_id}`, null, { withCredentials: true });
+      fetchMentoringProgress();
       alert("멘토링이 종료되었습니다.");
-    } catch (err) {
-      console.error("멘토링 종료 실패:", err);
+    } catch {
       alert("멘토링 종료 중 오류가 발생했습니다.");
     }
   };
@@ -140,65 +217,35 @@ const MenteePage = () => {
   // 신고하기
   const handleReport = async (mentor: Mentor) => {
     const reason = window.prompt(`"${mentor.name}" 멘토를 신고하는 이유를 입력하세요:`);
-    if (!reason || reason.trim() === "") {
-      alert("신고 사유를 입력해야 합니다.");
-      return;
-    }
-
+    if (!reason?.trim()) return;
     try {
       await axios.post("/api/admin/report", {
         reporterId: currentUser?.id,           
         targetUserId: mentor.id,
         targetMentorId: mentor.id,
-        reason: reason,
+        reason,
       });
       alert("신고가 정상적으로 접수되었습니다.");
-    } catch (err) {
-      console.error("신고 실패", err);
+    } catch {
       alert("신고 처리 중 오류가 발생했습니다.");
     }
   };
 
-  // ✅ 질문 등록 함수 추가
-  const handleSubmitQuestion = () => {
-    if (!newTitle.trim() || !newContent.trim()) {
-      alert("제목과 내용을 입력해주세요.");
-      return;
-    }
-
-    const newQuestion: Question = {
-      questionId: Date.now(),
-      title: newTitle,
-      content: newContent,
-      status: "PENDING",
-    };
-
-    setQuestions((prev) => [...prev, newQuestion]);
-    setNewTitle("");
-    setNewContent("");
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "날짜 없음";
+    return new Date(dateString).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
   };
-
-  const wrongAnswers = [
-    { id: 101, question: "임진왜란 발생 연도는?", subject: "한국사" },
-    { id: 102, question: "미분 가능 조건은?", subject: "수학" },
-  ];
-
-  const weeklyStats = [
-    { day: "월", questions: 3, answers: 2 },
-    { day: "화", questions: 5, answers: 4 },
-    { day: "수", questions: 2, answers: 1 },
-    { day: "목", questions: 6, answers: 5 },
-    { day: "금", questions: 4, answers: 3 },
-    { day: "토", questions: 1, answers: 1 },
-    { day: "일", questions: 3, answers: 2 },
-  ];
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
         <Navigation />
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="text-center">로딩 중...</div>
+        <div className="max-w-7xl mx-auto px-6 py-10 text-center">
+          로딩 중...
         </div>
       </div>
     );
@@ -211,7 +258,7 @@ const MenteePage = () => {
 
         {/* 멘토링 중인 멘토 현황 */}
         <Card>
-          <CardHeader>
+          <CardHeader className="bg-purple-100 dark:bg-purple-900 rounded-t-xl">
             <CardTitle className="text-xl font-bold">멘토링 중인 멘토 현황</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -228,23 +275,9 @@ const MenteePage = () => {
                     <p>{mentor.intro}</p>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="secondary">멘토 연결됨</Badge>
-                    {/* 종료하기 버튼 */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEndMentoring(mentor.id)}
-                    >
-                      종료하기
-                    </Button>
-                    {/* 신고하기 버튼 */}
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleReport(mentor)}
-                    >
-                      신고하기
-                    </Button>
+                    <Badge variant="secondary">진행중</Badge>
+                    <Button size="sm" variant="outline" onClick={() => handleEndMentoring(mentor.id)}>종료하기</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleReport(mentor)}>신고하기</Button>
                   </div>
                 </div>
               ))
@@ -254,17 +287,17 @@ const MenteePage = () => {
 
         {/* 종료된 멘토링 */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-bold">종료된 멘토링</CardTitle>
+          <CardHeader className="bg-gray-100 dark:bg-gray-800 rounded-t-xl">
+            <CardTitle className="text-lg font-bold">종료된 멘토링</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {endedList.length === 0 ? (
               <p className="text-muted-foreground">종료된 멘토링이 없습니다.</p>
             ) : (
               endedList.map((item) => (
-                <div key={item.mentoring_progress_id} className="p-3 border rounded-md">
+                <div key={item.mentoring_progress_id} className="p-3 border rounded-md bg-white dark:bg-background/50 flex justify-between items-center">
                   <p className="font-medium">
-                    {item.mentor_name} ({item.start_date?.slice(0, 10)} ~ {item.end_date ? item.end_date.slice(0, 10) : "진행 중"})
+                    {item.mentor_name} ({formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : "진행 중"})
                   </p>
                 </div>
               ))
@@ -272,15 +305,16 @@ const MenteePage = () => {
           </CardContent>
         </Card>
 
-        {/* 탭 영역 (질문, 답변, 오답노트, 통계) */}
+        {/* 탭 영역 */}
         <Tabs defaultValue="questions" className="w-full mt-8">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="questions">내 질문 현황</TabsTrigger>
-            <TabsTrigger value="answers">답변 받은 기록</TabsTrigger>
+            <TabsTrigger value="answers">답변 기록</TabsTrigger>
             <TabsTrigger value="wrong">오답노트</TabsTrigger>
             <TabsTrigger value="stats">질문/답변 통계</TabsTrigger>
           </TabsList>
 
+          {/* 내 질문 현황 */}
           <TabsContent value="questions">
             <Card>
               <CardHeader>
@@ -289,8 +323,7 @@ const MenteePage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                
-                {/* ✅ 질문 입력 폼 */}
+                {/* 입력 */}
                 <div className="space-y-3 p-4 border rounded-md bg-background">
                   <input
                     type="text"
@@ -307,19 +340,16 @@ const MenteePage = () => {
                   />
                   <Button onClick={handleSubmitQuestion}>질문 등록</Button>
                 </div>
-
-                {/* ✅ 질문 목록 */}
+                {/* 질문 목록 */}
                 <div className="space-y-3">
                   {questions.length === 0 ? (
                     <p className="text-muted-foreground">등록된 질문이 없습니다.</p>
                   ) : (
                     questions.map((q) => (
-                      <div key={q.questionId} className="p-3 border rounded-md">
+                      <div key={q.questionId} className="p-3 border rounded-md bg-white dark:bg-background/50">
                         <div className="flex justify-between items-center">
                           <h3 className="font-medium">{q.title}</h3>
-                          <Badge variant={q.status === "PENDING" ? "secondary" : "default"}>
-                            {q.status}
-                          </Badge>
+                          <Badge variant={q.status === "PENDING" ? "secondary" : "default"}>{q.status}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{q.content}</p>
                         {q.answerContent && (
@@ -333,38 +363,86 @@ const MenteePage = () => {
             </Card>
           </TabsContent>
 
+          {/* 답변 기록 */}
           <TabsContent value="answers">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="w-5 h-5" /> 답변 받은 기록
-                </CardTitle>
-              </CardHeader>
-              <CardContent>답변 리스트, 평점 남기기 기능 등</CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="wrong">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <RotateCcw className="w-5 h-5" /> 오답노트
+                  <UserCheck className="w-5 h-5" /> 답변 기록
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {wrongAnswers.map((item) => (
-                  <div key={item.id} className="p-3 bg-background border rounded-md flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{item.question}</p>
-                      <p className="text-sm text-muted-foreground">과목: {item.subject}</p>
+                {questions.filter(q => q.status === 'ANSWERED').length === 0 ? (
+                  <p className="text-muted-foreground">답변 받은 질문이 없습니다.</p>
+                ) : (
+                  questions.filter(q => q.status === 'ANSWERED').map((q) => (
+                    <div key={q.questionId} className="p-3 border rounded-md bg-white dark:bg-background/50">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-medium">{q.title}</h3>
+                        <Badge variant="default">답변 완료</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{q.content}</p>
+                      {q.answerContent && (
+                        <p className="mt-2 text-green-600 text-sm">답변: {q.answerContent}</p>
+                      )}
                     </div>
-                    <Button size="sm" variant="outline">다시 도전</Button>
-                  </div>
-                ))}
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
+		  {/* ✅ 수정된 오답노트 */}
+		  <TabsContent value="wrong">
+		    <Card>
+		      <CardHeader>
+		        <CardTitle className="flex items-center gap-2">
+		          <RotateCcw className="w-5 h-5" /> 오답노트
+		        </CardTitle>
+		      </CardHeader>
+		      <CardContent className="space-y-6">
+		        {wrongAnswers.length === 0 ? (
+		          <p className="text-muted-foreground"> 등록된 오답이 없습니다.</p>
+		        ) : (
+		          ["국어", "한국사", "수학"].map((subject) => {
+		            const subjectAnswers = wrongAnswers.filter((w) =>
+		              w.subject?.includes(subject)
+		            );
+		            if (subjectAnswers.length === 0) return null;
+
+		            console.log(`�� ${subject} 오답 데이터:`, subjectAnswers);
+
+		            return (
+		              <div key={subject} className="space-y-3">
+		                <h3 className="font-bold text-lg">{subject}</h3>
+		                {subjectAnswers.map((w, idx) => (
+		                  <div
+		                    key={`${w._id}-${idx}`}
+		                    className="p-3 border rounded-md bg-white dark:bg-background/50"
+		                  >
+		                    <p className="font-medium">문제: {w.question}</p>
+		                    <p className="text-red-600">내 답: {w.userAnswer}</p>
+		                    <p className="text-green-600">
+		                      정답: {Array.isArray(w.answer) ? w.answer.join(", ") : w.answer}
+		                    </p>
+		                    {w.explanation && (
+		                      <p className="text-sm text-muted-foreground">해설: {w.explanation}</p>
+		                    )}
+		                    <p className="text-xs text-muted-foreground">
+		                      {new Date(w.createdAt).toLocaleString("ko-KR")}
+		                    </p>
+		                  </div>
+		                ))}
+		              </div>
+		            );
+		          })
+		        )}
+		      </CardContent>
+		    </Card>
+		  </TabsContent>
+
+
+          {/* 질문/답변 통계 */}
           <TabsContent value="stats">
             <Card>
               <CardHeader>
@@ -374,7 +452,15 @@ const MenteePage = () => {
               </CardHeader>
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ReLineChart data={weeklyStats}>
+                  <ReLineChart data={[
+                    { day: "월", questions: 3, answers: 2 },
+                    { day: "화", questions: 5, answers: 4 },
+                    { day: "수", questions: 2, answers: 1 },
+                    { day: "목", questions: 6, answers: 5 },
+                    { day: "금", questions: 4, answers: 3 },
+                    { day: "토", questions: 1, answers: 1 },
+                    { day: "일", questions: 3, answers: 2 },
+                  ]}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
                     <YAxis />
@@ -386,11 +472,10 @@ const MenteePage = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
         </Tabs>
       </div>
     </div>
   );
 };
-//1
+
 export default MenteePage;

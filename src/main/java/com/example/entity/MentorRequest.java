@@ -26,4 +26,7 @@ public class MentorRequest {
 
     @Column(name = "started_at")
     private LocalDateTime startedAt;
+
+    @Column(name = "end_date")
+    private LocalDateTime endDate;
 }

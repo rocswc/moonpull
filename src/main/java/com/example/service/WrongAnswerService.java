@@ -4,7 +4,8 @@ import com.example.VO.WrongAnswerVO;
 import com.example.dto.WrongAnswerCreateRequestDTO;
 
 public interface WrongAnswerService {
-	 public WrongAnswerVO saveIfWrong(WrongAnswerCreateRequestDTO req);
-	 public List<WrongAnswerVO> saveWrongBatch(List<WrongAnswerCreateRequestDTO> requests);
-	 List<WrongAnswerVO> list(Long userId, String subject);
+    WrongAnswerVO saveIfWrong(WrongAnswerCreateRequestDTO req);
+    List<WrongAnswerVO> saveWrongBatch(List<WrongAnswerCreateRequestDTO> reqs);
+    List<WrongAnswerVO> list(Long userId, String subject);
+    List<WrongAnswerVO> listAll(); // 모든 오답노트 조회 (디버깅용)
 }

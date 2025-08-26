@@ -12,5 +12,6 @@ public class MentorResponseDTO {
     private Double rating;
     private Integer students;
     private String experience;
-    private List<String> specialties;
+    private String specialties;  // mentor 테이블의 specialties 컬럼은 String 타입
+    private String[] specialtiesArray;  // 프론트엔드용 배열 형태
 }

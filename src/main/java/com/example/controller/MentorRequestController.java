@@ -1,18 +1,22 @@
 package com.example.controller;
 
 import com.example.DAO.MenteeRepository;
+import com.example.DAO.MemberRepository;
 import com.example.DAO.MentorEntityRepository;
 import com.example.DAO.MentorRequestRepository;
 import com.example.DAO.MentoringChatroomRepository;
 import com.example.dto.MenteeInfo;
 import com.example.dto.MentorRequestDTO;
 import com.example.dto.MentorRequestInfo;
+import com.example.dto.MyMentorListDTO;
+import com.example.entity.Member;
 import com.example.entity.Mentee;
 import com.example.entity.Mentor;
 import com.example.entity.MentorRequest;
 import com.example.entity.MentoringChatroom;
 import com.example.security.CustomUserDetails;
 import com.example.service.MentoringChatroomService;
+import com.example.service.MyMentorListService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -26,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Date;
 
 @Slf4j
 @RestController
@@ -35,9 +40,11 @@ public class MentorRequestController {
 
     private final MentorRequestRepository mentorRequestRepository;
     private final MenteeRepository menteeRepository;
+    private final MemberRepository memberRepository;
     private final MentorEntityRepository mentorEntityRepository;
     private final MentoringChatroomService mentoringChatroomService;
     private final MentoringChatroomRepository mentoringChatroomRepository;
+    private final MyMentorListService myMentorListService; 
 
     /**
      * 1. 멘티 → 멘토 요청 생성
@@ -80,10 +87,27 @@ public class MentorRequestController {
         }
         */
 
-        // menteeUserId → mentee_id 변환
+        // menteeUserId → mentee_id 변환 (멘티가 없으면 자동 생성)
         Mentee mentee = menteeRepository.findByUserId(dto.getMenteeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "멘티를 찾을 수 없습니다. userId=" + dto.getMenteeId()));
+                .orElseGet(() -> {
+                    log.info("🔧 멘티 정보가 없어서 자동 생성: userId={}", dto.getMenteeId());
+                    
+                    // member 테이블에서 사용자 정보 조회
+                    Member member = memberRepository.findById(dto.getMenteeId().longValue())
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                    "사용자 정보를 찾을 수 없습니다. userId=" + dto.getMenteeId()));
+                    
+                    // 새로운 멘티 생성
+                    Mentee newMentee = new Mentee();
+                    newMentee.setUserId(dto.getMenteeId().longValue());
+                    newMentee.setName(member.getName());
+                    newMentee.setAge(20); // 기본 나이
+                    
+                    Mentee savedMentee = menteeRepository.save(newMentee);
+                    log.info("✅ 멘티 자동 생성 완료: menteeId={}, name={}", savedMentee.getMenteeId(), savedMentee.getName());
+                    
+                    return savedMentee;
+                });
 
         // mentorUserId → mentor_id 변환
         Mentor mentor = mentorEntityRepository.findByUserId(dto.getMentorId())
@@ -319,43 +343,94 @@ public class MentorRequestController {
     }
 
     /**
-     * 7. 멘토링 진행 상황 조회
+     * 7. 멘토링 진행 상황 조회 (멘티용)
      */
     @GetMapping("/progress")
-    public ResponseEntity<List<Map<String, Object>>> getMentoringProgress(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        Long userId = userDetails.getUserId().longValue();
-        log.info("📌 현재 로그인한 userId={}", userId);
+    public ResponseEntity<List<Map<String, Object>>> getMentoringProgress(@RequestParam("menteeId") int menteeId) {
+        log.info("📌 멘티 멘토링 진행 상황 조회: menteeId={}", menteeId);
 
-        Mentor mentor = mentorEntityRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "멘토 정보를 찾을 수 없습니다. userId=" + userId));
-
-        log.info("✅ 매핑된 mentorId={}", mentor.getMentorId());
-
-        // ACCEPTED 상태의 요청들 조회
-        List<MentorRequest> acceptedRequests = mentorRequestRepository
-                .findByMentorIdAndStatus(mentor.getMentorId(), "ACCEPTED");
-
-        log.info("🔍 수락된 요청 개수={}", acceptedRequests.size());
-
-        List<Map<String, Object>> result = acceptedRequests.stream().map(req -> {
-            // mentee_id로 멘티 정보 조회
-            Mentee mentee = menteeRepository.findById(req.getMenteeId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "멘티를 찾을 수 없습니다. menteeId=" + req.getMenteeId()));
+        try {
+            // MyMentorListService를 사용하여 멘티의 멘토링 진행 상황 조회
+            List<MyMentorListDTO> mentorings = myMentorListService.getActiveMentorings(menteeId);
             
-            log.info("👤 멘티 정보: menteeId={}, userId={}, name={}, age={}", 
-                    mentee.getMenteeId(), mentee.getUserId(), mentee.getName(), mentee.getAge());
+            log.info("✅ 멘토링 진행 상황 조회 완료: menteeId={}, count={}", menteeId, mentorings.size());
             
-            Map<String, Object> menteeMap = new HashMap<>();
-            menteeMap.put("id", mentee.getUserId());
-            menteeMap.put("name", mentee.getName());
-            menteeMap.put("age", mentee.getAge());
-            menteeMap.put("status", "in_progress");
-            return menteeMap;
-        }).collect(Collectors.toList());
+            // 디버깅을 위한 상세 로그
+            for (MyMentorListDTO dto : mentorings) {
+                log.info("📋 멘토링 데이터: progressId={}, mentorId={}, status={}, startedAt={}, endedAt={}", 
+                    dto.getProgressId(), dto.getMentorId(), dto.getStatus(), dto.getStartedAt(), dto.getEndedAt());
+            }
+            
+            List<Map<String, Object>> result = mentorings.stream().map(dto -> {
+                Map<String, Object> mentoringMap = new HashMap<>();
+                mentoringMap.put("mentoring_progress_id", dto.getProgressId());
+                mentoringMap.put("mentor_id", dto.getMentorId());
+                mentoringMap.put("mentor_name", dto.getMentorName());
+                mentoringMap.put("chat_id", null);
+                mentoringMap.put("connection_status", dto.getStatus());
+                mentoringMap.put("start_date", dto.getStartedAt() != null ? dto.getStartedAt().toString() : new Date().toString());
+                mentoringMap.put("end_date", dto.getEndedAt() != null ? dto.getEndedAt().toString() : null);
+                return mentoringMap;
+            }).collect(Collectors.toList());
 
-        return ResponseEntity.ok(result);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("❌ 멘티 멘토링 진행 상황 조회 실패: menteeId={}", menteeId, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "멘토링 진행 상황 조회 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 7-1. 멘토링 진행 상황 조회 (멘토용)
+     */
+    @GetMapping("/progress/mentor")
+    public ResponseEntity<List<Map<String, Object>>> getMentorProgress(@RequestParam("mentorId") int mentorId) {
+        log.info("📌 멘토 멘토링 진행 상황 조회: mentorId={}", mentorId);
+
+        try {
+            // mentorId로 해당 멘토의 모든 멘토링 요청 조회
+            List<MentorRequest> mentorRequests = mentorRequestRepository.findByMentorIdAndStatusIn(
+                (long) mentorId, List.of("ACCEPTED", "ENDED"));
+            
+            log.info("✅ 멘토링 진행 상황 조회 완료: mentorId={}, count={}", mentorId, mentorRequests.size());
+            
+            List<Map<String, Object>> result = mentorRequests.stream().map(request -> {
+                Map<String, Object> mentoringMap = new HashMap<>();
+                mentoringMap.put("mentoring_progress_id", request.getId());
+                mentoringMap.put("mentee_id", request.getMenteeId());
+                
+                // 멘티 이름 조회
+                String menteeName = "알 수 없음";
+                try {
+                    Mentee mentee = menteeRepository.findById(request.getMenteeId()).orElse(null);
+                    if (mentee != null) {
+                        // Member 테이블에서 실제 이름 조회
+                        Member menteeMember = memberRepository.findById(mentee.getUserId()).orElse(null);
+                        if (menteeMember != null) {
+                            menteeName = menteeMember.getName();
+                        } else {
+                            menteeName = "멘티 " + mentee.getUserId();
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("멘티 이름 조회 실패: menteeId={}", request.getMenteeId());
+                }
+                
+                mentoringMap.put("mentee_name", menteeName);
+                mentoringMap.put("chat_id", null); // 채팅방 ID는 필요 없으므로 null로 설정
+                mentoringMap.put("connection_status", request.getStatus().toLowerCase());
+                mentoringMap.put("start_date", request.getStartedAt() != null ? request.getStartedAt().toString() : new Date().toString());
+                mentoringMap.put("end_date", request.getEndDate() != null ? request.getEndDate().toString() : null);
+                return mentoringMap;
+            }).collect(Collectors.toList());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("❌ 멘토 멘토링 진행 상황 조회 실패: mentorId={}", mentorId, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "멘토링 진행 상황 조회 중 오류가 발생했습니다: " + e.getMessage());
+        }
     }
 
     /**

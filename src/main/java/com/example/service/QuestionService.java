@@ -117,8 +117,19 @@ public class QuestionService {
         dto.setTitle(question.getTitle());
         dto.setContent(question.getContent());
         dto.setStatus(question.getStatus().name());
-        dto.setCreatedAt(question.getCreatedAt());
-        dto.setAnsweredAt(question.getAnsweredAt());
+        
+        // 날짜 형식을 ISO 문자열로 변환
+        if (question.getCreatedAt() != null) {
+            dto.setCreatedAt(question.getCreatedAt().toString());
+        } else {
+            dto.setCreatedAt(null);
+        }
+        if (question.getAnsweredAt() != null) {
+            dto.setAnsweredAt(question.getAnsweredAt().toString());
+        } else {
+            dto.setAnsweredAt(null);
+        }
+        
         dto.setAnswerContent(question.getAnswerContent());
         
         // 멘티 이름 조회
@@ -152,3 +163,4 @@ public class QuestionService {
         return dto;
     }
 }
+

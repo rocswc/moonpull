@@ -81,5 +81,29 @@ public class MenteeController {
             return ResponseEntity.badRequest().body(List.of());
         }
     }
+
+    // 멘티 ID 조회 API 추가
+    @GetMapping("/my-info")
+    public ResponseEntity<Map<String, Object>> getMyInfo(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        try {
+            // 1. 현재 로그인한 멘티 정보 조회
+            Long userId = userDetails.getUserId().longValue();
+            Mentee mentee = menteeRepository.findByUserId(userId)
+                    .orElseThrow(() -> new RuntimeException("멘티 정보를 찾을 수 없습니다."));
+            
+            Map<String, Object> menteeInfo = new HashMap<>();
+            menteeInfo.put("menteeId", mentee.getMenteeId());
+            menteeInfo.put("userId", mentee.getUserId());
+            menteeInfo.put("name", mentee.getName());
+            menteeInfo.put("age", mentee.getAge());
+            
+            return ResponseEntity.ok(menteeInfo);
+            
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new HashMap<>());
+        }
+    }
 }
 

@@ -7,5 +7,6 @@ import java.util.List;
 @Mapper
 public interface MentorResponseDAO {
     List<MentorResponseDTO> getMentorsBySlug(String slug);
-    List<String> getSpecialtiesByMentorId(Long mentorId);
+    List<MentorResponseDTO> getAllApprovedMentors();  // 디버깅용
+    // List<String> getSpecialtiesByMentorId(Long mentorId);  // 더 이상 사용하지 않음
 }

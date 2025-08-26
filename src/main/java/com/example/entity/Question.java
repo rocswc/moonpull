@@ -16,6 +16,7 @@ public class Question {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "question_id")
     private Long questionId;
     
     @Column(name = "mentee_id", nullable = false)
@@ -52,3 +53,4 @@ public class Question {
         CLOSED      // 질문 종료
     }
 }
+

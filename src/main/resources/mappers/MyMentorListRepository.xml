@@ -3,30 +3,37 @@
   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.example.DAO.MyMentorListMapper">
+<mapper namespace="com.example.DAO.MyMentorListRepository">
 
-  <!-- 진행 중 멘토링 불러오기 -->
+  <!-- 진행 중/종료된 멘토링 불러오기 (mentor_request 테이블만 사용) -->
   <select id="findByMenteeId" parameterType="int" resultType="com.example.dto.MyMentorListDTO">
     SELECT
-      mp.mentoring_progress_id AS progressId,
-      mt.id AS mentorId,
-      mt.name AS mentorName,
+      mr.id AS progressId,
+      mt.mentor_id AS mentorId,
+      COALESCE(m.name, '멘토') AS mentorName,
       mt.intro AS mentorIntro,
-      mt.career AS career,
-      mt.specialty AS specialty
-    FROM mentoring_progress mp
-    JOIN mentor mt ON mp.mentor_id = mt.id
-    WHERE mp.mentee_id = #{menteeId}
-      AND mp.connection_status = 'in_progress'
+      mt.experience_years AS career,
+      mt.specialties AS specialty,
+      CASE 
+        WHEN mr.status = 'ENDED' THEN 'ended'
+        ELSE 'in_progress'
+      END AS status,
+      mr.started_at AS startedAt,
+      mr.end_date AS endedAt
+    FROM mentor_request mr
+    JOIN mentor mt ON mr.mentor_id = mt.mentor_id
+    LEFT JOIN member m ON mt.user_id = m.user_id
+    WHERE mr.mentee_id = #{menteeId}
+      AND mr.status IN ('ACCEPTED', 'ENDED')
   </select>
 
-  <!-- 멘토링 종료 -->
+  <!-- 멘토링 종료 (mentor_request 테이블만 사용) -->
   <update id="endMentoring" parameterType="int">
-    UPDATE mentoring_progress
-    SET connection_status = 'ended',
+    UPDATE mentor_request 
+    SET status = 'ENDED',
         end_date = NOW()
-    WHERE mentoring_progress_id = #{progressId}
-      AND connection_status = 'in_progress'
+    WHERE id = #{progressId}
+      AND status = 'ACCEPTED'
   </update>
 
 </mapper>

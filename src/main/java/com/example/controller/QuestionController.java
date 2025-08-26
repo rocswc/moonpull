@@ -127,22 +127,38 @@ public class QuestionController {
             Long userId = userDetails.getUserId().longValue();
             log.info("📋 멘토 질문 목록 조회: userId={}", userId);
             
-            Mentor mentor = mentorEntityRepository.findByUserId(userId)
-                    .orElseThrow(() -> new RuntimeException("멘토 정보를 찾을 수 없습니다."));
+            // 디버깅: 현재 사용자 정보 로그
+            log.info("🔍 현재 로그인 사용자 정보: userId={}, username={}, authorities={}", 
+                    userId, userDetails.getUsername(), userDetails.getAuthorities());
             
-            // 추가 로그
-            log.info("🔍 조회된 멘토 정보: mentorId={}", mentor.getMentorId());
+            // 멘토 정보 조회 시도
+            Mentor mentor = mentorEntityRepository.findByUserId(userId).orElse(null);
+            
+            if (mentor == null) {
+                log.error("❌ 멘토 정보를 찾을 수 없음: userId={}", userId);
+                // 디버깅: 모든 멘토 정보 조회
+                List<Mentor> allMentors = mentorEntityRepository.findAll();
+                log.info("🔍 전체 멘토 목록: {}", allMentors.stream()
+                        .map(m -> String.format("mentorId=%d, userId=%d", m.getMentorId(), m.getUserId()))
+                        .collect(java.util.stream.Collectors.joining(", ")));
+                
+                // 멘토 정보가 없어도 빈 배열 반환 (400 대신 200)
+                log.warn("⚠️ 멘토 정보가 없어서 빈 질문 목록 반환");
+                return ResponseEntity.ok(List.of());
+            }
+            
+            log.info("🔍 조회된 멘토 정보: mentorId={}, userId={}", mentor.getMentorId(), userId);
             
             List<QuestionDTO> questions = questionService.getMentorQuestions(mentor.getMentorId());
             
-            // 추가 로그
             log.info("📝 조회된 질문 수: {}", questions.size());
             
             return ResponseEntity.ok(questions);
             
         } catch (Exception e) {
-            log.error("❌ 멘토 질문 목록 조회 실패", e);
-            return ResponseEntity.badRequest().body(List.of());
+            log.error("❌ 멘토 질문 목록 조회 실패: userId={}", userDetails.getUserId(), e);
+            // 예외 발생 시에도 빈 배열 반환 (400 대신 200)
+            return ResponseEntity.ok(List.of());
         }
     }
     
@@ -155,16 +171,38 @@ public class QuestionController {
             Long userId = userDetails.getUserId().longValue();
             log.info("⏳ 멘토 답변 대기 질문 조회: userId={}", userId);
             
-            Mentor mentor = mentorEntityRepository.findByUserId(userId)
-                    .orElseThrow(() -> new RuntimeException("멘토 정보를 찾을 수 없습니다."));
+            // 디버깅: 현재 사용자 정보 로그
+            log.info("🔍 현재 로그인 사용자 정보: userId={}, username={}, authorities={}", 
+                    userId, userDetails.getUsername(), userDetails.getAuthorities());
+            
+            // 멘토 정보 조회 시도
+            Mentor mentor = mentorEntityRepository.findByUserId(userId).orElse(null);
+            
+            if (mentor == null) {
+                log.error("❌ 멘토 정보를 찾을 수 없음: userId={}", userId);
+                // 디버깅: 모든 멘토 정보 조회
+                List<Mentor> allMentors = mentorEntityRepository.findAll();
+                log.info("🔍 전체 멘토 목록: {}", allMentors.stream()
+                        .map(m -> String.format("mentorId=%d, userId=%d", m.getMentorId(), m.getUserId()))
+                        .collect(java.util.stream.Collectors.joining(", ")));
+                
+                // 멘토 정보가 없어도 빈 배열 반환 (400 대신 200)
+                log.warn("⚠️ 멘토 정보가 없어서 빈 답변 대기 질문 목록 반환");
+                return ResponseEntity.ok(List.of());
+            }
+            
+            log.info("🔍 조회된 멘토 정보: mentorId={}, userId={}", mentor.getMentorId(), userId);
             
             List<QuestionDTO> questions = questionService.getPendingQuestionsForMentor(mentor.getMentorId());
+            
+            log.info("📝 조회된 답변 대기 질문 수: {}", questions.size());
             
             return ResponseEntity.ok(questions);
             
         } catch (Exception e) {
-            log.error("❌ 멘토 답변 대기 질문 조회 실패", e);
-            return ResponseEntity.badRequest().body(List.of());
+            log.error("❌ 멘토 답변 대기 질문 조회 실패: userId={}", userDetails.getUserId(), e);
+            // 예외 발생 시에도 빈 배열 반환 (400 대신 200)
+            return ResponseEntity.ok(List.of());
         }
     }
     
@@ -184,3 +222,4 @@ public class QuestionController {
         }
     }
 }
+

@@ -4,8 +4,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,7 +17,8 @@ public class QuestionDTO {
     private String title;
     private String content;
     private String status;
-    private LocalDateTime createdAt;
-    private LocalDateTime answeredAt;
+    private String createdAt;
+    private String answeredAt;
     private String answerContent;
 }
+

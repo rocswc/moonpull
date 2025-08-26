@@ -23,3 +23,5 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     // 멘티의 특정 상태 질문 목록 조회
     List<Question> findByMenteeIdAndStatusOrderByCreatedAtDesc(Long menteeId, Question.QuestionStatus status);
 }
+
+
