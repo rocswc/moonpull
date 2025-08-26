@@ -8,17 +8,30 @@ import com.example.service.FcmPushService;
 import com.example.service.FcmTokenService;
 import com.example.service.NotificationService;
 import com.example.service.RtChatService;
+import com.example.DAO.ChatMessageDocRepo;
 import com.example.DAO.ReportRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.bson.types.ObjectId;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@Slf4j
 public class ReportController {
 
     private final ReportRepository reportRepository;
@@ -26,11 +39,13 @@ public class ReportController {
     private final FcmPushService fcmPushService;
     private final NotificationService notificationService;
     private final RtChatService rtChatService;
+    private final ChatMessageDocRepo chatMessageDocRepo;
     // ✅ 신고 등록
     @PostMapping("/admin/report")
     public ResponseEntity<?> submitReport(@RequestBody ReportVO reportVO) {
         try {
             System.out.println("🚨 신고 요청 들어옴: " + reportVO);
+            System.out.println("🚨 받은 chatMessageId = " + reportVO.getChatMessageId());
 
             if (reportVO.getTargetUserId() == null || reportVO.getTargetUserId() == 0) {
                 return ResponseEntity.badRequest().body("❌ 잘못된 요청: targetUserId 없음");
@@ -101,16 +116,67 @@ public class ReportController {
         return list;
     }
      
-    @GetMapping("/api/admin/report/{reportId}/context")
-    public ResponseEntity<List<ChatMessage>> getReportedMessageContext(@PathVariable Integer reportId) {
-        ReportVO report = reportRepository.getReportById(reportId); // 🧠 이 메서드는 별도로 만들어야 함
+    @GetMapping("/admin/report/{reportId}/context")
+    public ResponseEntity<Map<String, Object>> getReportedMessageContext(
+            @PathVariable Integer reportId,
+            @RequestParam(defaultValue = "5") int minutesBefore,
+            @RequestParam(defaultValue = "5") int minutesAfter
+    ) {
+        log.info("📥 신고 문맥 요청 들어옴 → reportId={}, before={}min, after={}min", reportId, minutesBefore, minutesAfter);
+
+        ReportVO report = reportRepository.getReportById(reportId);
         if (report == null || report.getChatMessageId() == null) {
+            log.warn("❌ report 또는 chatMessageId null: report={}", report);
             return ResponseEntity.notFound().build();
         }
 
-        List<ChatMessage> context = rtChatService.getContextMessages(report.getChatMessageId(), 10, 10);
-        return ResponseEntity.ok(context);
+        String mongoMessageId = report.getChatMessageMongoId();
+        log.info("🔍 mongoMessageId = {}", mongoMessageId);
+
+        Optional<ChatMessage> optionalMessage = chatMessageDocRepo.findById(mongoMessageId);
+        if (optionalMessage.isEmpty()) {
+            log.warn("❌ Mongo 메시지 없음 → mongoMessageId={}", mongoMessageId);
+            return ResponseEntity.notFound().build();
+        }
+
+        ChatMessage target = optionalMessage.get();
+        log.info("✅ 대상 메시지: {}", target);
+
+     
+        
+
+        Instant start = target.getCreatedAt().minus(minutesBefore, ChronoUnit.MINUTES);
+        Instant end = target.getCreatedAt().plus(minutesAfter, ChronoUnit.MINUTES);
+        log.info("⏱️ 조회 범위: {} ~ {}", start, end);
+        List<ChatMessage> context = chatMessageDocRepo.findByChatroomIdAndCreatedAtBetweenOrderByCreatedAtAsc(
+            target.getChatroomId(),
+            Date.from(start),
+            Date.from(end)
+        );
+        
+   
+
+        if (context.stream().noneMatch(m -> m.getId().equals(target.getId()))) {
+            context.add(0, target);
+            log.info("🧩 기준 메시지 직접 추가 (문맥 내에 없음)");
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("messages", context);
+        result.put("highlightedMessageId", target.getId().toHexString());
+        log.info("🧪 target.getId() = {}", target.getId());
+        log.info("🧪 target.getId() class = {}", target.getId().getClass().getName());
+        log.info("🧪 신고된 mongoMessageId: {}", mongoMessageId);
+        return ResponseEntity.ok(result);
+        		
+     
+
+       
     }
+
+
+
+
     
     
 }

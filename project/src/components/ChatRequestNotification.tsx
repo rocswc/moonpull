@@ -9,10 +9,13 @@ import { useChat, ChatRequest } from "@/contexts/ChatContext";
 interface ChatRequestNotificationProps { request: ChatRequest; }
 
 const ChatRequestNotification: React.FC<ChatRequestNotificationProps> = ({ request }) => {
-  const { acceptChatRequest, rejectChatRequest } = useChat();
+  const { acceptChatRequest, rejectChatRequest, subscribeRoomTopic } = useChat();
 
-  const handleAccept = async () => {   
+  const handleAccept = async () => {
     await acceptChatRequest(request.id, request.from.id, request.to.id);
+
+    // 채팅 요청을 수락한 후 즉시 방을 구독
+    subscribeRoomTopic(request.id); // 방 구독을 즉시 실행
   };
  
   const handleReject = async () => {

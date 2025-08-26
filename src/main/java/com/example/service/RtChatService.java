@@ -1,5 +1,6 @@
 package com.example.service;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +21,9 @@ public interface RtChatService {
     public String resolveUserBySession(String sessionId); 
     /** 초기 동기화용 */
     public List<String> getOnlineUserIds();
-    public List<ChatMessage> getContextMessages(String messageId, int beforeCount, int afterCount);
+    public List<ChatMessage> getContextMessagesAroundReportedMessage(int reportId, int minutesBefore, int minutesAfter);
+    List<Long> getParticipants(long roomId);
+    String resolveLoginId(Long userId);
     //public ChatMessage saveMessage(long roomId, long senderId, String content);
     //public List<ChatMessage> getMessages(long roomId, Long beforeId, int limit);
 }
