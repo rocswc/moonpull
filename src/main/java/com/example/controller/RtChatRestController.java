@@ -8,6 +8,9 @@ import com.example.entity.Member;
 import com.example.security.CustomUserDetails;
 import com.example.service.RtChatService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.checkerframework.checker.index.qual.SameLen;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -25,6 +28,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/rt-chat")
 @RequiredArgsConstructor
+@Slf4j
 public class RtChatRestController {
 
     private final RtChatService rtChatService;
@@ -70,24 +74,31 @@ public class RtChatRestController {
             @AuthenticationPrincipal CustomUserDetails me,
             @RequestBody ChatRequestDtos.CreateRequest req) {
 
-        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated"); // CHANGED
+        if (me == null) {
+            System.out.println("❌ [요청 생성] 인증 사용자 없음");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated");
+        }
 
         long fromUserId = me.getUserId();
-        long toUserId   = req.toUserId();
+        long toUserId = req.toUserId();
+
+        System.out.println("✅ [요청 생성] from: " + fromUserId + " → to: " + toUserId);
 
         Member fromM = memberRepository.findById(fromUserId).orElseThrow(() -> new IllegalArgumentException("fromUser not found: " + fromUserId));
         Member toM = memberRepository.findById(toUserId).orElseThrow(() -> new IllegalArgumentException("toUser not found: " + toUserId));
 
-        MemberVO fromVO = toVO(fromM); // CHANGED: 엔티티→VO 변환
-        MemberVO toVO   = toVO(toM);
+        MemberVO fromVO = toVO(fromM);
+        MemberVO toVO = toVO(toM);
 
         var payload = new ChatRequestDtos.RequestPushed(
                 UUID.randomUUID().toString(),
                 fromUserId, toUserId, Instant.now(),
                 fromVO, toVO
         );
+
+        System.out.println("📬 [요청 전송] → " + toM.getLoginId());
         broker.convertAndSendToUser(toM.getLoginId(), "/queue/requests", payload);
-        
+
         return ResponseEntity.ok(payload);
     }
 
@@ -98,25 +109,35 @@ public class RtChatRestController {
             @PathVariable String requestId,
             @RequestBody ChatRequestDtos.AcceptRequest body) {
 
-        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated"); // CHANGED
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated");
 
         long fromUserId = body.fromUserId();
         long toUserId   = body.toUserId();
 
+        // 방 생성 (수락 시 방이 없는 경우 새로 생성)
         var room = rtChatService.createRoomIfAbsent(fromUserId, toUserId, null);
 
+        // 회원 정보 조회
         Member fromM = memberRepository.findById(fromUserId).orElseThrow();
         Member toM   = memberRepository.findById(toUserId).orElseThrow();
 
+        // VO 변환
         MemberVO fromVO = toVO(fromM);
         MemberVO toVO   = toVO(toM);
 
+        // RoomOpened DTO 구성
         var opened = new ChatRequestDtos.RoomOpened(
                 requestId, room, List.of(fromVO, toVO), List.of()
         );
- 
+
+        // ✅ 요청자와 수락자 모두에게 'request-accepted' 알림 전송
         broker.convertAndSendToUser(fromM.getLoginId(), "/queue/request-accepted", opened);
-        broker.convertAndSendToUser(toM.getLoginId(),   "/queue/request-accepted", opened);
+        log.info("📤 [요청자에게 전송 완료] loginId={}, roomId={}", fromM.getLoginId(), room.getId());
+
+        broker.convertAndSendToUser(toM.getLoginId(), "/queue/request-accepted", opened);
+        log.info("📤 [수락자에게 전송 완료] loginId={}, roomId={}", toM.getLoginId(), room.getId());
+
+        // 응답 반환
         return ResponseEntity.ok(opened);
     }
 

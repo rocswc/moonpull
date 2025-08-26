@@ -7,16 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Minimize2, X, Send, Phone, Video, GripVertical } from "lucide-react";
 import { useChat } from "@/contexts/ChatContext";
 
-// 🚨 추가: 신고 모달
-const ReportModal = ({
-  target,
-  reporterId,
-  onClose,
-}: {
-  target: { messageId: string; content: string; targetUserId: string };
-  reporterId: string;
-  onClose: () => void;
-}) => {
+const ReportModal = ({ target, reporterId, onClose }: { target: { messageId: string; content: string; targetUserId: string }; reporterId: string; onClose: () => void }) => {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,13 +15,13 @@ const ReportModal = ({
     if (!reason.trim()) return;
     setSubmitting(true);
     try {
-      await fetch('/api/reports', {
+      await fetch('/api/admin/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          reporterId,
-          targetUserId: target.targetUserId,
-          chatMessageId: target.messageId,
+          reporterId: Number(reporterId),
+          targetUserId: Number(target.targetUserId),
+          chatMessageMongoId: String(target.messageId),
           reason,
           reportType: "CHAT",
         }),
@@ -64,7 +55,6 @@ const ReportModal = ({
   );
 };
 
-// 💬 로그 저장용 함수
 const CHAT_LOG_URL = '/api/chat/log';
 function persistChatLog({ roomId, senderId, receiverId, content, timestamp }: { roomId: string; senderId: string; receiverId: string; content: string; timestamp: string }) {
   try {
@@ -78,9 +68,9 @@ function persistChatLog({ roomId, senderId, receiverId, content, timestamp }: { 
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body,
-      }).catch(() => { });
+      }).catch(() => {});
     }
-  } catch (_) { }
+  } catch (_) {}
 }
 
 interface ChatWindowProps {
@@ -94,7 +84,8 @@ interface ChatWindowProps {
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
-  const { sendMessage, minimizeChat, closeChat, markAsRead, currentUser } = useChat();
+  const { chatRooms, sendMessage, minimizeChat, closeChat, markAsRead, currentUser } = useChat();
+ const roomData = chatRooms.find(r => r.id === room.id);
 
   const [message, setMessage] = useState('');
   const [position, setPosition] = useState({ x: typeof window !== 'undefined' ? Math.max(0, window.innerWidth - 400) : 0, y: 100 });
@@ -105,44 +96,46 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
   const lastMarkedRef = useRef<string | number | null>(null);
   const [reportTarget, setReportTarget] = useState<null | { messageId: string; content: string; targetUserId: string }>(null);
 
+  if (!roomData) return null;
+
   const otherParticipant = useMemo(() => {
     const meId = currentUser?.id?.toString();
-    return room.participants.find(p => p.id.toString() !== meId) || room.participants[0];
-  }, [room.participants, currentUser?.id]);
+    return roomData.participants.find(p => p.id.toString() !== meId) || roomData.participants[0];
+  }, [roomData.participants, currentUser?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [room.messages.length]);
+  }, [roomData.messages.length]);
 
   useEffect(() => {
     if (!currentUser?.id) return;
-    if (room.isMinimized) return;
-    const len = room.messages.length;
+    if (roomData.isMinimized) return;
+    const len = roomData.messages.length;
     if (len === 0) return;
 
-    const last = room.messages[len - 1];
+    const last = roomData.messages[len - 1];
     const lastFromOther = String(last.senderId) !== String(currentUser.id);
 
     if (lastFromOther && last.id !== lastMarkedRef.current) {
-      markAsRead(room.id);
+      markAsRead(roomData.id);
       lastMarkedRef.current = last.id;
     }
-  }, [room.messages, room.isMinimized, currentUser?.id, room.id, markAsRead]);
+  }, [roomData.messages, roomData.isMinimized, currentUser?.id, roomData.id, markAsRead]);
 
   useEffect(() => {
-    if (!room.isMinimized && room.unreadCount > 0) {
-      markAsRead(room.id);
+    if (!roomData.isMinimized && roomData.unreadCount > 0) {
+      markAsRead(roomData.id);
     }
-  }, [room.isMinimized, room.unreadCount, room.id, markAsRead]);
+  }, [roomData.isMinimized, roomData.unreadCount, roomData.id, markAsRead]);
 
   const handleSendMessage = () => {
     const text = message.trim();
     if (!text) return;
-    sendMessage(room.id, text);
+    sendMessage(roomData.id, text);
 
     const receiverId = otherParticipant?.id?.toString() ?? '';
     persistChatLog({
-      roomId: room.id.toString(),
+      roomId: roomData.id.toString(),
       senderId: String(currentUser?.id ?? ''),
       receiverId,
       content: text,
@@ -186,37 +179,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
     }
   }, [isDragging, dragOffset]);
 
-  if (room.isMinimized) {
-    return (
-      <div ref={chatWindowRef} className="fixed bottom-4 w-60 z-50 animate-fade-in" style={{ left: `${position.x}px` }}>
-        <Card className="shadow-elegant cursor-pointer hover:shadow-glow transition-shadow" onClick={() => minimizeChat(room.id)}>
-          <CardHeader className="p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-primary to-primary-glow text-white">
-                      {otherParticipant?.avatar ?? '👤'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">{otherParticipant?.name ?? '상대'}</h4>
-                  {room.unreadCount > 0 && (
-                    <Badge variant="destructive" className="text-xs h-4 px-1">{room.unreadCount}</Badge>
-                  )}
-                </div>
-              </div>
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); closeChat(room.id); }} className="h-6 w-6 p-0">
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  if (roomData.isMinimized) return null;
 
   return (
     <div ref={chatWindowRef} className="fixed w-80 h-96 z-50 animate-scale-in" style={{ left: `${position.x}px`, top: `${position.y}px` }}>
@@ -241,24 +204,32 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Phone className="h-3 w-3" /></Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Video className="h-3 w-3" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => minimizeChat(room.id)} className="h-6 w-6 p-0"><Minimize2 className="h-3 w-3" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => closeChat(room.id)} className="h-6 w-6 p-0"><X className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => minimizeChat(roomData.id)} className="h-6 w-6 p-0"><Minimize2 className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => closeChat(roomData.id)} className="h-6 w-6 p-0"><X className="h-3 w-3" /></Button>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="flex-1 p-3 overflow-y-auto bg-background/50">
           <div className="space-y-2">
-            {room.messages.length === 0 ? (
+            {roomData.messages.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 <p className="text-xs">대화를 시작해보세요! 👋</p>
               </div>
             ) : (
-              room.messages.map((msg) => {
+              roomData.messages.map((msg, index) => {
                 const isMine = String(msg.senderId) === String(currentUser?.id ?? '');
                 const time = toTimeStr(msg.timestamp);
+                const key = (() => {
+                  try {
+                    return `msg-${typeof msg.id === 'object' ? JSON.stringify(msg.id) : String(msg.id)}-${index}`;
+                  } catch {
+                    return `msg-fallback-${index}`;
+                  }
+                })();
+
                 return (
-                  <div key={String(msg.id)} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  <div key={key} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div className="flex items-end gap-1 max-w-[70%]">
                       {!isMine && (
                         <Avatar className="h-6 w-6">
@@ -274,16 +245,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                         <div className="flex items-center justify-between">
                           <p className={`text-xs text-muted-foreground ${isMine ? 'text-right' : 'text-left'}`}>{time}</p>
                           {!isMine && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4 p-0"
-                              onClick={() => setReportTarget({
-                                messageId: String(msg.id),
-                                content: msg.content,
-                                targetUserId: String(msg.senderId),
-                              })}
-                            >
+                            <Button variant="ghost" size="icon" className="h-4 w-4 p-0" onClick={() => setReportTarget({ messageId: String(msg.id), content: msg.content, targetUserId: String(msg.senderId) })}>
                               <span className="text-xs text-red-500">🚨</span>
                             </Button>
                           )}
@@ -291,9 +253,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
                       </div>
                       {isMine && (
                         <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs bg-secondary">
-                            나
-                          </AvatarFallback>
+                          <AvatarFallback className="text-xs bg-secondary">나</AvatarFallback>
                         </Avatar>
                       )}
                     </div>
@@ -307,13 +267,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
 
         <div className="p-2 border-t">
           <div className="flex gap-1">
-            <Input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="메시지 입력..."
-              className="text-xs h-8"
-            />
+            <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="메시지 입력..." className="text-xs h-8" />
             <Button onClick={handleSendMessage} disabled={!message.trim()} size="sm" className="h-8 px-2">
               <Send className="h-3 w-3" />
             </Button>
@@ -322,11 +276,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ room }) => {
       </Card>
 
       {reportTarget && (
-        <ReportModal
-          target={reportTarget}
-          onClose={() => setReportTarget(null)}
-          reporterId={String(currentUser?.id ?? '')}
-        />
+        <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} reporterId={String(currentUser?.id ?? '')} />
       )}
     </div>
   );
