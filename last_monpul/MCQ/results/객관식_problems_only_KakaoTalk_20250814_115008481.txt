@@ -1,0 +1,35 @@
+## 문제 1
+질문: Gradle의 버전은 무엇인가?
+A) 8.13.2
+B) 8.14.3
+C) 8.15.1
+D) 8.16.2
+E) 8.17.3
+## 문제 2
+질문: npm error ENOENT는 무엇을 의미하는가?
+A) 파일을 찾을 수 없음
+B) 디렉토리가 존재하지 않음
+C) 네트워크 연결 오류
+D) 자바가 설치되지 않음
+E) Gradle이 설치되지 않음
+## 문제 3
+질문: package.json 파일은 어디에 위치해야 하는가?
+A) C:\Users\user\AppData\Local\npm-cache
+B) D:\Idocker\vs-project3
+C) C:\Users\user\gradle\current
+D) D:\Idocker\vs-project3\node_modules
+E) C:\Users\user\java\openjdk
+## 문제 4
+질문: npm run dev 명령어를 실행했을 때 발생하는 오류 코드는 무엇인가?
+A) ENOENT
+B) EACCES
+C) EPERM
+D) ENOTFOUND
+E) ECONNREFUSED
+## 문제 5
+질문: Gradle을 설치한 후에 Gradle이 제안하는 설치는 무엇인가?
+A) Node.js
+B) Java OpenJDK
+C) Python
+D) Ruby
+E) Go
