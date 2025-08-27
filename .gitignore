@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?src/main/resources/firebase-service-account.json
+eskey/ca.p12 
+target/ 
