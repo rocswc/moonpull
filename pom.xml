@@ -14,7 +14,7 @@
   <groupId>com.example</groupId>
   <artifactId>moonpull</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <packaging>war</packaging>
+  <packaging>jar</packaging>
   <name>moonpull</name>
   <description>Demo project for Spring Boot</description>
 
