@@ -8,38 +8,42 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
-
-const subjects = [
-  {
-    id: "korean-history",
-    name: "한국사",
-    description: "조선시대부터 현대사까지 체계적인 한국사 학습",
-    icon: "📚",
-    color: "from-primary to-primary-glow",
-    onlineTeachers: 12
-  },
-  {
-    id: "korean",
-    name: "국어",
-    description: "문법, 독해, 작문까지 국어 실력 향상",
-    icon: "✏️",
-    color: "from-pink-500 to-rose-500",
-    onlineTeachers: 8
-  },
-  {
-    id: "english",
-    name: "영어",
-    description: "회화, 문법, 독해 등 영어 실력 완성",
-    icon: "🌍",
-    color: "from-blue-500 to-cyan-500",
-    onlineTeachers: 15
-  }
-];
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const Matching = () => {
   const navigate = useNavigate();
+  const { language } = useLanguageStore();
+  const { t } = useTranslation(language);
 
-  const handleSubjectSelect = (subjectId: string) => {
+  const subjects = [
+    {
+      id: "korean-history",
+      name: t("subjectHistory", "matching"),
+      description: t("historyDescription", "matching"),
+      icon: "📚",
+      color: "from-primary to-primary-glow",
+      onlineTeachers: 12
+    },
+    {
+      id: "korean",
+      name: t("subjectKorean", "matching"),
+      description: t("koreanDescription", "matching"),
+      icon: "✏️",
+      color: "from-pink-500 to-rose-500",
+      onlineTeachers: 8
+    },
+    {
+      id: "english",
+      name: t("subjectEnglish", "matching"),
+      description: t("englishDescription", "matching"),
+      icon: "🌍",
+      color: "from-blue-500 to-cyan-500",
+      onlineTeachers: 15
+    }
+  ];
+
+    const handleSubjectSelect = (subjectId: string) => {
     navigate(`/matching/${subjectId}`);
   };
 
@@ -50,13 +54,13 @@ const Matching = () => {
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-4">
-            멘토 매칭 서비스
+            {t("title", "matching")}
           </h1>
           <p className="text-xl text-muted-foreground mb-2">
-            원하는 과목을 선택하세요
+            {t("subtitle1", "matching")}
           </p>
           <p className="text-muted-foreground">
-            실시간으로 접속한 전문 멘토들과 1대1 매칭됩니다
+            {t("subtitle2", "matching")}
           </p>
         </div>
 
@@ -85,7 +89,7 @@ const Matching = () => {
                 <div className="mb-6">
                   <span className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    온라인 멘토 {subject.onlineTeachers}명
+                    {t("onlineMentors", "matching")} {subject.onlineTeachers}명
                   </span>
                 </div>
 
@@ -98,7 +102,7 @@ const Matching = () => {
                     handleSubjectSelect(subject.id);
                   }}
                 >
-                  멘토 찾기
+                  {t("findMentor", "matching")}
                 </Button>
               </CardContent>
             </Card>
@@ -107,19 +111,19 @@ const Matching = () => {
 
         <div className="mt-16 text-center">
           <div className="bg-muted/50 rounded-xl p-8">
-            <h3 className="text-xl font-semibold mb-4">💡 매칭 방법</h3>
+            <h3 className="text-xl font-semibold mb-4">💡 {t("matchingMethod", "matching")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-muted-foreground">
               <div>
                 <div className="text-2xl mb-2">1️⃣</div>
-                <p>원하는 과목 선택</p>
+                <p>{t("step1", "matching")}</p>
               </div>
               <div>
                 <div className="text-2xl mb-2">2️⃣</div>
-                <p>실시간 온라인 멘토 확인</p>
+                <p>{t("step2", "matching")}</p>
               </div>
               <div>
                 <div className="text-2xl mb-2">3️⃣</div>
-                <p>매칭 후 즉시 1대1 대화</p>
+                <p>{t("step3", "matching")}</p>
               </div>
             </div>
           </div>

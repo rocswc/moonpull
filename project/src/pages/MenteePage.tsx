@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useChat } from "@/contexts/ChatContext"; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, UserCheck, RotateCcw, LineChart } from "lucide-react";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   LineChart as ReLineChart,
   Line,
@@ -58,6 +60,9 @@ interface WrongAnswer {
 }
 
 const MenteePage = () => {
+  const { language } = useLanguageStore();
+  const { t } = useTranslation(language);
+  
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [activeList, setActiveList] = useState<MentoringProgress[]>([]);
   const [endedList, setEndedList] = useState<MentoringProgress[]>([]);
@@ -174,11 +179,11 @@ const MenteePage = () => {
   // 질문 등록
   const handleSubmitQuestion = async () => {
     if (!newTitle.trim() || !newContent.trim()) {
-      alert("제목과 내용을 입력해주세요.");
+      alert(t("enterTitleAndContent", "mentee"));
       return;
     }
     if (activeList.length === 0) {
-      alert("멘토링 중인 멘토가 없어서 질문을 등록할 수 없습니다.");
+      alert(t("noMentoringMentor", "mentee"));
       return;
     }
     try {
@@ -192,9 +197,9 @@ const MenteePage = () => {
       setNewTitle("");
       setNewContent("");
       await fetchQuestions();
-      alert("질문이 등록되었습니다!");
+      alert(t("questionRegistered", "mentee"));
     } catch {
-      alert("질문 등록에 실패했습니다. 다시 시도해주세요.");
+      alert(t("questionRegisterFailed", "mentee"));
     }
   };
 
@@ -208,15 +213,15 @@ const MenteePage = () => {
       }
       await axios.post(`/api/mentoring/end/${mentoringProgress.mentoring_progress_id}`, null, { withCredentials: true });
       fetchMentoringProgress();
-      alert("멘토링이 종료되었습니다.");
+      alert(t("mentoringEnded", "mentee"));
     } catch {
-      alert("멘토링 종료 중 오류가 발생했습니다.");
+      alert(t("mentoringEndFailed", "mentee"));
     }
   };
 
   // 신고하기
   const handleReport = async (mentor: Mentor) => {
-    const reason = window.prompt(`"${mentor.name}" 멘토를 신고하는 이유를 입력하세요:`);
+    const reason = window.prompt(`${mentor.name} ${t("enterReportReason", "mentee")}`);
     if (!reason?.trim()) return;
     try {
       await axios.post("/api/admin/report", {
@@ -225,14 +230,14 @@ const MenteePage = () => {
         targetMentorId: mentor.id,
         reason,
       });
-      alert("신고가 정상적으로 접수되었습니다.");
+      alert(t("reportSubmitted", "mentee"));
     } catch {
-      alert("신고 처리 중 오류가 발생했습니다.");
+      alert(t("reportFailed", "mentee"));
     }
   };
 
   const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "날짜 없음";
+    if (!dateString) return t("noDate", "mentee");
     return new Date(dateString).toLocaleString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
@@ -245,7 +250,7 @@ const MenteePage = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
         <Navigation />
         <div className="max-w-7xl mx-auto px-6 py-10 text-center">
-          로딩 중...
+          {t("loading", "common")}
         </div>
       </div>
     );
@@ -259,25 +264,25 @@ const MenteePage = () => {
         {/* 멘토링 중인 멘토 현황 */}
         <Card>
           <CardHeader className="bg-purple-100 dark:bg-purple-900 rounded-t-xl">
-            <CardTitle className="text-xl font-bold">멘토링 중인 멘토 현황</CardTitle>
+            <CardTitle className="text-xl font-bold">{t("mentoringStatus", "mentee")}</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {mentors.length === 0 ? (
               <p className="text-muted-foreground col-span-full text-center py-8">
-                매칭된 멘토가 없습니다. 멘토를 찾아보세요!
+                {t("noMatchedMentors", "mentee")}
               </p>
             ) : (
               mentors.map((mentor) => (
                 <div key={mentor.id} className="border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm">
                   <h3 className="text-lg font-semibold mb-1">{mentor.name} ({mentor.subject})</h3>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>경력: {mentor.experience}</p>
+                    <p>{t("career", "mentee")}: {mentor.experience}</p>
                     <p>{mentor.intro}</p>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="secondary">진행중</Badge>
-                    <Button size="sm" variant="outline" onClick={() => handleEndMentoring(mentor.id)}>종료하기</Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleReport(mentor)}>신고하기</Button>
+                    <Badge variant="secondary">{t("inProgress", "mentee")}</Badge>
+                    <Button size="sm" variant="outline" onClick={() => handleEndMentoring(mentor.id)}>{t("end", "mentee")}</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleReport(mentor)}>{t("report", "mentee")}</Button>
                   </div>
                 </div>
               ))
@@ -288,16 +293,16 @@ const MenteePage = () => {
         {/* 종료된 멘토링 */}
         <Card>
           <CardHeader className="bg-gray-100 dark:bg-gray-800 rounded-t-xl">
-            <CardTitle className="text-lg font-bold">종료된 멘토링</CardTitle>
+            <CardTitle className="text-lg font-bold">{t("endedMentoring", "mentee")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {endedList.length === 0 ? (
-              <p className="text-muted-foreground">종료된 멘토링이 없습니다.</p>
+              <p className="text-muted-foreground">{t("noEndedMentoring", "mentee")}</p>
             ) : (
               endedList.map((item) => (
                 <div key={item.mentoring_progress_id} className="p-3 border rounded-md bg-white dark:bg-background/50 flex justify-between items-center">
                   <p className="font-medium">
-                    {item.mentor_name} ({formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : "진행 중"})
+                    {item.mentor_name} ({formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : t("inProgressStatus", "mentee")})
                   </p>
                 </div>
               ))
@@ -308,10 +313,10 @@ const MenteePage = () => {
         {/* 탭 영역 */}
         <Tabs defaultValue="questions" className="w-full mt-8">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="questions">내 질문 현황</TabsTrigger>
-            <TabsTrigger value="answers">답변 기록</TabsTrigger>
-            <TabsTrigger value="wrong">오답노트</TabsTrigger>
-            <TabsTrigger value="stats">질문/답변 통계</TabsTrigger>
+            <TabsTrigger value="questions">{t("myQuestionStatus", "mentee")}</TabsTrigger>
+            <TabsTrigger value="answers">{t("answerHistory", "mentee")}</TabsTrigger>
+            <TabsTrigger value="wrong">{t("wrongNote", "mentee")}</TabsTrigger>
+            <TabsTrigger value="stats">{t("questionAnswerStats", "mentee")}</TabsTrigger>
           </TabsList>
 
           {/* 내 질문 현황 */}
@@ -319,7 +324,7 @@ const MenteePage = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="w-5 h-5" /> 내 질문 현황
+                  <MessageCircle className="w-5 h-5" /> {t("myQuestionStatus", "mentee")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -327,23 +332,23 @@ const MenteePage = () => {
                 <div className="space-y-3 p-4 border rounded-md bg-background">
                   <input
                     type="text"
-                    placeholder="제목을 입력하세요"
+                    placeholder={t("enterTitle", "mentee")}
                     className="w-full p-2 border rounded-md"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                   />
                   <textarea
-                    placeholder="질문 내용을 입력하세요"
+                    placeholder={t("enterContent", "mentee")}
                     className="w-full p-2 border rounded-md h-24"
                     value={newContent}
                     onChange={(e) => setNewContent(e.target.value)}
                   />
-                  <Button onClick={handleSubmitQuestion}>질문 등록</Button>
+                  <Button onClick={handleSubmitQuestion}>{t("registerQuestion", "mentee")}</Button>
                 </div>
                 {/* 질문 목록 */}
                 <div className="space-y-3">
                   {questions.length === 0 ? (
-                    <p className="text-muted-foreground">등록된 질문이 없습니다.</p>
+                    <p className="text-muted-foreground">{t("noRegisteredQuestions", "mentee")}</p>
                   ) : (
                     questions.map((q) => (
                       <div key={q.questionId} className="p-3 border rounded-md bg-white dark:bg-background/50">
@@ -353,7 +358,7 @@ const MenteePage = () => {
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{q.content}</p>
                         {q.answerContent && (
-                          <p className="mt-2 text-green-600 text-sm">답변: {q.answerContent}</p>
+                          <p className="mt-2 text-green-600 text-sm">{t("answer", "mentee")}: {q.answerContent}</p>
                         )}
                       </div>
                     ))
@@ -368,22 +373,22 @@ const MenteePage = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="w-5 h-5" /> 답변 기록
+                  <UserCheck className="w-5 h-5" /> {t("answerHistory", "mentee")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {questions.filter(q => q.status === 'ANSWERED').length === 0 ? (
-                  <p className="text-muted-foreground">답변 받은 질문이 없습니다.</p>
+                  <p className="text-muted-foreground">{t("noAnsweredQuestions", "mentee")}</p>
                 ) : (
                   questions.filter(q => q.status === 'ANSWERED').map((q) => (
                     <div key={q.questionId} className="p-3 border rounded-md bg-white dark:bg-background/50">
                       <div className="flex justify-between items-center">
                         <h3 className="font-medium">{q.title}</h3>
-                        <Badge variant="default">답변 완료</Badge>
+                        <Badge variant="default">{t("answerComplete", "mentee")}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{q.content}</p>
                       {q.answerContent && (
-                        <p className="mt-2 text-green-600 text-sm">답변: {q.answerContent}</p>
+                        <p className="mt-2 text-green-600 text-sm">{t("answer", "mentee")}: {q.answerContent}</p>
                       )}
                     </div>
                   ))
@@ -397,12 +402,12 @@ const MenteePage = () => {
 		    <Card>
 		      <CardHeader>
 		        <CardTitle className="flex items-center gap-2">
-		          <RotateCcw className="w-5 h-5" /> 오답노트
+		          <RotateCcw className="w-5 h-5" /> {t("wrongNote", "mentee")}
 		        </CardTitle>
 		      </CardHeader>
 		      <CardContent className="space-y-6">
 		        {wrongAnswers.length === 0 ? (
-		          <p className="text-muted-foreground"> 등록된 오답이 없습니다.</p>
+		          <p className="text-muted-foreground"> {t("noWrongAnswers", "mentee")}</p>
 		        ) : (
 		          ["국어", "한국사", "수학"].map((subject) => {
 		            const subjectAnswers = wrongAnswers.filter((w) =>
@@ -420,13 +425,13 @@ const MenteePage = () => {
 		                    key={`${w._id}-${idx}`}
 		                    className="p-3 border rounded-md bg-white dark:bg-background/50"
 		                  >
-		                    <p className="font-medium">문제: {w.question}</p>
-		                    <p className="text-red-600">내 답: {w.userAnswer}</p>
+		                    <p className="font-medium">{t("problem", "mentee")}: {w.question}</p>
+		                    <p className="text-red-600">{t("myAnswer", "mentee")}: {w.userAnswer}</p>
 		                    <p className="text-green-600">
-		                      정답: {Array.isArray(w.answer) ? w.answer.join(", ") : w.answer}
+		                      {t("correctAnswer", "mentee")}: {Array.isArray(w.answer) ? w.answer.join(", ") : w.answer}
 		                    </p>
 		                    {w.explanation && (
-		                      <p className="text-sm text-muted-foreground">해설: {w.explanation}</p>
+		                      <p className="text-sm text-muted-foreground">{t("explanation", "mentee")}: {w.explanation}</p>
 		                    )}
 		                    <p className="text-xs text-muted-foreground">
 		                      {new Date(w.createdAt).toLocaleString("ko-KR")}
@@ -447,7 +452,7 @@ const MenteePage = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <LineChart className="w-5 h-5" /> 최근 질문/답변 통계
+                  <LineChart className="w-5 h-5" /> {t("recentStats", "mentee")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="h-64">
@@ -465,8 +470,8 @@ const MenteePage = () => {
                     <XAxis dataKey="day" />
                     <YAxis />
                     <Tooltip />
-                    <Line type="monotone" dataKey="questions" stroke="#8884d8" name="질문 수" />
-                    <Line type="monotone" dataKey="answers" stroke="#82ca9d" name="답변 수" />
+                    <Line type="monotone" dataKey="questions" stroke="#8884d8" name={t("questionCount", "mentee")} />
+                    <Line type="monotone" dataKey="answers" stroke="#82ca9d" name={t("answerCount", "mentee")} />
                   </ReLineChart>
                 </ResponsiveContainer>
               </CardContent>

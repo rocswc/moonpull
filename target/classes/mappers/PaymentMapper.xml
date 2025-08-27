@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.DAO.PaymentRepository">
+
+	<insert id="insertPayment" parameterType="com.example.dto.PaymentDTO">
+    	INSERT INTO payment(member_id,order_id,order_name,name,email,payment_method,amount,payment_status,payment_key,paid_at)
+    	VALUES(#{member_id},#{order_id},#{order_name},#{name},#{email},#{payment_method},#{amount},#{payment_status},#{payment_key},NOW())
+	</insert>
+	
+	<insert id="insertSubscription" parameterType="com.example.dto.SubscribeDTO">
+    	INSERT INTO subscribe(member_id,plan_type,status,amount,started_at,billing_key,customer_key,expires_at)
+    	VALUES(#{member_id},#{plan_type},#{status},#{amount},NOW(),#{billing_key},#{customer_key},
+		<choose>
+		    <when test="plan_type == 'PLUS'">
+		        DATE_ADD(NOW(), INTERVAL 1 MONTH)
+		    </when>
+		    <when test="plan_type == 'PREMIUM'">
+		        DATE_ADD(NOW(), INTERVAL 1 YEAR)
+		    </when>
+		    <otherwise>
+		        DATE_ADD(NOW(), INTERVAL 1 MONTH)
+		    </otherwise>
+    	</choose>
+    	)
+	</insert>
+	
+  <select id="findSubscriptionsForToday" resultType="com.example.dto.SubscribeDTO">
+   <![CDATA[
+SELECT 
+    s.subscription_id,
+    s.member_id,
+    m.name,       
+    m.email,     
+    s.plan_type,
+    s.amount,
+    s.billing_key,
+    s.customer_key             
+FROM 
+    subscribe s
+JOIN
+    member m ON s.member_id = m.user_id
+WHERE 
+    s.status = 'ACTIVE' 
+    AND s.plan_type = 'PREMIUM' 
+    and billing_key IS NOT NULL 
+    and customer_key IS NOT NULL 
+    AND s.expires_at > CURRENT_DATE()
+    AND DAY(s.started_at) = DAY(CURRENT_DATE())
+    AND ( (DAY(s.started_at) = DAY(CURRENT_DATE()) AND DAY(s.started_at) < 28) or (DAY(CURRENT_DATE()) = LAST_DAY(CURRENT_DATE()) AND DAY(s.started_at) >= 28))
+    ]]>
+  </select>	
+
+	<update id="cancelSubscriptionById" parameterType="int">
+  UPDATE subscribe
+  SET status = 'ESCAPE'
+  WHERE subscription_id = #{subscribeId}
+</update>
+
+<!-- 결제 상태 CANCELED로 변경 -->
+<update id="cancelPaymentByMemberId" parameterType="int">
+  UPDATE payment
+  SET payment_status = 'CANCELED'
+  WHERE member_id = #{memberId}
+  AND payment_status = 'DONE'
+</update>
+
+
+
+<select id="getPlanDistribution" resultType="map">
+  SELECT 
+    plan_type AS plan,
+    COUNT(*) AS count
+  FROM subscribe
+  WHERE plan_type IS NOT NULL
+  GROUP BY plan_type
+</select>
+
+	
+</mapper>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.DAO.MyMentorListRepository">
+
+  <!-- 진행 중/종료된 멘토링 불러오기 (mentor_request 테이블만 사용) -->
+  <select id="findByMenteeId" parameterType="int" resultType="com.example.dto.MyMentorListDTO">
+    SELECT
+      mr.id AS progressId,
+      mt.mentor_id AS mentorId,
+      COALESCE(m.name, '멘토') AS mentorName,
+      mt.intro AS mentorIntro,
+      mt.experience_years AS career,
+      mt.specialties AS specialty,
+      CASE 
+        WHEN mr.status = 'ENDED' THEN 'ended'
+        ELSE 'in_progress'
+      END AS status,
+      mr.started_at AS startedAt,
+      mr.end_date AS endedAt
+    FROM mentor_request mr
+    JOIN mentor mt ON mr.mentor_id = mt.mentor_id
+    LEFT JOIN member m ON mt.user_id = m.user_id
+    WHERE mr.mentee_id = #{menteeId}
+      AND mr.status IN ('ACCEPTED', 'ENDED')
+  </select>
+
+  <!-- 멘토링 종료 (mentor_request 테이블만 사용) -->
+  <update id="endMentoring" parameterType="int">
+    UPDATE mentor_request 
+    SET status = 'ENDED',
+        end_date = NOW()
+    WHERE id = #{progressId}
+      AND status = 'ACCEPTED'
+  </update>
+
+</mapper>

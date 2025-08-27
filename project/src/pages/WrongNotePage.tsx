@@ -5,6 +5,8 @@ import { useState, useEffect} from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen, RotateCcw, Brain, Target, TrendingUp } from "lucide-react";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import type { Question } from "@/data/wrongAnswers";
 import axios from "axios";
@@ -33,15 +35,21 @@ type WrongDoc = {
   isCorrect: boolean;
 };
 
-// 과목 고정 목록(요구사항: 국어/한국사/영어)
-const SUBJECTS = ["국어", "한국사", "영어"];
 const WrongNotePage = () => {
+  const { language } = useLanguageStore();
+  const { t } = useTranslation(language);
 
   const [questions, setQuestions] = useState<UIQuestion[]>([]);
   const [activeTab, setActiveTab] = useState("view");
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
-  const subjects = SUBJECTS;
+  
+  // 과목 목록을 번역으로 동적 생성
+  const subjects = [
+    t("subjectKorean", "wrongNote"),
+    t("subjectHistory", "wrongNote"),
+    t("subjectEnglish", "wrongNote")
+  ];
   const filteredQuestions = questions.filter((q) => q.subject === selectedSubject);
   const incompleteQuestions = filteredQuestions.filter((q) => !q.isCompleted);
   const completedCount = filteredQuestions.length - incompleteQuestions.length;
@@ -135,7 +143,7 @@ const WrongNotePage = () => {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {!selectedSubject ? (
           <div className="text-center space-y-6">
-            <h1 className="text-3xl font-bold text-foreground">과목을 선택하세요</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t("selectSubject", "wrongNote")}</h1>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {subjects.map((subject) => (
                 <Card
@@ -165,11 +173,11 @@ const WrongNotePage = () => {
                   <Brain className="h-6 w-6 text-white" />
                 </div>
                 <h1 className="text-3xl font-bold text-foreground">
-                  {selectedSubject} 오답노트
+                  {selectedSubject} {t("wrongNoteTitle", "wrongNote")}
                 </h1>
               </div>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                틀린 문제를 체계적으로 복습하고 반복 학습하여 실력을 향상시켜보세요
+                {t("description", "wrongNote")}
               </p>
             </div>
 
@@ -181,7 +189,7 @@ const WrongNotePage = () => {
                       <BookOpen className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">총 문제 수</p>
+                      <p className="text-sm text-muted-foreground">{t("totalQuestions", "wrongNote")}</p>
                       <p className="text-2xl font-bold text-foreground">
                         {filteredQuestions.length}
                       </p>
@@ -197,7 +205,7 @@ const WrongNotePage = () => {
                       <Target className="h-5 w-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">완료된 문제</p>
+                      <p className="text-sm text-muted-foreground">{t("completedQuestions", "wrongNote")}</p>
                       <p className="text-2xl font-bold text-foreground">
                         {completedCount}
                       </p>
@@ -213,7 +221,7 @@ const WrongNotePage = () => {
                       <TrendingUp className="h-5 w-5 text-warning" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">정답률</p>
+                      <p className="text-sm text-muted-foreground">{t("accuracyRate", "wrongNote")}</p>
                       <p className="text-2xl font-bold text-foreground">
                         {filteredQuestions.length > 0
                           ? Math.round((completedCount / filteredQuestions.length) * 100)
@@ -230,8 +238,8 @@ const WrongNotePage = () => {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <CardHeader>
                   <TabsList className="grid w-full grid-cols-2 bg-muted/50">
-                    <TabsTrigger value="view">📚 오답 목록</TabsTrigger>
-                    <TabsTrigger value="retry">🔁 재도전</TabsTrigger>
+                    <TabsTrigger value="view">{t("wrongAnswerList", "wrongNote")}</TabsTrigger>
+                    <TabsTrigger value="retry">{t("retry", "wrongNote")}</TabsTrigger>
                   </TabsList>
                 </CardHeader>
 
@@ -266,7 +274,7 @@ const WrongNotePage = () => {
 
             <div className="text-center mt-8">
               <p className="text-sm text-muted-foreground">
-                💡 꾸준한 복습이 실력 향상의 지름길입니다
+                {t("tip", "wrongNote")}
               </p>
             </div>
           </>
