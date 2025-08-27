@@ -1,0 +1,41 @@
+name: Deploy to All GCP VMs
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        vm_ip: [34.64.151.197, 34.64.215.144, 34.64.84.23]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.GCP_SSH_KEY }}
+
+      - name: Add SSH host to known_hosts
+        run: |
+          ssh-keyscan -H ${{ matrix.vm_ip }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to GCP VM ${{ matrix.vm_ip }}
+        run: |
+          ssh -o StrictHostKeyChecking=no jaegeon@${{ matrix.vm_ip }} << 'EOF'
+            set -ex
+            echo " SSH 접속 성공: $HOSTNAME"
+            cd /home/jaegeon/moonpull
+            echo " 이동 완료: $(pwd)"
+            git pull origin master
+            echo " Git pull 완료"
+            docker compose down || true
+            echo " Docker compose down 완료"
+            docker compose up --build -d
+            echo " Docker compose up 완료"
+          EOF
