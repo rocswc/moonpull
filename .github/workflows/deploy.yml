@@ -32,7 +32,7 @@ jobs:
             echo " SSH 접속 성공: $HOSTNAME"
             cd /home/jaegeon/moonpull
             echo " 이동 완료: $(pwd)"
-            git pull origin master
+            git pull --rebase origin master
             echo " Git pull 완료"
             docker compose down || true
             echo " Docker compose down 완료"
