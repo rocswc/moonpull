@@ -33,7 +33,7 @@ public class ElasticSearchConfig {
         );
 
         KeyStore truststore = KeyStore.getInstance("PKCS12");
-        try (FileInputStream is = new FileInputStream("D:\\2jo\\moonpull\\eskey\\ca.p12")) {
+        try (FileInputStream is = new FileInputStream("C:/Users/user/git/moonpull/key/ca.p12")) {
             truststore.load(is, "votmdnjem".toCharArray());
         }
 

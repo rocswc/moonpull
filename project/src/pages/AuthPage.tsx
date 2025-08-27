@@ -497,7 +497,7 @@ const AuthPage = () => {
 						    >
 						      {formData.graduation_file
 						        ? (formData.graduation_file as File).name
-						        : "졸업증명서 업로드 해주세요. (jpg, png, pdf 형식만)"}
+						        : "졸업증명서 업로드 해주세요. (50MB 이하, jpg, png, pdf 형식만)"}
 						    </div>
 
 						    <input

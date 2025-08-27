@@ -88,6 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(mapServerUser(data as any));
           setIsLoggedIn(true);
         }
+		
       } catch {
         setUser(null);
         setIsLoggedIn(false);
