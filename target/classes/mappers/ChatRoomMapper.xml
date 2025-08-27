@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.DAO.ChatRoomRepository">
+
+	<resultMap id="ChatRoomMap" type="com.example.VO.ChatRoom">
+	    <id     column="chatroomId"      property="chatroomId"/>
+	    <result column="participant1_Id" property="participant1_Id"/>
+	    <result column="participant2_Id" property="participant2_Id"/>
+	    <result column="created_at"      property="created_at"/>
+	    <result column="field"           property="field"/>
+	</resultMap>
+
+	<select id="findById" resultMap="ChatRoomMap">
+	  SELECT
+	    chatroom_id     AS chatroomId,
+	    participant1_id AS participant1_Id,
+	    participant2_id AS participant2_Id,
+	    created_at      AS created_at,
+	    field
+	  FROM chatroom
+	  WHERE chatroom_id = #{id}
+	</select>
+	
+	<select id="findByPair" resultMap="ChatRoomMap">
+	  SELECT
+	    chatroom_id     AS chatroomId,
+	    participant1_id AS participant1_Id,
+	    participant2_id AS participant2_Id,
+	    created_at      AS created_at,
+	    field
+	  FROM chatroom
+	  WHERE participant1_id = #{uMin} AND participant2_id = #{uMax}
+	  LIMIT 1
+	</select>
+	
+	<select id="findRoomsOf" resultMap="ChatRoomMap">
+	  SELECT
+	    chatroom_id     AS chatroomId,
+	    participant1_id AS participant1_Id,
+	    participant2_id AS participant2_Id,
+	    created_at      AS created_at,
+	    field
+	  FROM chatroom
+	  WHERE participant1_id = #{userId} OR participant2_id = #{userId}
+	  ORDER BY created_at DESC
+	</select>
+
+	<insert id="insert" parameterType="com.example.VO.ChatRoom"
+	        useGeneratedKeys="true" keyProperty="chatroomId" keyColumn="chatroom_id">
+	  INSERT INTO chatroom (participant1_id, participant2_id, created_at, field)
+	  VALUES (#{participant1_Id}, #{participant2_Id}, NOW(), #{field})
+	</insert>
+
+
+</mapper>
