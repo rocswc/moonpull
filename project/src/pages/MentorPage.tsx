@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, ThumbsUp, Megaphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { useTranslation } from "@/hooks/useTranslation";
 
 axios.defaults.withCredentials = true;
 
@@ -56,6 +58,8 @@ const DEFAULT_MENTEE_STATS = {
 };
 
 const MentorPage: React.FC = () => {
+  const { language } = useLanguageStore();
+  const { t } = useTranslation(language);
   const navigate = useNavigate();
 
   const [requests, setRequests] = useState<Mentee[]>([]);
@@ -120,7 +124,7 @@ const MentorPage: React.FC = () => {
       setMentees((prev) => [...prev, { ...mentee, ...DEFAULT_MENTEE_STATS }]);
       navigate(`/chat/${chatId}`);
     } catch {
-      alert("요청 수락 실패");
+      alert(t("acceptFailed", "mentor"));
     }
   };
 
@@ -130,7 +134,7 @@ const MentorPage: React.FC = () => {
       await axios.post("/api/mentoring/reject-request", null, { params: { requestId } });
       setRequests((prev) => prev.filter((r) => r.requestId !== requestId));
     } catch {
-      alert("요청 거절 실패");
+      alert(t("rejectFailed", "mentor"));
     }
   };
 
@@ -145,13 +149,13 @@ const MentorPage: React.FC = () => {
       setAnswerContent("");
       fetchData();
     } catch {
-      alert("답변 등록 실패");
+      alert(t("answerRegisterFailed", "mentor"));
     }
   };
 
   /** 신고 */
   const handleReport = async (mentee: Mentee) => {
-    const reason = window.prompt(`"${mentee.name}" 멘티를 신고하는 이유:`);
+    const reason = window.prompt(`${mentee.name} ${t("enterReportReason", "mentor")}`);
     if (!reason?.trim() || !mentorId) return;
     try {
       await axios.post("/api/admin/report", {
@@ -159,9 +163,9 @@ const MentorPage: React.FC = () => {
         targetUserId: mentee.id,
         reason,
       });
-      alert("신고 접수됨");
+      alert(t("reportSubmitted", "mentor"));
     } catch {
-      alert("신고 실패");
+      alert(t("reportFailed", "mentor"));
     }
   };
 
@@ -176,21 +180,21 @@ const MentorPage: React.FC = () => {
         {/* 멘토 요청 관리 - 심플 버전 */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl font-bold">멘토 요청 관리</CardTitle>
+            <CardTitle className="text-xl font-bold">{t("requestManagement", "mentor")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {requests.length === 0 ? (
-              <p className="text-muted-foreground">들어온 요청이 없습니다.</p>
+              <p className="text-muted-foreground">{t("noRequests", "mentor")}</p>
             ) : (
               requests.map((req) => (
                 <div key={req.requestId} className="flex justify-between items-center border p-4 rounded-lg bg-white dark:bg-background/50 shadow-sm">
                   <div>
                     <p className="font-semibold">{req.name}</p>
-                    <p className="text-sm text-muted-foreground">나이: {req.age}세</p>
+                    <p className="text-sm text-muted-foreground">{t("age", "mentor")}: {req.age}세</p>
                   </div>
                   <div className="space-x-2">
-                    <Button size="sm" onClick={() => handleAccept(req)}>수락</Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleReject(req.requestId!)}>거절</Button>
+                    <Button size="sm" onClick={() => handleAccept(req)}>{t("accept", "mentor")}</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleReject(req.requestId!)}>{t("reject", "mentor")}</Button>
                   </div>
                 </div>
               ))
@@ -201,23 +205,23 @@ const MentorPage: React.FC = () => {
         {/* 멘토링 중인 멘티 */}
         <Card>
           <CardHeader className="bg-purple-100 dark:bg-purple-900 rounded-t-xl">
-            <CardTitle className="text-xl font-bold">멘토링 중인 멘티</CardTitle>
+            <CardTitle className="text-xl font-bold">{t("mentoringMentees", "mentor")}</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {mentees.length === 0 ? (
-              <p className="text-muted-foreground col-span-full text-center py-8">멘토링 중인 멘티가 없습니다.</p>
+              <p className="text-muted-foreground col-span-full text-center py-8">{t("noMentoringMentees", "mentor")}</p>
             ) : (
               mentees.map((mentee) => (
                 <div key={mentee.id} className="border p-4 rounded-xl bg-white dark:bg-background/50 shadow-sm">
                   <h3 className="text-lg font-semibold mb-1">{mentee.name} ({mentee.age}세)</h3>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>정답률: {mentee.accuracy ?? "-"}%</p>
-                    <p>오답률: {mentee.wrongRate ?? "-"}%</p>
-                    <p>질문 횟수: {mentee.questionsAsked ?? "-"}회</p>
+                    <p>{t("accuracy", "mentor")}: {mentee.accuracy ?? "-"}%</p>
+                    <p>{t("wrongRate", "mentor")}: {mentee.wrongRate ?? "-"}%</p>
+                    <p>{t("questionsAsked", "mentor")}: {mentee.questionsAsked ?? "-"}회</p>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="secondary">진행중</Badge>
-                    <Button size="sm" variant="destructive" onClick={() => handleReport(mentee)}>신고하기</Button>
+                    <Badge variant="secondary">{t("inProgress", "mentor")}</Badge>
+                    <Button size="sm" variant="destructive" onClick={() => handleReport(mentee)}>{t("report", "mentor")}</Button>
                   </div>
                 </div>
               ))
@@ -228,16 +232,16 @@ const MentorPage: React.FC = () => {
         {/* 종료된 멘토링 */}
         <Card>
           <CardHeader className="bg-gray-100 dark:bg-gray-800 rounded-t-xl">
-            <CardTitle className="text-lg font-bold">종료된 멘토링</CardTitle>
+            <CardTitle className="text-lg font-bold">{t("endedMentoring", "mentor")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {endedMentoring.length === 0 ? (
-              <p className="text-muted-foreground">종료된 멘토링이 없습니다.</p>
+              <p className="text-muted-foreground">{t("noEndedMentoring", "mentor")}</p>
             ) : (
               endedMentoring.map((item) => (
                 <div key={item.mentoring_progress_id} className="p-3 border rounded-md bg-white dark:bg-background/50">
                   <p className="font-medium">
-                    {item.mentee_name} ({formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : "진행 중"})
+                    {item.mentee_name} ({formatDate(item.start_date)} ~ {item.end_date ? formatDate(item.end_date) : t("inProgressStatus", "mentor")})
                   </p>
                 </div>
               ))
@@ -248,25 +252,25 @@ const MentorPage: React.FC = () => {
         {/* 탭 */}
         <Tabs defaultValue="questions" className="w-full mt-8">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="questions">오늘의 질문</TabsTrigger>
-            <TabsTrigger value="answers">답변 기록</TabsTrigger>
-            <TabsTrigger value="notice">공지사항</TabsTrigger>
+            <TabsTrigger value="questions">{t("todaysQuestions", "mentor")}</TabsTrigger>
+            <TabsTrigger value="answers">{t("answerHistory", "mentor")}</TabsTrigger>
+            <TabsTrigger value="notice">{t("notice", "mentor")}</TabsTrigger>
           </TabsList>
 
           {/* 오늘의 질문 */}
           <TabsContent value="questions">
             <Card>
-              <CardHeader><CardTitle><MessageCircle className="w-5 h-5" /> 오늘의 질문</CardTitle></CardHeader>
+              <CardHeader><CardTitle><MessageCircle className="w-5 h-5" /> {t("todaysQuestions", "mentor")}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {pendingQuestions.length === 0 ? (
-                  <p className="text-muted-foreground">답변 대기 중인 질문이 없습니다.</p>
+                  <p className="text-muted-foreground">{t("noPendingQuestions", "mentor")}</p>
                 ) : (
                   pendingQuestions.map((q) => (
                     <div key={q.questionId} className="border p-4 rounded-lg bg-white dark:bg-background/50 shadow-sm">
                       <h3 className="font-semibold">{q.title}</h3>
                       <p className="text-sm text-muted-foreground">{q.menteeName} • {q.subject} • {formatDate(q.createdAt)}</p>
                       <p className="mt-2">{q.content}</p>
-                      <Button size="sm" className="mt-2" onClick={() => setSelectedQuestion(q)}>답변하기</Button>
+                      <Button size="sm" className="mt-2" onClick={() => setSelectedQuestion(q)}>{t("answerQuestion", "mentor")}</Button>
                     </div>
                   ))
                 )}
@@ -274,16 +278,16 @@ const MentorPage: React.FC = () => {
                 {selectedQuestion && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-2xl">
-                      <h2 className="text-xl font-bold mb-4">질문 답변</h2>
+                      <h2 className="text-xl font-bold mb-4">{t("questionAnswer", "mentor")}</h2>
                       <textarea
                         value={answerContent}
                         onChange={(e) => setAnswerContent(e.target.value)}
                         className="w-full h-32 p-3 border rounded-md resize-none"
-                        placeholder="답변 내용을 입력하세요..."
+                        placeholder={t("enterAnswer", "mentor")}
                       />
                       <div className="flex gap-2 mt-3">
-                        <Button onClick={handleAnswerQuestion}>등록</Button>
-                        <Button variant="outline" onClick={() => setSelectedQuestion(null)}>취소</Button>
+                        <Button onClick={handleAnswerQuestion}>{t("register", "mentor")}</Button>
+                        <Button variant="outline" onClick={() => setSelectedQuestion(null)}>{t("cancel", "mentor")}</Button>
                       </div>
                     </div>
                   </div>
@@ -295,17 +299,17 @@ const MentorPage: React.FC = () => {
           {/* 답변 기록 */}
           <TabsContent value="answers">
             <Card>
-              <CardHeader><CardTitle><ThumbsUp className="w-5 h-5" /> 답변 기록</CardTitle></CardHeader>
+              <CardHeader><CardTitle><ThumbsUp className="w-5 h-5" /> {t("answerHistory", "mentor")}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {questions.filter(q => q.status === "ANSWERED").length === 0 ? (
-                  <p className="text-muted-foreground">답변한 질문이 없습니다.</p>
+                  <p className="text-muted-foreground">{t("noAnsweredQuestions", "mentor")}</p>
                 ) : (
                   questions.filter(q => q.status === "ANSWERED").map((q) => (
                     <div key={q.questionId} className="border p-4 rounded-lg bg-white dark:bg-background/50 shadow-sm">
                       <h3 className="font-semibold">{q.title}</h3>
                       <p className="text-sm text-muted-foreground">{q.menteeName} • {q.subject}</p>
                       <p className="mt-2">{q.content}</p>
-                      <p className="text-green-600 mt-2">답변: {q.answerContent}</p>
+                      <p className="text-green-600 mt-2">{t("answer", "mentor")}: {q.answerContent}</p>
                     </div>
                   ))
                 )}
@@ -316,8 +320,8 @@ const MentorPage: React.FC = () => {
           {/* 공지사항 */ }
           <TabsContent value="notice">
             <Card>
-              <CardHeader><CardTitle><Megaphone className="w-5 h-5" /> 공지사항</CardTitle></CardHeader>
-              <CardContent>점검, 운영 메시지</CardContent>
+              <CardHeader><CardTitle><Megaphone className="w-5 h-5" /> {t("notice", "mentor")}</CardTitle></CardHeader>
+              <CardContent>{t("maintenanceMessage", "mentor")}</CardContent>
             </Card>
           </TabsContent>
         </Tabs>

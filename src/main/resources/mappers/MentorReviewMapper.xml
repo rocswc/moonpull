@@ -44,6 +44,8 @@
         SELECT 
             m.mentor_id,
             m.introduction,
+            m.experience_years as experienceYears,
+            m.specialties as specialties,
             COALESCE(m.score, 0) as averageRating,
             mem.name
         FROM mentor m

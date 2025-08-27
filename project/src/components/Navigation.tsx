@@ -3,12 +3,16 @@ import { Globe, Menu } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useChat } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useState } from "react";
 import LoginRequiredModal from "@/components/common/LoginRequiredModal";
 
 const Navigation = () => {
   const { toggleUserList } = useChat();
   const { isLoggedIn, user, logout, bootstrapped } = useAuth();
+  const { language, setLanguage } = useLanguageStore();
+  const { t } = useTranslation(language);
   const navigate = useNavigate();
 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -26,6 +30,11 @@ const Navigation = () => {
     navigate(path);
   };
 
+  // 언어 변경 핸들러
+  const handleLanguageChange = () => {
+    setLanguage(language === 'ko' ? 'en' : 'ko');
+  };
+
   if (!bootstrapped) return null;
 
   return (
@@ -41,6 +50,7 @@ const Navigation = () => {
           </button>
 
           <div className="hidden md:flex items-center space-x-8 whitespace-nowrap">
+<<<<<<< HEAD
             <button onClick={() => handleNavigation("/matching")} className="text-foreground hover:text-primary transition-colors font-medium">멘토·멘티 매칭</button>
             <button onClick={() => handleNavigation("/pricing")} className="text-foreground hover:text-primary transition-colors font-medium">구독 서비스 안내</button>
             <button onClick={() => handleNavigation("/wrong-note")} className="text-foreground hover:text-primary transition-colors font-medium">오답노트</button>
@@ -48,8 +58,43 @@ const Navigation = () => {
 
             {user?.role?.includes("MENTOR") && !user?.role?.includes("ADMIN") && (
               <button onClick={() => handleNavigation("/mentor")} className="text-foreground hover:text-primary transition-colors font-medium">멘토페이지</button>
+=======
+            <button
+              onClick={() => handleNavigation("/matching")}
+              className="text-foreground hover:text-primary transition-colors font-medium"
+            >
+              {t("mentorMatching", "navigation")}
+            </button>
+            <button
+              onClick={() => handleNavigation("/pricing")}
+              className="text-foreground hover:text-primary transition-colors font-medium"
+            >
+              {t("subscription", "navigation")}
+            </button>
+            <button
+              onClick={() => handleNavigation("/wrong-note")}
+              className="text-foreground hover:text-primary transition-colors font-medium"
+            >
+              {t("wrongNote", "navigation")}
+            </button>
+            <button
+              onClick={() => handleNavigation("/quiz")}
+              className="text-foreground hover:text-primary transition-colors font-medium"
+            >
+              {t("quiz", "navigation")}
+            </button>
+
+            {user?.role?.includes("MENTOR") && !user?.role?.includes("ADMIN") && (
+              <button
+                onClick={() => handleNavigation("/mentor")}
+                className="text-foreground hover:text-primary transition-colors font-medium"
+              >
+                {t("mentorPage", "navigation")}
+              </button>
+>>>>>>> 2559a9f (gyu)
             )}
             {user?.role?.includes("MENTEE") && !user?.role?.includes("ADMIN") && (
+<<<<<<< HEAD
               <button onClick={() => handleNavigation("/mentte")} className="text-foreground hover:text-primary transition-colors font-medium">멘티페이지</button>
             )}
 
@@ -57,11 +102,34 @@ const Navigation = () => {
             <button onClick={() => handleNavigation("/mypage")} className="text-foreground hover:text-primary transition-colors font-medium">마이페이지</button>
             <button onClick={() => handleNavigation("/problemGeneratorApp")} className="text-foreground hover:text-primary transition-colors font-medium">문제생성기</button>
             <button onClick={() => handleNavigation("/opictest")} className="text-foreground hover:text-primary transition-colors font-medium">오픽테스트</button>
+=======
+              <button
+                onClick={() => handleNavigation("/mentte")}
+                className="text-foreground hover:text-primary transition-colors font-medium"
+              >
+                {t("menteePage", "navigation")}
+              </button>
+            )}
+
+            <button
+              onClick={() => handleNavigation("/chatbot")}
+              className="text-foreground hover:text-primary transition-colors font-medium"
+            >
+              {t("chatbot", "navigation")}
+            </button>
+            <button
+              onClick={() => handleNavigation("/mypage")}
+              className="text-foreground hover:text-primary transition-colors font-medium"
+            >
+              {t("myPage", "navigation")}
+            </button>
+>>>>>>> 2559a9f (gyu)
           </div>
         </div>
 
         {/* 오른쪽: 언어 + 채팅 + 유저 상태 */}
         <div className="flex items-center space-x-4 ml-auto">
+<<<<<<< HEAD
 		<Button
 		  variant="ghost"
 		  size="sm"
@@ -105,8 +173,71 @@ const Navigation = () => {
               <Button variant="outline" size="default" asChild>
                 <Link to="/auth/login">로그인</Link>
               </Button>
+=======
+          <button 
+            onClick={handleLanguageChange}
+            className="flex items-center space-x-1 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            <span className="text-sm">{language === 'ko' ? '한국어' : 'English'}</span>
+          </button>
+		  
+		  
+		  <button
+		              onClick={() => handleNavigation("/problemGeneratorApp")}
+		              className="text-foreground hover:text-primary transition-colors font-medium"
+		            >
+		              {t("problemGenerator", "navigation")}
+					 
+		            </button>
+		  <button
+		              onClick={() => handleNavigation("/opictest")}
+		              className="text-foreground hover:text-primary transition-colors font-medium"
+		            >
+		              {t("opicTest", "navigation")}
+					 
+		            </button>
+
+		  <Button
+		    variant="ghost"
+		    size="sm"
+		    onClick={() => {
+		      if (!isLoggedIn) {
+		        setShowLoginModal(true);  // 로그인 안 되어 있으면 모달 띄움
+		        return;                   // 채팅 토글은 실행하지 않음
+		      }
+		      toggleUserList();            // 로그인 되어 있으면 채팅 토글 실행
+		    }}
+		    className="gap-2"
+		  >
+		    <Menu className="w-4 h-4" />
+		    <span className="hidden sm:inline">{t("chat", "navigation")}</span>
+		  </Button>
+
+          {isLoggedIn && user?.nickname ? (
+            <>
+              <div className="text-sm font-medium text-foreground font-sans whitespace-nowrap">
+                {user.nickname} {t("welcome", "navigation")}{" "}
+                <span className="text-primary font-bold">
+                  {user.role?.includes("ADMIN")
+                    ? t("admin", "navigation")
+                    : user.role?.includes("MENTOR")
+                    ? t("mentor", "navigation")
+                    : t("mentee", "navigation")}
+                </span>
+              </div>
+              <Button variant="default" size="default" onClick={handleLogout}>
+                {t("logout", "navigation")}
+              </Button>
+            </>
+          ) : (
+            <>
+			<Button variant="outline" size="default" asChild>
+			  <Link to="/auth/login">{t("login", "navigation")}</Link>
+			</Button>
+>>>>>>> 2559a9f (gyu)
               <Button variant="default" size="default" asChild>
-                <Link to="/auth/signup">회원가입</Link>
+                <Link to="/auth/signup">{t("signup", "navigation")}</Link>
               </Button>
             </>
           )}

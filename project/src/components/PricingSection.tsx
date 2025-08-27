@@ -2,85 +2,89 @@ import { Button } from "@/components/ui/button";
 import { Check, CreditCard, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLanguageStore } from "@/store/useLanguageStore";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const PricingSection = () => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const navigate = useNavigate();
+  const { language } = useLanguageStore();
+  const { t } = useTranslation(language);
   
   const plans = [
     {
-      name: "1달 무료체험",
-      description: "BASIC",
-      price: "무료",
+      name: t("basicPlan", "pricing"),
+      description: t("basic", "pricing"),
+      price: t("free", "pricing"),
       period: "",
       paymentType: "free",
-      paymentLabel: "무료 체험",
+      paymentLabel: t("freeTrial", "pricing"),
       features: [
-        "하루에 2번 제 질문 가능",
-        "AI 문제 풀이와 여러 문제 질착 가능을 하루에 2번만 이용할 수 있어요",
-        "세 질문 당 2번 추가 질문 가능",
-        "AI 문제 풀이에서 추가 질문은 세 질문 당 2번만 이용할 수 있어요"
+        t("feature1Title", "pricing"),
+        t("feature1Desc", "pricing"),
+        t("feature2Title", "pricing"),
+        t("feature2Desc", "pricing")
       ],
-      buttonText: "무료 체험",
+      buttonText: t("freeTrialButton", "pricing"),
       buttonVariant: "outline" as const,
       popular: false
     },
     {
-      name: "월간 플러스",
-      description: "PLUS",
+      name: t("plusPlan", "pricing"),
+      description: t("plus", "pricing"),
       price: "₩12,500",
-      period: "/ 월간",
+      period: t("monthly", "pricing"),
       paymentType: "onetime",
-      paymentLabel: "일시불 결제",
+      paymentLabel: t("onetimePayment", "pricing"),
       features: [
-        "무제한 질문과 답변",
-        "AI 문제 풀이와 여러 문제 질착 가능을 제한없이 이용할 수 있어요",
-        "다양 확장된 답변",
-        "더 독특한 AI 문제 풀이를 이용할 수 있어요",
-        "모든 광고 제거",
-        "광고에 방해되는 요소 없이 집중할 수 있어요",
-        "1:1 멘토님 선생님 질문",
-        "선생님에게 질문할 수 있는 10,000코인을 드려요",
-        "무제한 무료 노트 필기 검화",
-        "자유롭게 필기 및 공재 틀이 적혀을 무료로 사용할 수 있어요!"
+        t("feature3Title", "pricing"),
+        t("feature3Desc", "pricing"),
+        t("feature4Title", "pricing"),
+        t("feature4Desc", "pricing"),
+        t("feature5Title", "pricing"),
+        t("feature5Desc", "pricing"),
+        t("feature6Title", "pricing"),
+        t("feature6Desc", "pricing"),
+        t("feature7Title", "pricing"),
+        t("feature7Desc", "pricing")
       ],
-      buttonText: "1개월 이용하기",
+      buttonText: t("monthlyButton", "pricing"),
       buttonVariant: "hero" as const,
       popular: false
     },
     {
-      name: "연간 프리미엄",
-      description: "PREMIUM",
+      name: t("premiumPlan", "pricing"),
+      description: t("premium", "pricing"),
       price: "₩120,000",
-      period: "/ 연간",
+      period: t("yearly", "pricing"),
       paymentType: "subscription",
-      paymentLabel: "자동결제 구독",
+      paymentLabel: t("subscriptionPayment", "pricing"),
       originalPrice: "₩150,000",
-      discount: "₩20,000 할인",
+      discount: t("discount", "pricing"),
       features: [
-        "무제한 질문과 답변",
-        "AI 문제 풀이와 여러 문제 질착 가능을 제한없이 이용할 수 있어요",
-        "다양 확장된 답변",
-        "더 독특한 AI 문제 풀이를 이용할 수 있어요",
-        "모든 광고 제거",
-        "광고에 방해되는 요소 없이 집중할 수 있어요",
-        "1:1 멘토님 선생님 질문",
-        "선생님에게 질문할 수 있는 10,000코인을 드려요",
-        "무제한 무료 노트 필기 검화",
-        "자유롭게 필기 및 공재 틀이 적혀을 무료롬 사용할 수 있어요"
+        t("feature3Title", "pricing"),
+        t("feature3Desc", "pricing"),
+        t("feature4Title", "pricing"),
+        t("feature4Desc", "pricing"),
+        t("feature5Title", "pricing"),
+        t("feature5Desc", "pricing"),
+        t("feature6Title", "pricing"),
+        t("feature6Desc", "pricing"),
+        t("feature7Title", "pricing"),
+        t("feature7Desc", "pricing")
       ],
-      buttonText: "연간 구독 시작하기",
+      buttonText: t("yearlyButton", "pricing"),
       buttonVariant: "hero" as const,
       popular: false
     }
   ];
 
   const handleButtonClick = (plan) => {
-    if (plan.name === "무료") {
+    if (plan.name === t("free", "pricing")) {
         navigate("/payment/paymentSubscribe", { state: { amount:12500, planName: plan.description, paymentType: 'subscription' } });
 
     } else {
-      if(plan.name === "월간 플러스"){
+      if(plan.name === t("plusPlan", "pricing")){
         navigate("/payment/checkout", { state: { amount:12500, planName: plan.description, paymentType: 'onetime' } });
       }else{
         navigate("/payment/paymentSubscribe", { state: { amount:10000, planName: plan.description, paymentType: 'subscription' } });
@@ -105,10 +109,10 @@ const PricingSection = () => {
         {/* Header */}
         <div className="text-center space-y-4 mb-16">
           <div className="inline-block bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-medium">
-            QANDA Premium으로 업그레이드 해보세요
+            {t("upgradeBadge", "pricing")}
           </div>
           <p className="text-muted-foreground text-base sm:text-lg">
-            더 많은 질문과 답변을 얻고 싶다면 프리미엄을 사용해 보세요.
+            {t("subtitle", "pricing")}
           </p>
         </div>
 
@@ -128,7 +132,7 @@ const PricingSection = () => {
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <span className="bg-orange-600 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                    인기
+                    {t("popular", "pricing")}
                   </span>
                 </div>
               )}
@@ -169,12 +173,12 @@ const PricingSection = () => {
                   {/* Payment Info */}
                   {plan.paymentType === 'onetime' && (
                     <p className={`text-xs mt-2 ${plan.popular || hoveredIndex === index ? 'text-white/80' : 'text-muted-foreground'}`}>
-                      한 번만 결제하고 1개월 이용
+                      {t("onetimeInfo", "pricing")}
                     </p>
                   )}
                   {plan.paymentType === 'subscription' && (
                     <p className={`text-xs mt-2 ${plan.popular || hoveredIndex === index ? 'text-white/80' : 'text-muted-foreground'}`}>
-                      매월 자동 결제 (언제든 해지 가능)
+                      {t("subscriptionInfo", "pricing")}
                     </p>
                   )}
                 </div>
@@ -216,7 +220,7 @@ const PricingSection = () => {
                   <p className={`text-xs text-center mb-3 ${
                     plan.popular || hoveredIndex === index ? 'text-white/70' : 'text-muted-foreground'
                   }`}>
-                    {plan.paymentType === 'onetime' ? '카드 정보는 저장되지 않아요' : '구독 관리에서 언제든 해지 가능'}
+                    {plan.paymentType === 'onetime' ? t("cardNotSaved", "pricing") : t("cancelAnytime", "pricing")}
                   </p>
                 )}
                 
@@ -239,16 +243,16 @@ const PricingSection = () => {
         {/* Footer Note */}
         <div className="text-center mt-12 space-y-2">
           <p className="text-sm text-muted-foreground">
-            질의 여러 문제 질착 / 등등상 풀이 / 1:1 선생님 질문은 량다 앱에서 사용할 수 있어요.
+            {t("footerNote", "pricing")}
           </p>
           <div className="flex items-center justify-center space-x-6 text-xs text-muted-foreground">
             <div className="flex items-center space-x-1">
               <CreditCard className="w-3 h-3" />
-              <span>일시불: 한 번만 결제</span>
+              <span>{t("onetimeLegend", "pricing")}</span>
             </div>
             <div className="flex items-center space-x-1">
               <RefreshCw className="w-3 h-3" />
-              <span>구독: 자동 갱신</span>
+              <span>{t("subscriptionLegend", "pricing")}</span>
             </div>
           </div>
         </div>
