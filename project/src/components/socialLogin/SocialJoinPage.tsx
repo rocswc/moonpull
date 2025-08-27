@@ -493,7 +493,7 @@ const SocialJoinPage = () => {
                         }}
                         className="w-full border border-input rounded-md px-3 py-2 text-sm text-muted-foreground bg-background hover:border-primary cursor-pointer"
                       >
-                        {formData.graduation_file ? (formData.graduation_file as File).name : "졸업증명서 업로드 해주세요"}
+                        {formData.graduation_file ? (formData.graduation_file as File).name : "졸업증명서 업로드 해주세요. (jpg, png, pdf 형식만)"}
                       </div>
 
                       <input

@@ -1,17 +1,17 @@
 package com.example.service;
 
-import com.example.VO.MemberVO;
-import com.example.DAO.UserRepository;
-import com.example.dto.SocialUserDTO;
-
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.Optional;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.example.DAO.UserRepository;
+import com.example.VO.MemberVO;
+import com.example.dto.SocialUserDTO;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -79,5 +79,20 @@ public class UserServiceImpl implements UserService {
         String digits = phone.replaceAll("\\D", "");
         return userRepository.existsByPhonenumber(digits); // ← 리포지토리 메서드명과 필드명 맞추세요
         // 만약 컬럼/필드가 phoneNumber 라면: existsByPhoneNumber(digits)
+    }
+    @Override
+    public void updatePasswordByEmail(String email, String rawPassword) {
+        // 1. 유저 확인
+        userRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("해당 이메일의 사용자가 존재하지 않습니다."));
+
+        // 2. 해시 생성
+        String hashed = passwordEncoder.encode(rawPassword);
+
+        // 3. DB 업데이트
+        int updated = userRepository.updatePasswordByEmail(email, hashed);
+        if (updated == 0) {
+            throw new RuntimeException("비밀번호 업데이트 실패");
+        }
     }
 }

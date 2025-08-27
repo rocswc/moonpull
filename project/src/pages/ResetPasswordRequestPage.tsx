@@ -7,8 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Mail, ArrowLeft } from "lucide-react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { toast } from "react-toastify";
+
+const toastSuccess = (msg: string) =>
+  toast.success(msg, {
+    icon: <span>✅</span>,
+    style: {
+      background: "#1f2d20",
+      color: "#d1ffcf",
+      borderRadius: "12px",
+      fontSize: "0.9rem",
+    },
+  });
+
+const toastError = (msg: string) =>
+  toast.error(msg, {
+    icon: <span>❌</span>,
+    style: {
+      background: "#2f1f1f",
+      color: "#ffd7d7",
+      borderRadius: "12px",
+      fontSize: "0.9rem",
+    },
+  });
 
 const ResetPasswordRequestPage = () => {
   const navigate = useNavigate();
@@ -20,9 +42,10 @@ const ResetPasswordRequestPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validEmail(email)) {
-      toast.error("올바른 이메일 형식을 입력하세요.");
+      toastError("올바른 이메일 형식을 입력하세요.");
       return;
     }
+
     setSubmitting(true);
     try {
       await axios.post(
@@ -30,14 +53,17 @@ const ResetPasswordRequestPage = () => {
         { email },
         { withCredentials: true }
       );
-      toast.success("비밀번호 재설정 메일을 보냈습니다. 메일함을 확인하세요.");
-      navigate("/auth/login");
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "메일 전송 중 오류가 발생했습니다.";
-      toast.error(msg);
+      toastSuccess("비밀번호 재설정 메일을 보냈습니다. 메일함을 확인하세요.");
+      setTimeout(() => navigate("/auth/login"), 1000);
+    } catch (err: unknown) {
+      let msg = "메일 전송 중 오류가 발생했습니다.";
+      if (err instanceof AxiosError) {
+        msg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          msg;
+      }
+      toastError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +118,13 @@ const ResetPasswordRequestPage = () => {
                   </div>
                 </div>
 
-                <Button type="submit" variant="hero" size="lg" className="w-full" disabled={submitting}>
+                <Button
+                  type="submit"
+                  variant="hero"
+                  size="lg"
+                  className="w-full"
+                  disabled={submitting}
+                >
                   {submitting ? "전송 중..." : "재설정 링크 보내기"}
                 </Button>
               </form>
@@ -104,7 +136,11 @@ const ResetPasswordRequestPage = () => {
                 </span>
               </div>
 
-              <Button variant="ghost" className="w-full" onClick={() => navigate("/auth/login")}>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => navigate("/auth/login")}
+              >
                 로그인으로 돌아가기
               </Button>
             </CardContent>

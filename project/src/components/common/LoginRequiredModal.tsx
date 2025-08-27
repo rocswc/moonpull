@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui/button";
 
+type LoginRequiredModalProps = {
+  onClose: () => void;
+  onGoToLogin: () => void;
+};
+
 const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({ onClose, onGoToLogin }) => {
   return (
 	<div

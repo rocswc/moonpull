@@ -40,9 +40,22 @@ import ProblemGeneratorApp from "./pages/ProblemGeneratorApp";
 import Opictest from "./pages/Opictest";
 import React from "react";
 import { useFcm } from "./fcm";
+import { pdfjs } from "react-pdf";
 import NotificationBell from "@/components/NotificationBell";
 import OAuthCallbackPage from "@/components/socialLogin/OAuthCallbackPage";
 import SocialLoginWrapper from "@/components/socialLogin/SocialLoginWrapper";
+import ResetPasswordRequestPage from "@/pages/ResetPasswordRequestPage";
+import ResetPasswordConfirmPage from "@/pages/ResetPasswordConfirmPage";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+
+
+
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+
+
 
 const queryClient = new QueryClient();
 
@@ -81,6 +94,10 @@ const AppInner = () => {
 		<Route path="/auth/:provider/callback" element={<OAuthCallbackPage />} />
 		<Route path="/auth/social-join" element={<SocialJoinPage />} />
         <Route path="/auth/social/phone/:provider" element={<SocialLoginWrapper />} />
+		
+		{/* 비밀번호 재설정 */}
+		<Route path="/auth/reset-password/request" element={<ResetPasswordRequestPage />} />
+		<Route path="/auth/reset-password/confirm" element={<ResetPasswordConfirmPage />} />
 		
         {/* 메인 페이지 */}
         <Route path="/" element={<Index />} />
@@ -124,6 +141,25 @@ const AppInner = () => {
           <NotificationBell />
         </div>
       )}
+	  
+	  <ToastContainer
+	    position="top-center"
+	    autoClose={3000}
+	    hideProgressBar={true}
+	    newestOnTop={true}
+	    closeOnClick
+	    pauseOnHover
+	    draggable
+	    theme="dark"
+	    toastStyle={{
+	      borderRadius: "12px",
+	      background: "#1f1f2f",
+	      color: "#fff",
+	      fontSize: "0.9rem",
+	      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+	    }}
+	  />
+	  
       <Toaster />
     </BrowserRouter>
   );

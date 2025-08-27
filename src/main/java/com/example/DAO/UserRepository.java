@@ -9,7 +9,7 @@ import com.example.VO.MemberVO;
 
 import java.util.Optional;
 
-// ✅ 추가 import
+//  추가 import
 import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
@@ -50,4 +50,10 @@ public interface UserRepository extends JpaRepository<MemberVO, Integer> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MemberVO m WHERE m.userId = :id")
     Optional<MemberVO> lockByUserId(@Param("id") Integer id);
+    
+    @Modifying
+    @Transactional
+    @Query("UPDATE MemberVO m SET m.passwordhash = :hash WHERE m.email = :email")
+    int updatePasswordByEmail(@Param("email") String email, @Param("hash") String hash);
+
 }

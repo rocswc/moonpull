@@ -42,7 +42,7 @@ public class JoinServiceImpl implements JoinService {
 
         String originalFilename = file.getOriginalFilename();
         String safeFilename = UUID.randomUUID().toString() + "_" +
-                (originalFilename == null ? "file" : originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_"));
+        	    (originalFilename == null ? "file" : new File(originalFilename).getName());
 
         try {
             file.transferTo(new File(dir, safeFilename));
@@ -83,20 +83,38 @@ public class JoinServiceImpl implements JoinService {
         user.setSocialType(joinDTO.getSocialType());
         user.setSocialId(joinDTO.getSocialId());
 
-        // 졸업증명서 업로드
+     // 졸업증명서 업로드
+     // 졸업증명서 업로드
         MultipartFile graduationFile = joinDTO.getGraduationFile();
         if (graduationFile != null && !graduationFile.isEmpty()) {
-            String uploadDir = new File("src/main/resources/static/uploads").getAbsolutePath();
+            String uploadDir = "D:/uploads/graduation";
             File dir = new File(uploadDir);
             if (!dir.exists()) dir.mkdirs();
 
             String original = graduationFile.getOriginalFilename();
-            String safe = UUID.randomUUID().toString() + "_" +
-                    (original == null ? "file" : original.replaceAll("[^a-zA-Z0-9\\.\\-]", "_"));
+            String extension = "";
+
+            if (original != null && original.contains(".")) {
+                extension = original.substring(original.lastIndexOf("."));
+            } else {
+                String contentType = graduationFile.getContentType();
+                if (contentType != null) {
+                    switch (contentType) {
+                        case "image/png": extension = ".png"; break;
+                        case "image/jpeg":
+                        case "image/jpg": extension = ".jpg"; break;
+                        case "application/pdf": extension = ".pdf"; break;
+                        default: extension = "";
+                    }
+                }
+            }
+
+            String safe = UUID.randomUUID().toString() + extension;
 
             try {
                 graduationFile.transferTo(new File(dir, safe));
-                user.setGraduationFile("/uploads/" + safe);
+                user.setGraduationFile("/uploads/graduation/" + safe);
+                System.out.println("✅ 저장된 경로: /uploads/graduation/" + safe);
             } catch (IOException e) {
                 throw new RuntimeException("졸업증명서 파일 저장 실패", e);
             }
@@ -104,6 +122,7 @@ public class JoinServiceImpl implements JoinService {
             user.setGraduationFile(null);
         }
 
+        // 🔥 이 부분은 graduationFile 블록 밖으로 나와야 함!
         userRepository.save(user);
 
         // 2) 멘토 지원자 처리
@@ -117,5 +136,6 @@ public class JoinServiceImpl implements JoinService {
             mentor.setStatus("PENDING");
             mentorRepository.insertMentorApplication(mentor);
         }
+
     }
 }

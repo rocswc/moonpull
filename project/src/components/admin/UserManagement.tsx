@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, FileCheck, Search, Eye } from "lucide-react";
 import BanModal from "@/components/BanModal";
+import DocumentModal from "@/components/admin/DocumentModal";
 
 const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,6 +15,8 @@ const UserManagement = () => {
   const [certificationRequests, setCertificationRequests] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [banModalOpen, setBanModalOpen] = useState(false);
+  const [docModalOpen, setDocModalOpen] = useState(false);
+  const [docUrl, setDocUrl] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -85,11 +88,10 @@ const UserManagement = () => {
     setBanModalOpen(false);
   };
 
-  // ✅ 블랙리스트 해제 로직
   const handleUnbanUser = async (userId) => {
     try {
       await axios.post(`/api/admin/unban-user/${userId}`);
-      await fetchUsers(); // 목록 갱신
+      await fetchUsers();
       alert("✅ 블랙리스트 해제 완료");
     } catch (err) {
       console.error("블랙리스트 해제 실패", err);
@@ -222,7 +224,15 @@ const UserManagement = () => {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="ghost">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const url = `${import.meta.env.VITE_BACKEND_URL}${req.graduationFile}`;
+                          setDocUrl(url);
+                          setDocModalOpen(true);
+                        }}
+                      >
                         <Eye className="w-4 h-4 mr-1" />
                         서류 보기
                       </Button>
@@ -242,6 +252,9 @@ const UserManagement = () => {
       </Tabs>
 
       <BanModal open={banModalOpen} onClose={closeBanModal} user={selectedUser} onSuccess={fetchUsers} />
+
+      {/* ✅ 이거 안 넣어서 모달 안 떴던 거다 */}
+      <DocumentModal open={docModalOpen} onClose={() => setDocModalOpen(false)} fileUrl={docUrl} />
     </div>
   );
 };

@@ -205,6 +205,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/users/all").permitAll()
 
                 .requestMatchers("/api/chat/**", "/api/teacher/**", "/api/mentors/**", "/api/mentor/**").permitAll()
+                .requestMatchers("/api/moonpull-chat/**").permitAll()  // 성은 문풀 챗봇 API 허용 08/22
                 .requestMatchers("/api/mentoring/chatId", "/api/mentoring/chatIdByUserId").permitAll()
 
                 .requestMatchers("/api/mentoring/mentor-id").hasRole("MENTOR")
@@ -248,7 +249,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/user").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/profile/update").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/mentoring/terminate/**").authenticated() //8/20
+                .requestMatchers("/mentoring-ws/**", "/wss/**").permitAll() //8-27 추가
                 .requestMatchers("/api/admin/reports/top").permitAll()
+                
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/files/**").permitAll()
+                
+                .requestMatchers("/api/password-reset/**").permitAll()
+                .requestMatchers("/auth/reset-password/**").permitAll()
 
                 .anyRequest().authenticated()
             )

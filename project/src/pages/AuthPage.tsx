@@ -162,16 +162,27 @@ const AuthPage = () => {
       email: "이메일",
       nickname: "닉네임",
     };
+
     if (!value) {
       alert(`${labels[type]}를 먼저 입력하세요.`);
       return;
     }
+
+    //  이메일인 경우엔 형식 먼저 검사
+    if (type === "email" && !validateEmail(value)) {
+      alert("유효한 이메일 형식을 입력하세요.");
+      return;
+    }
+
     try {
       const res = await axios.get("/api/check-duplicate", {
         params: { type, value },
         withCredentials: true,
       });
-      alert(res.data.exists ? `이미 사용 중인 ${labels[type]}입니다.` : `사용 가능한 ${labels[type]}입니다.`);
+
+      alert(res.data.exists
+        ? `이미 사용 중인 ${labels[type]}입니다.`
+        : `사용 가능한 ${labels[type]}입니다.`);
     } catch {
       alert("중복 확인 중 오류가 발생했습니다.");
     }
@@ -486,7 +497,7 @@ const AuthPage = () => {
 						    >
 						      {formData.graduation_file
 						        ? (formData.graduation_file as File).name
-						        : "졸업증명서 업로드 해주세요"}
+						        : "졸업증명서 업로드 해주세요. (jpg, png, pdf 형식만)"}
 						    </div>
 
 						    <input
@@ -517,7 +528,7 @@ const AuthPage = () => {
                         id="login_id"
                         name="login_id"
                         type="text"
-                        placeholder="아이디를 입력하세요"
+                        placeholder="아이디를 입력하세요."
                         value={formData.login_id}
                         onChange={handleInputChange}
                         className="pl-10"
@@ -535,7 +546,7 @@ const AuthPage = () => {
                       id="password"
                       name="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="비밀번호를 입력하세요"
+                      placeholder="비밀번호를 입력하세요."
                       value={formData.password}
                       onChange={handleInputChange}
                       className="pl-10 pr-10"
@@ -560,7 +571,7 @@ const AuthPage = () => {
                         id="confirmPassword"
                         name="confirmPassword"
                         type="password"
-                        placeholder="비밀번호를 다시 입력하세요"
+                        placeholder="비밀번호를 다시 입력하세요."
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
                         className="pl-10"
@@ -575,7 +586,7 @@ const AuthPage = () => {
 				    <button
 				      type="button"
 				      className="text-sm text-primary hover:underline"
-				      onClick={() => navigate("/auth/reset-password")}
+				      onClick={() => navigate("/auth/reset-password/request")}
 				    >
 				      비밀번호를 잊으셨나요?
 				    </button>

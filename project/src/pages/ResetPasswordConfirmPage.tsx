@@ -45,20 +45,23 @@ const ResetPasswordConfirmPage = () => {
 
     setSubmitting(true);
     try {
-      await axios.post(
-        "/api/password-reset/confirm",
-        { token, newPassword: password },
-        { withCredentials: true }
-      );
+		await axios.post(
+		  "/api/password-reset/confirm",
+		  { token, password }, // ✅ 수정: newPassword ❌ → password ✅
+		  { withCredentials: true }
+		);
       toast.success("비밀번호가 변경되었습니다. 로그인해 주세요.");
       navigate("/auth/login");
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "비밀번호 변경 중 오류가 발생했습니다.";
-      toast.error(msg);
-    } finally {
+	  } catch (err: unknown) {
+	    let msg = "비밀번호 변경 중 오류가 발생했습니다.";
+	    if (axios.isAxiosError(err)) {
+	      msg =
+	        err.response?.data?.message ||
+	        err.response?.data?.error ||
+	        msg;
+	    }
+	    toast.error(msg);
+	  } finally {
       setSubmitting(false);
     }
   };

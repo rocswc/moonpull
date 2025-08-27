@@ -26,4 +26,7 @@ public interface UserService {
     // DB에 해당 전화번호가 존재하는지 
     boolean existsByPhone(String phone);
     
+    // 이메일 전송, 비밀번호 바꾸기
+    void updatePasswordByEmail(String email, String rawPassword);
+    
 }

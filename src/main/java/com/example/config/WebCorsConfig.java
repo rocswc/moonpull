@@ -19,9 +19,11 @@ public class WebCorsConfig {
                             "http://192.168.56.1:8888",
                             "https://192.168.56.1:8888" // ✅ 이거 추가!!
                         )
+                        
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*") // 
                         .allowCredentials(true); // 
+                
             }
         };
     }
