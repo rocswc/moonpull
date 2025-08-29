@@ -12,7 +12,7 @@ WORKDIR /app
 COPY --from=build /app/target/moonpull-0.0.1-SNAPSHOT.jar app.jar
 
 # 인증서 디렉토리 복사
-COPY ./certs /app/certs
+COPY ./project/certs /app/certs
 
 # 443 포트 (HTTPS) 열기
 EXPOSE 443
