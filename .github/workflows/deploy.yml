@@ -33,7 +33,7 @@ jobs:
       - name: Add SSH host to known_hosts
         run: ssh-keyscan -H ${{ matrix.vm_ip }} >> ~/.ssh/known_hosts
 
-      ### ✅ 1. 기존 JAR 복사 및 실행 (그대로 유지)
+      ### ✅ 1. 기존 JAR 복사 및 실행
       - name: Copy JAR to GCP VM ${{ matrix.vm_ip }}
         run: |
           scp target/moonpull-0.0.1-SNAPSHOT.jar jaegeon@${{ matrix.vm_ip }}:/home/jaegeon/moonpull/app.jar
@@ -49,7 +49,7 @@ jobs:
             echo "✅ JAR 배포 완료"
           EOF
 
-      ### ✅ 2. Dockerfile, docker-compose 복사 및 컨테이너 실행
+      ### ✅ 2. Docker 컨테이너 배포
       - name: Create target directory on VM ${{ matrix.vm_ip }}
         run: |
           ssh jaegeon@${{ matrix.vm_ip }} "mkdir -p /home/jaegeon/moonpull"
@@ -57,6 +57,19 @@ jobs:
       - name: Copy Docker setup to GCP VM ${{ matrix.vm_ip }}
         run: |
           scp Dockerfile docker-compose.yml jaegeon@${{ matrix.vm_ip }}:/home/jaegeon/moonpull/
+
+      - name: Deploy Docker container on GCP VM ${{ matrix.vm_ip }}
+        run: |
+          ssh jaegeon@${{ matrix.vm_ip }} << 'EOF'
+            set -ex
+            cd /home/jaegeon/moonpull
+
+            # ✅ docker-compose 설치 (없으면)
+            if ! command -v docker-compose &> /dev/null; then
+              echo "📦 docker-compose 설치 중..."
+              sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
 
             echo "🛑 기존 Docker 컨테이너 중지 및 삭제"
             docker-compose down || true
