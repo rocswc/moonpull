@@ -50,15 +50,13 @@ jobs:
           EOF
 
       ### ✅ 2. Dockerfile, docker-compose 복사 및 컨테이너 실행
+      - name: Create target directory on VM ${{ matrix.vm_ip }}
+        run: |
+          ssh jaegeon@${{ matrix.vm_ip }} "mkdir -p /home/jaegeon/moonpull"
+
       - name: Copy Docker setup to GCP VM ${{ matrix.vm_ip }}
         run: |
           scp Dockerfile docker-compose.yml jaegeon@${{ matrix.vm_ip }}:/home/jaegeon/moonpull/
-
-      - name: Deploy Docker container on GCP VM ${{ matrix.vm_ip }}
-        run: |
-          ssh jaegeon@${{ matrix.vm_ip }} << 'EOF'
-            set -ex
-            cd /home/jaegeon/moonpull
 
             echo "🛑 기존 Docker 컨테이너 중지 및 삭제"
             docker-compose down || true
