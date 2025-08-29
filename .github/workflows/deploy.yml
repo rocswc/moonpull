@@ -77,5 +77,5 @@ jobs:
             echo "🚀 Docker 빌드 및 컨테이너 실행"
             docker-compose up --build -d
 
-            echo "✅ Docker 배포 완료"
+            echo "✅ Docker 배포 ss완료"
           EOF
