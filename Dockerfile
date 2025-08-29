@@ -17,5 +17,8 @@ COPY ./project/certs /app/certs
 # 443 포트 (HTTPS) 열기
 EXPOSE 443
 
+# 🔐 keystore 파일 별도 복사 (이 줄이 추가됨!)
+COPY ./backend-keystore.p12 /app/certs/backend-keystore.p12
+
 # 애플리케이션 실행
 ENTRYPOINT ["java", "-jar", "app.jar"]
