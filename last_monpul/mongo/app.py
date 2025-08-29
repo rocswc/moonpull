@@ -14,17 +14,17 @@ app = Flask(__name__)
 # 정확한 CORS 설정
 CORS(app,
      supports_credentials=True,
-     origins=["https://192.168.56.1:8888"],  # React 앱 도메인 정확히 지정
+     origins=["https://34.64.151.197:8888"],  # 리액트가 띄워질 실제 서버 주소
      allow_headers=["Content-Type", "Authorization"],
      expose_headers=["Content-Type", "Authorization"]
-)  # React 앱에서의 CORS 요청 허용
+) #React 앱에서의 CORS 요청 허용
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # MongoDB 연결 설정 - 데이터베이스 이름을 'quiz'로 변경
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://192.168.0.27:27017')
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://192.168.0.44:27017')
 DATABASE_NAME = 'quiz'  # 변경됨
 
 try:
@@ -440,13 +440,13 @@ def get_total_question_count():
 if __name__ == "__main__":
     app.run(
         debug=True,
-        host='0.0.0.0',
-        port=5001,
+        host='0.0.0.0',  # 외부 접속 허용
+        port=5001,       # 원하는 포트
         ssl_context=(
-            'D:/2jo/moonpull/project/certs/localhost.pem',
-            'D:/2jo/moonpull/project/certs/localhost-key.pem'
+            '/app/certs/localhost.pem',         # 리눅스 내에서의 인증서 경로 (도커 기준)
+            '/app/certs/localhost-key.pem'
         ),
-        use_reloader=False  # ⭐ 이게 핵심!
+        use_reloader=False
     )
 
 

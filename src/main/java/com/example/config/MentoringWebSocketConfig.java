@@ -30,18 +30,18 @@ public class MentoringWebSocketConfig implements WebSocketMessageBrokerConfigure
         // ✅ 멘토링 채팅 전용 WebSocket 엔드포인트 (SockJS)
         registry.addEndpoint("/mentoring-ws")
             .setAllowedOriginPatterns(
-                "https://localhost:*",
-                "https://192.168.0.184:*",
-                "https://192.168.56.1:*"
+            		   "https://34.64.84.23:*",
+            	        "https://34.64.151.197:*",
+            	        "https://34.64.215.144:*"
             )
             .withSockJS();
 
         // ✅ 네이티브 WebSocket 엔드포인트 (SockJS 없이)
         registry.addEndpoint("/mentoring-ws")
             .setAllowedOriginPatterns(
-                "https://localhost:*",
-                "https://192.168.0.184:*",
-                "https://192.168.56.1:*"
+            		   "https://34.64.84.23:*",
+            	        "https://34.64.151.197:*",
+            	        "https://34.64.215.144:*"
             );
     }
 }

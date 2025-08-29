@@ -7,8 +7,8 @@ import Navigation from "@/components/Navigation";
 import axios from "axios";
 
 // API Base URL
-const API_BASE_URL = 'https://localhost:5001/api';
-const WRONG_API = 'https://localhost:8080/api/wrong-answers'; // 주소/포트만 맞추세요
+const API_BASE_URL = 'https://34.64.151.197:5001/api';
+const WRONG_API = 'https://34.64.151.197:443/api/wrong-answers'; // 주소/포트만 맞추세요
 
 // 실제 API 함수들
 const api = {

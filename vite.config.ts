@@ -10,13 +10,14 @@ export default defineConfig(({ mode }) => ({
     port: 8888,
 
     // ✅ 프록시 설정 추가
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080", // Spring Boot 백엔드 포트
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, "/api"),
-      },
-    },
+	proxy: {
+	  "/api": {
+	    target: "https://34.64.151.197", // ✅ 실서버 IP + HTTPS
+	    changeOrigin: true,
+	    secure: false, // 🔐 self-signed 인증서일 경우 필요
+	    rewrite: (path) => path.replace(/^\/api/, "/api"),
+	  },
+	},
   },
   plugins: [
     react(),

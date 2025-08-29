@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from pprint import pprint
 
 # MongoDB 연결 - 데이터베이스 이름을 'quiz'로 변경
-client = MongoClient('mongodb://localhost:27017')
+client = MongoClient('mongodb://192.168.0.44:27017')
 db = client['quiz']  # 변경됨
 
 

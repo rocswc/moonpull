@@ -12,7 +12,7 @@ import type { Question } from "@/data/wrongAnswers";
 import axios from "axios";
 
 // 백엔드 오답 API
-const WRONG_API = "https://localhost:8080/api/wrong-answers"; // 포트/도메인 맞추세요
+const WRONG_API = "https://34.64.151.197:443/api/wrong-answers"; // 포트/도메인 맞추세요
 
 type UIQuestion = Question & { mongoId: string };
 

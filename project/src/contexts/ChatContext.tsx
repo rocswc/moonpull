@@ -12,7 +12,7 @@ import SockJS from 'sockjs-client/dist/sockjs';
 import { Client as StompClient, IMessage } from "@stomp/stompjs";
 
 
-const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "https://192.168.56.1:8080"; // ← 너희 백엔드 주소
+const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? "https://34.64.151.197:443"; // ← 너희 백엔드 주소
 const token = localStorage.getItem("access_token"); // 프로젝트에 맞춰 조정
 const AUTH_HEADERS = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -159,7 +159,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     (async () => {
       try {
         // 다른 팀 API(이미 정상 동작)를 그대로 호출
-        const res = await fetch("https://192.168.56.1:8080/users/all");
+        const res = await fetch("https://34.64.151.197:443/users/all");
         const data = await res.json();
         const list: User[] = (Array.isArray(data) ? data : [])
           .filter((u: any) => typeof (u.userId ?? u.id) !== "undefined")

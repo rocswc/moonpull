@@ -19,7 +19,7 @@ public class SocialJoinRedirectController {
         @RequestParam(required = false) String gender,
         @RequestParam(required = false) String phone
     ) {
-        String frontendUrl = "http://localhost:8888/auth/social-join" +
+        String frontendUrl = "https://34.64.84.23::8888/auth/social-join" +
             "?provider=" + provider +
             "&socialId=" + socialId +
             "&email=" + email +

@@ -3,7 +3,7 @@ import json
 from pymongo import MongoClient
 
 # MongoDB 연결
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient("mongodb://192.168.0.44:27017/")
 db = client["quiz"]  # 이게 DB 이름 (지금은 안 보이지만, 저장되면 나타남)
 collection = db["korea"]   # 원하는 Collection 이름
 

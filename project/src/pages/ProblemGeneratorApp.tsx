@@ -74,7 +74,7 @@ const ProblemGeneratorApp = () => {
       formData.append('num_questions', numQuestions);
       formData.append('question_type', questionType);
 
-      const response = await fetch('http://localhost:5000/api/generate', {
+      const response = await fetch('https://34.64.151.197:5000/api/generate', {
         method: 'POST',
         body: formData
       });

@@ -4,21 +4,23 @@ import path from "path";
 import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 
-// https://vitejs.dev/config/
+// 외부 IP 주소 (여기에 본인 GCP IP 입력)
+const backendIp = "https://34.64.151.197"; // ✅ 여기를 실제 외부 아이피로
+
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8888,
     https: {
-      key: fs.readFileSync("./certs/localhost-key.pem"), // mkcert 발급 키
-      cert: fs.readFileSync("./certs/localhost.pem"),    // mkcert 발급 인증서
+      key: fs.readFileSync(path.resolve(__dirname, "certs/localhost-key.pem")),
+      cert: fs.readFileSync(path.resolve(__dirname, "certs/localhost.pem")),
     },
     proxy: {
       "/api": {
-        target: "https://localhost:8080", // ✅ HTTPS 백엔드 포트
+        target: `${backendIp}:443`, // ✅ 외부 HTTPS 백엔드 포트
         changeOrigin: true,
-        secure: false, // ✅ mkcert 자기서명 허용
-        ws: true,      // 웹소켓도 프록시할 경우 필요
+        secure: false,
+        ws: true,
       },
     },
   },

@@ -97,7 +97,10 @@ public class SecurityConfig {
             "https://localhost:8888",
             "https://localhost:3000",
             "https://192.168.56.1:8888",
-            "https://192.168.0.27:8888"
+            "https://192.168.0.27:8888",
+            "https://34.64.84.23:*",
+            "https://34.64.151.197:*",
+            "https://34.64.215.144:*"
         ));
         config.setAllowCredentials(true);
         config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));

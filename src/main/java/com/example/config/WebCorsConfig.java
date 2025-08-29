@@ -15,9 +15,9 @@ public class WebCorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
                         .allowedOrigins(
-                            "http://localhost:8888",
-                            "http://192.168.56.1:8888",
-                            "https://192.168.56.1:8888" // ✅ 이거 추가!!
+                        		   "https://34.64.84.23:*",
+                        	        "https://34.64.151.197:*",
+                        	        "https://34.64.215.144:*" // ✅ 이거 추가!!
                         )
                         
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")

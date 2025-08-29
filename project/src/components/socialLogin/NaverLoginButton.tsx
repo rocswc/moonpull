@@ -4,7 +4,7 @@ import React from "react";
 const NaverLoginButton = () => {
   const handleClick = () => {
     // 프론트는 단순히 백엔드 시작 URL로 이동
-    window.location.href = "https://localhost:8080/auth/naver/login";
+    window.location.href = "https://34.64.151.197:443/auth/naver/login";
   };
 
   return (

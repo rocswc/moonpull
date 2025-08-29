@@ -31,7 +31,7 @@ import java.util.Optional;
 public class MoonpullChatController {
     
     private final RestTemplate restTemplate;
-    private final String PYTHON_API_URL = "http://localhost:8765/chat";
+      private final String PYTHON_API_URL = "https://34.64.215.197:8765/chat";
     
     @Autowired(required = false)
     private MoonpullChatSessionService moonpullChatSessionService;
@@ -159,29 +159,10 @@ public class MoonpullChatController {
     
     // OCR 서비스 상태 확인
     @GetMapping("/ocr/health")
-    public ResponseEntity<OCRResponse> checkOCRHealth() {
-        try {
-            if (ocrService == null) {
-                return ResponseEntity.ok(OCRResponse.builder()
-                    .success(false)
-                    .text("OCR 서비스가 비활성화되어 있습니다.")
-                    .build());
-            }
-            
-            boolean isHealthy = ocrService.isServiceHealthy();
-            return ResponseEntity.ok(OCRResponse.builder()
-                .success(isHealthy)
-                .text(isHealthy ? "OCR 서비스가 정상 작동 중입니다." : "OCR 서비스에 문제가 있습니다.")
-                .build());
-        } catch (Exception e) {
-            log.error("OCR 서비스 상태 확인 중 오류", e);
-            return ResponseEntity.internalServerError()
-                .body(OCRResponse.builder()
-                    .success(false)
-                    .error("서비스 상태 확인 실패: " + e.getMessage())
-                    .build());
-        }
+    public ResponseEntity<String> checkOCRHealth() {
+        return ResponseEntity.ok("OCR 서비스 테스트");
     }
+            
     
     // 이미지와 함께 메시지 전송 (OCR + 채팅 통합)
     @PostMapping(value = "/message-with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -219,6 +200,12 @@ public class MoonpullChatController {
                     .body(MoonpullChatResponseDTO.error("처리 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
+    
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("서버 정상 작동");
+    }
+    
     
     // 세션 관리 API들
     @PostMapping("/sessions")

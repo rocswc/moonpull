@@ -10,10 +10,9 @@ import java.util.Map;
 @RequestMapping("/api/translations")
 // CORS는 전역(SecurityConfig.cors)에서 관리. 여기서는 명시적 열람 오리진만 허용하고 credentials 허용과 충돌 피함
 @CrossOrigin(origins = {
-    "http://localhost:8888",
-    "https://localhost:8888",
-    "http://192.168.56.1:8888",
-    "https://192.168.56.1:8888"
+		 "https://34.64.84.23:*",
+	        "https://34.64.151.197:*",
+	        "https://34.64.215.144:*"
 }, allowCredentials = "true")
 public class TranslationController {
 

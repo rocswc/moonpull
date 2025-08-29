@@ -7,3 +7,7 @@ services:
     ports:
       - "8080:8080"
     restart: always
+    environment:
+      - ES_CERT_PATH=/app/eskey/ca.p12
+    volumes:
+      - ./eskey:/app/eskey

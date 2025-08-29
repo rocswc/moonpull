@@ -16,7 +16,12 @@ import easyocr
 
 # Flask 앱 설정
 app = Flask(__name__)
-CORS(app)
+CORS(app,
+     supports_credentials=True,
+     origins=["https://34.64.151.197:8888"],
+     allow_headers=["Content-Type", "Authorization"],
+     expose_headers=["Content-Type", "Authorization"]
+)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['RESULTS_FOLDER'] = 'results/'
 app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'txt', 'docx', 'png', 'jpg', 'jpeg', 'img'}
@@ -288,7 +293,16 @@ def health_check():
     return jsonify({"status": "healthy", "message": "API가 정상적으로 작동중입니다."})
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(
+        debug=True,
+        host="0.0.0.0",
+        port=5000,
+        ssl_context=(
+            '/app/certs/localhost.pem',         # 인증서 경로
+            '/app/certs/localhost-key.pem'
+        )
+    )
+
     
     
 

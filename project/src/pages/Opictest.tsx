@@ -62,7 +62,7 @@ const EnhancedOpicTest = () => {
   const checkApiHealth = async () => {
     try {
       setApiStatus('checking');
-      const response = await fetch('http://localhost:8003/health', {
+      const response = await fetch('https://34.64.151.197:443:8003/health', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

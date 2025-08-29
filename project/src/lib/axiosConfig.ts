@@ -1,7 +1,7 @@
 // src/lib/axiosConfig.ts
 import axios from "axios";
 
-axios.defaults.baseURL = "https://192.168.56.1:8080";
+axios.defaults.baseURL = "https://34.64.151.197:443";
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common["Content-Type"] = "application/json";
 

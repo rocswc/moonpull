@@ -25,7 +25,7 @@ const OAuthCallbackPage = () => {
         // 1) 백엔드 콜백 호출 → 티켓 받기
         const qs = new URLSearchParams({ code, ...(state ? { state } : {}) }).toString();
         const cbRes = await fetch(
-          `https://192.168.56.1:8080/auth/${provider}/callback?${qs}`,
+          `https://34.64.151.197:443/auth/${provider}/callback?${qs}`,
           {
             method: "GET",
             credentials: "include",
@@ -38,7 +38,7 @@ const OAuthCallbackPage = () => {
 
         // 2) 브릿지 호출 → 서버가 jwt 쿠키 심음
         const brRes = await fetch(
-          `https://192.168.56.1:8080/auth/bridge?ticket=${encodeURIComponent(ticket)}`,
+          `https://34.64.151.197:443/auth/bridge?ticket=${encodeURIComponent(ticket)}`,
           { method: "GET", credentials: "include" }
         );
         if (!brRes.ok) throw new Error(`bridge failed: ${brRes.status}`);

@@ -8,10 +8,9 @@ import com.example.service.PaymentService;
 @RestController
 @RequestMapping("/payments")
 @CrossOrigin(origins = {
-	    "https://localhost:8888",
-	    "https://127.0.0.1:8888",
-	    "https://192.168.0.184:8888",
-	    "https://192.168.56.1:8888"
+		"https://34.64.84.23:*",
+        "https://34.64.151.197:*",
+        "https://34.64.215.144:*"
 	})
 public class PaymentController { 
 	@Autowired	

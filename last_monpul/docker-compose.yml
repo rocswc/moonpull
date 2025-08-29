@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  mongo-service:
+    build:
+      context: ./mongo
+    container_name: mongo-container
+    ports:
+      - "5001:5001"
+    volumes:
+      - ../project/certs:/app/certs
+      - ../.env:/app/.env
+    restart: always
+
+  mcq-service:
+    build:
+      context: ./mcq
+    container_name: mcq-container
+    ports:
+      - "5000:5000"   
+    volumes:
+      - ../project/certs:/app/certs
+      - ../.env:/app/.env
+    restart: always
+
+  opic-service:
+    build:
+      context: ./opic
+    container_name: opic-container
+    ports:
+      - "8003:8003"
+    volumes:
+      - ../project/certs:/app/certs
+      - ../.env:/app/.env
+    restart: always

@@ -30,7 +30,7 @@ const AdminOverview = () => {
 	      setTotalPaymentAmount("에러");
 	    });
 		
-		axios.get("https://localhost:5001/api/admin/total-questions")
+		axios.get("https://34.64.151.197/api/admin/total-questions")
 		   .then((res) => {
 		     setTotalQuestions(res.data.total_questions.toLocaleString('ko-KR'));
 		   })

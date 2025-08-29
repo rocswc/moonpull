@@ -18,7 +18,7 @@ public class SocialJoinController {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
 
-    @Value("${app.frontend-base-url:https://localhost:8888}")
+    @Value("${app.frontend-base-url:https://34.64.84.23:8888}")
     private String FRONT_BASE;
 
     public SocialJoinController(UserRepository userRepository, JwtUtil jwtUtil) {

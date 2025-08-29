@@ -27,7 +27,7 @@ app = FastAPI(
 # CORS 설정 추가
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://localhost:3000", "https://127.0.0.1:3000", "*"],  # 프론트엔드 주소
+    allow_origins=["https://34.64.151.197:8888", "*"],  # 프론트엔드 주소
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -782,10 +782,12 @@ async def debug_mongodb():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "Opic_test:app",  # 파일명에 맞게 수정하세요
-        host="0.0.0.0",
-        port=8003,
-        reload=True,
-        log_level="info"
-    )
+   uvicorn.run(
+    "Opic_test:app",
+    host="0.0.0.0",
+    port=8003,
+    reload=True,
+    log_level="info",
+    ssl_keyfile="/app/certs/localhost-key.pem",
+    ssl_certfile="/app/certs/localhost.pem"
+)
