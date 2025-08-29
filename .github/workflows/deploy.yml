@@ -1,7 +1,5 @@
 name: Build & Deploy JAR to GCP VMs
 
-
-  
 on:
   push:
     branches: [ main, master ]
@@ -38,7 +36,9 @@ jobs:
       ### ✅ 1. 기존 JAR 복사 및 실행
       - name: Copy JAR to GCP VM ${{ matrix.vm_ip }}
         run: |
-          scp target/moonpull-0.0.1-SNAPSHOT.jar jaegeon@${{ matrix.vm_ip }}:/home/jaegeon/moonpull/app.jar
+          scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+            target/moonpull-0.0.1-SNAPSHOT.jar \
+            jaegeon@${{ matrix.vm_ip }}:/home/jaegeon/moonpull/app.jar
 
       - name: Restart JAR App on GCP VM ${{ matrix.vm_ip }}
         run: |
@@ -58,7 +58,9 @@ jobs:
 
       - name: Copy Docker setup to GCP VM ${{ matrix.vm_ip }}
         run: |
-          scp Dockerfile docker-compose.yml jaegeon@${{ matrix.vm_ip }}:/home/jaegeon/moonpull/
+          scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+            Dockerfile docker-compose.yml \
+            jaegeon@${{ matrix.vm_ip }}:/home/jaegeon/moonpull/
 
       - name: Deploy Docker container on GCP VM ${{ matrix.vm_ip }}
         run: |
